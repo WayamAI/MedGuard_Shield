@@ -155,7 +155,7 @@ export default function Risks() {
               <div className="flex items-center gap-3"><Gauge value={Math.min(100, score)} color={scoreColor(score)} size={100} /><div><div className="font-semibold">{view.name}</div><div className="text-xs text-muted-foreground">{view.cat} · {view.owner}</div></div></div>
               <p className="text-muted-foreground text-xs">This risk relates to potential exposure within the {view.cat.toLowerCase()} domain. Mitigation requires multi-step coordination across teams. Continuous monitoring is in effect.</p>
 
-              <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 <div><div className="text-muted-foreground">Likelihood</div><input type="range" min={1} max={5} value={view.L} disabled className="w-full accent-primary" /></div>
                 <div><div className="text-muted-foreground">Impact</div><input type="range" min={1} max={5} value={view.I} disabled className="w-full accent-primary" /></div>
               </div>
@@ -237,7 +237,7 @@ function RiskForm({ initial, onSubmit }: { initial?: any; onSubmit: (r: any) => 
       <Input placeholder="Risk name" className="w-full" value={name} onChange={e => setName(e.target.value)} />
       <Select className="w-full" value={cat} onChange={e => setCat(e.target.value)}>{["Cybersecurity", "Compliance", "AI Governance", "IAM", "Insider Risk", "Operational", "Physical"].map(c => <option key={c}>{c}</option>)}</Select>
       <Textarea placeholder="Description" rows={2} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div><label className="text-xs text-muted-foreground">Likelihood: {L}</label><input type="range" min={1} max={5} value={L} onChange={e => setL(+e.target.value)} className="w-full accent-primary" /></div>
         <div><label className="text-xs text-muted-foreground">Impact: {I}</label><input type="range" min={1} max={5} value={I} onChange={e => setI(+e.target.value)} className="w-full accent-primary" /></div>
       </div>

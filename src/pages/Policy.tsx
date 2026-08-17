@@ -99,7 +99,7 @@ export default function Policy() {
                 </div>
                 <Gauge value={fw.score} size={80} color={fw.color} />
               </div>
-              <div className="grid grid-cols-3 gap-3 mt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
                 <div>
                   <div className="text-xs uppercase text-muted-foreground mb-1">Categories</div>
                   <div className="space-y-1">
@@ -174,7 +174,7 @@ export default function Policy() {
           <div><label className="text-xs text-muted-foreground">Name</label><Input className="w-full" defaultValue={editPolicy?.name} /></div>
           <div><label className="text-xs text-muted-foreground">Category</label><Select className="w-full" defaultValue={editPolicy?.cat}><option>Data Privacy</option><option>Security</option><option>AI Governance</option><option>Clinical</option><option>Risk</option></Select></div>
           <Textarea placeholder="Description..." rows={3} />
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Input type="date" />
             <Select><option>Legal Team</option><option>IT Security</option><option>CMO Office</option></Select>
           </div>

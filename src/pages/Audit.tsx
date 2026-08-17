@@ -84,9 +84,9 @@ export default function Audit() {
             <SectionHeader title="Generate Report" />
             <div className="space-y-2">
               <Select className="w-full"><option>HIPAA Compliance Summary</option><option>SOC 2 Evidence Package</option><option>Incident Summary</option><option>Access Review</option><option>AI Governance Report</option><option>Custom</option></Select>
-              <div className="grid grid-cols-2 gap-2"><Input type="date" /><Input type="date" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><Input type="date" /><Input type="date" /></div>
               <div className="text-xs text-muted-foreground">Sections</div>
-              <div className="grid grid-cols-2 gap-1 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
                 {["Executive Summary", "Control Details", "Evidence Files", "User Access", "AI Decisions", "Risk Register"].map(s => (
                   <label key={s} className="flex items-center gap-1.5"><input type="checkbox" defaultChecked className="accent-primary" />{s}</label>
                 ))}
@@ -104,7 +104,7 @@ export default function Audit() {
               </div>
               <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} className="accent-primary" /> Schedule Recurring</label>
               {recurring && (
-                <div className="grid grid-cols-2 gap-2"><Select><option>Daily</option><option>Weekly</option><option>Monthly</option></Select><Select><option>Mon</option><option>Tue</option><option>Wed</option></Select></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><Select><option>Daily</option><option>Weekly</option><option>Monthly</option></Select><Select><option>Mon</option><option>Tue</option><option>Wed</option></Select></div>
               )}
               <Btn variant="primary" className="w-full" onClick={generate}>Generate Report</Btn>
             </div>
@@ -138,7 +138,7 @@ export default function Audit() {
       <Modal open={!!event} onClose={() => setEvent(null)} title="Audit Event Detail" size="md">
         {event && (
           <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><div className="text-xs text-muted-foreground">Timestamp</div><div>{event.ts}</div></div>
               <div><div className="text-xs text-muted-foreground">User</div><div>{event.user}</div></div>
               <div><div className="text-xs text-muted-foreground">Action</div><div className="font-mono">{event.action}</div></div>
@@ -165,7 +165,7 @@ export default function Audit() {
       <Modal open={exportOpen} onClose={() => setExportOpen(false)} title="Export Audit Trail" size="sm">
         <div className="space-y-3">
           <div className="flex gap-3 text-xs">{["CSV", "JSON", "PDF"].map(f => <label key={f}><input type="radio" name="exp" defaultChecked={f === "CSV"} className="accent-primary mr-1" />{f}</label>)}</div>
-          <div className="grid grid-cols-2 gap-2"><Input type="date" /><Input type="date" /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><Input type="date" /><Input type="date" /></div>
           <Btn variant="primary" className="w-full" onClick={() => { setExportOpen(false); notify.success("Audit trail export ready — downloading audit_trail_2025-05-05.csv"); }}>Generate Export</Btn>
         </div>
       </Modal>

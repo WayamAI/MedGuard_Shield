@@ -45,12 +45,12 @@ export default function AI() {
           <div><div className="text-base font-semibold">DiagnosticAI <span className="text-xs text-muted-foreground">v2.3</span></div></div>
           <Badge tone="success">✓ HEALTHY</Badge>
         </div>
-        <div className="grid grid-cols-5 gap-3 mt-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 mt-3 text-xs">
           {[["Accuracy", "94.2%"], ["Bias Score", "0.03 / 1.0"], ["Decisions", "247"], ["Confidence", "91.4%"], ["Last Override", "2 days ago"]].map(s => (
             <div key={s[0]}><div className="text-muted-foreground">{s[0]}</div><div className="text-foreground font-medium">{s[1]}</div></div>
           ))}
         </div>
-        <div className="grid grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
           <div className="flex flex-col items-center"><Gauge value={94} color="#10B981" /><div className="text-xs text-muted-foreground mt-1">Accuracy</div></div>
           <div className="flex flex-col items-center"><Gauge value={97} color="#10B981" /><div className="text-xs text-muted-foreground mt-1">Fairness</div></div>
           <div className="flex flex-col items-center"><Gauge value={91} color="#10B981" /><div className="text-xs text-muted-foreground mt-1">Confidence</div></div>
@@ -73,7 +73,7 @@ export default function AI() {
           <span className="font-semibold text-foreground">Action Required:</span> <span className="text-muted-foreground">Demographic disparity detected — Hispanic patients receiving systematically lower triage priority. Disparity margin +18.3%. Human review mandatory.</span>
         </div>
 
-        <div className="grid grid-cols-5 gap-3 mt-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 mt-3 text-xs">
           {[["Accuracy", "91.8%"], ["Bias Score", "0.18 (HIGH)"], ["Decisions", "89"], ["Override", "12.4%"], ["Flagged", "May 3"]].map(s => (
             <div key={s[0]}><div className="text-muted-foreground">{s[0]}</div><div className="text-foreground font-medium">{s[1]}</div></div>
           ))}
@@ -110,12 +110,12 @@ export default function AI() {
           <div><div className="text-base font-semibold">ClaimsCodingAI <span className="text-xs text-muted-foreground">v3.0 (Billing)</span></div></div>
           <Badge tone="success">✓ HEALTHY</Badge>
         </div>
-        <div className="grid grid-cols-5 gap-3 mt-3 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 mt-3 text-xs">
           {[["Accuracy", "97.1%"], ["Bias Score", "0.02"], ["Decisions", "1,240"], ["Cost Savings", "$47,200"], ["Error Rate", "0.3%"]].map(s => (
             <div key={s[0]}><div className="text-muted-foreground">{s[0]}</div><div className="text-foreground font-medium">{s[1]}</div></div>
           ))}
         </div>
-        <div className="grid grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
           <div className="flex flex-col items-center"><Gauge value={97} color="#10B981" /><div className="text-xs text-muted-foreground mt-1">Accuracy</div></div>
           <div className="flex flex-col items-center"><Gauge value={98} color="#10B981" /><div className="text-xs text-muted-foreground mt-1">Fairness</div></div>
           <div className="flex flex-col items-center"><Gauge value={95} color="#10B981" /><div className="text-xs text-muted-foreground mt-1">Reliability</div></div>
@@ -167,7 +167,7 @@ export default function AI() {
       <Modal open={!!decision} onClose={() => setDecision(null)} title={`AI Decision ${decision?.id}`} size="md">
         {decision && (
           <div className="space-y-3 text-sm">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div><div className="text-xs text-muted-foreground">Model</div><div>{decision.model}</div></div>
               <div><div className="text-xs text-muted-foreground">Patient</div><div className="font-mono">{decision.patient}</div></div>
               <div><div className="text-xs text-muted-foreground">Decision</div><div>{decision.decision}</div></div>

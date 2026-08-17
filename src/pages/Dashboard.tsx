@@ -129,7 +129,7 @@ function ExportAuditModal({ open, onClose }: { open: boolean; onClose: () => voi
   return (
     <Modal open={open} onClose={onClose} title="Export Audit Trail" size="sm">
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div><label className="text-xs text-muted-foreground">From</label><Input type="date" defaultValue="2025-04-01" className="w-full" /></div>
           <div><label className="text-xs text-muted-foreground">To</label><Input type="date" defaultValue="2025-05-05" className="w-full" /></div>
         </div>
@@ -176,7 +176,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="p-5 lg:col-span-2">
           <SectionHeader title="Compliance Frameworks" subtitle="Active frameworks across Meridian Health" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {frameworks.map(fw => (
               <div key={fw.name} className="p-4 border border-border rounded-md bg-secondary/30 flex gap-4">
                 <div className="w-10 h-10 rounded flex-shrink-0" style={{ background: fw.color, opacity: 0.2 }} />

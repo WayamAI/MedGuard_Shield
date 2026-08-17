@@ -158,7 +158,7 @@ export default function Access() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-border">
               <Btn variant="danger" onClick={() => setBreachUser(viewUser)}>Simulate Breach</Btn>
               <Btn variant="danger" onClick={() => { notify.success(`Access revoked for ${viewUser.name}`); setViewUser(null); }}>Revoke Access</Btn>
               <Btn variant="outline" onClick={() => notify.success(`MFA reset email sent to ${viewUser.email}`)}>Reset MFA</Btn>
@@ -204,7 +204,7 @@ function UserForm({ initial, onSubmit }: { initial?: U; onSubmit: () => void }) 
     <div className="space-y-3">
       <div><label className="text-xs text-muted-foreground">Name</label><Input className="w-full" defaultValue={initial?.name} /></div>
       <div><label className="text-xs text-muted-foreground">Email</label><Input className="w-full" defaultValue={initial?.email} /></div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div><label className="text-xs text-muted-foreground">Department</label><Select className="w-full" defaultValue={initial?.dept}>{["ICU", "Emergency", "Radiology", "Billing", "Pharmacy", "Oncology", "HR/Payroll", "IT Infra", "Compliance"].map(d => <option key={d}>{d}</option>)}</Select></div>
         <div><label className="text-xs text-muted-foreground">Role</label><Select className="w-full" defaultValue={initial?.role}>{["Doctor", "Nurse", "Billing Analyst", "IT Admin", "Radiologist", "Pharmacist", "Compliance Officer", "HR Manager"].map(r => <option key={r}>{r}</option>)}</Select></div>
       </div>
@@ -221,7 +221,7 @@ function BreachSim({ user, onClose }: { user: U; onClose: () => void }) {
   return (
     <div className="space-y-4 text-sm">
       <p className="text-muted-foreground">If this account were compromised...</p>
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="p-4 bg-red-500/10 border border-red-500/30 rounded">
           <div className="text-xs text-muted-foreground">PHI at risk</div>
           <div className="text-2xl font-bold text-red-400">{records.toLocaleString()}</div>
@@ -237,7 +237,7 @@ function BreachSim({ user, onClose }: { user: U; onClose: () => void }) {
       </div>
       <div>
         <div className="text-xs uppercase text-muted-foreground mb-1">Downstream Systems Exposed</div>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {["Epic EHR Core", "Billing Engine", "Insurance Gateway"].map(s => (
             <div key={s} className="p-2 bg-secondary/50 rounded border border-border text-xs">{s}</div>
           ))}
