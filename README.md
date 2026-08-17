@@ -89,22 +89,12 @@ src/
 
 ## Known limitations
 
-- **Old asset files left on disk**: `public/J2W_Logo 1.png`,
-  `src/assets/j2w-logo.png`, and `src/assets/joules-watts-logo.png` are
-  no longer referenced anywhere in the app, but this working session's
-  permissions didn't allow deleting files, so they remain on disk unused.
-  Safe to `git rm` them in a follow-up commit.
-- **`lovable-tagger` dev dependency**: still listed in `package.json` and
-  wired into `vite.config.ts` (dev mode only — it injects invisible
-  `data-*` attributes for the Lovable editor and never renders anything
-  visible). Not removed since dropping a dependency wasn't in scope for
-  this pass; safe to remove if this project no longer needs Lovable's
-  visual editor.
-- **Nested modal grids**: a handful of 2/3 column grids inside modals
-  (e.g. the add risk/add user forms) weren't given mobile breakpoints —
-  the modals scroll internally, so they're usable but not optimized for
-  narrow screens the way the main page layouts are.
 - **No real backend**: everything is mock data in `src/data/mock.ts` plus
   client-side state in `src/store/AppStore.tsx`. Actions like "resolve
   alert" or "suspend user" update local state and show a toast, but
   nothing persists server-side or across a hard refresh.
+- **Main bundle is still ~344 KB gzip 108 KB** even after route-level
+  code splitting, mostly React/Router/Query/shadcn. Recharts (the
+  largest single dependency, ~365 KB) is already isolated into its own
+  chunk that only loads on chart-heavy pages. Further reduction would
+  mean swapping dependencies, which was out of scope here.
