@@ -44,7 +44,7 @@ export default function Login() {
           <img
             src={theme === "dark" ? wayamLogoDark : wayamLogoLight}
             alt="Wayam AI"
-            className="h-[4.5rem] object-contain mb-6"
+            className="h-32 object-contain mb-6"
           />
           <h1 className="text-xl font-bold text-foreground tracking-tight">Sign in to MedGuard</h1>
           <p className="text-sm text-muted-foreground mt-1 text-center">
