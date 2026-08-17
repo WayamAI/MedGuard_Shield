@@ -84,7 +84,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       >
         <div className="px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <img src={theme === "dark" ? wayamLogoDark : wayamLogoLight} alt="Wayam AI" className="h-7 object-contain" />
+            <img src={theme === "dark" ? wayamLogoDark : wayamLogoLight} alt="Wayam AI" className="h-14 object-contain" />
             <div className="pl-2 border-l border-border">
               <div className="text-base font-bold text-foreground tracking-tight leading-none">MedGuard</div>
               <div className="text-[10px] text-muted-foreground mt-0.5">Meridian Health</div>
