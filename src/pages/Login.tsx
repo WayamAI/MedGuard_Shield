@@ -1,6 +1,6 @@
 import { FormEvent, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { AppIcon } from "@/components/AppIcon";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import wayamLogoLight from "@/assets/brand/wayam-logo-light.svg";
@@ -31,7 +31,7 @@ export default function Login() {
     const result = await login(email, password);
     setSubmitting(false);
     if (!result.ok) {
-      setError(result.error);
+      setError("error" in result ? result.error : "Sign in failed");
       return;
     }
     navigate("/", { replace: true });
@@ -46,16 +46,16 @@ export default function Login() {
             alt="Wayam AI"
             className="h-32 object-contain mb-6"
           />
-          <h1 className="text-xl font-bold text-foreground tracking-tight">Sign in to MedGuard</h1>
-          <p className="text-sm text-muted-foreground mt-1 text-center">
+          <h1 className="font-display text-display-page text-primary tracking-tight">Sign in to MedGuard</h1>
+          <p className="text-body-md text-tertiary mt-1 text-center">
             Healthcare governance and compliance for Meridian Health
           </p>
         </div>
 
-        <div className="bg-card border border-border rounded-xl shadow-sm p-6 sm:p-8">
+        <div className="bg-raised border border-default rounded-xl shadow-sm p-6 sm:p-8">
           <form onSubmit={onSubmit} noValidate className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
+              <label htmlFor="email" className="block text-label-md text-primary mb-1.5">
                 Email address
               </label>
               <input
@@ -66,12 +66,12 @@ export default function Login() {
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 placeholder="you@meridian.org"
-                className="w-full bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                className="w-full bg-action border border-default rounded-md px-3 py-2 text-body-md text-primary placeholder:text-tertiary focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand transition-colors"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">
+              <label htmlFor="password" className="block text-label-md text-primary mb-1.5">
                 Password
               </label>
               <div className="relative">
@@ -83,21 +83,21 @@ export default function Login() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  className="w-full bg-secondary border border-border rounded-md px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                  className="w-full bg-action border border-default rounded-md px-3 py-2 pr-10 text-body-md text-primary placeholder:text-tertiary focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(s => !s)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-tertiary hover:text-primary"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <AppIcon name="hidden" size="md" /> : <AppIcon name="visible" size="md" />}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2" role="alert">
+              <div className="text-body-md text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2" role="alert">
                 {error}
               </div>
             )}
@@ -105,7 +105,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-primary-foreground font-medium text-sm rounded-md px-4 py-2.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full inline-flex items-center justify-center gap-2 bg-brand hover:bg-brand-hover text-primary-foreground font-medium text-body-md rounded-md px-4 py-2.5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <>
@@ -118,13 +118,13 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-5 flex items-start gap-2 text-xs text-muted-foreground bg-secondary/60 border border-border rounded-md px-3 py-2.5">
-            <ShieldCheck size={14} className="mt-0.5 flex-shrink-0 text-primary" />
+          <div className="mt-5 flex items-start gap-2 text-body-sm text-tertiary bg-action/60 border border-default rounded-md px-3 py-2.5">
+            <AppIcon name="compliance" size="sm" className="mt-0.5 flex-shrink-0 text-brand" />
             <span>Demo mode: any valid email and password will sign you in.</span>
           </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p className="text-center text-body-sm text-tertiary mt-6">
           Wayam AI Governance Suite · Demo Environment
         </p>
       </div>

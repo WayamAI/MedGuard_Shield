@@ -1,0 +1,430 @@
+/* =============================================================================
+   MedGuard Design System — Design Tokens
+
+   Two-tier architecture:
+     REFERENCE TOKENS (--ref-*)  raw palette, never used by components
+       -> SEMANTIC TOKENS (--sem-*)  meaning, theme-aware
+         -> TAILWIND UTILITIES  (see tailwind.config.ts)
+           -> COMPONENTS
+
+   Components must never consume --ref-* directly.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   TIER 1 — REFERENCE TOKENS (theme-independent)
+   -------------------------------------------------------------------------- */
+:root {
+  --ref-white: #FFFFFF;
+  --ref-black: #000000;
+
+  /* Type families.
+     Michroma  -> display/identity/telemetry only, weight 400, never faux-bold.
+     Geist     -> every other piece of UI text. */
+  --font-display: "Michroma", "Geist", system-ui, sans-serif;
+  --font-sans: "Geist", "Inter", system-ui, sans-serif;
+
+  /* Icon sizing scale (consumed by <AppIcon />) */
+  --icon-size-xs: 12px;
+  --icon-size-sm: 14px;
+  --icon-size-md: 16px;
+  --icon-size-lg: 18px;
+  --icon-size-xl: 20px;
+  --icon-size-2xl: 24px;
+  --icon-size-3xl: 28px;
+
+  /* Neutral ramp — finer steps around the dark-UI working range (800-950) */
+  --ref-gray-50: #F7F7F8;
+  --ref-gray-100: #EDEDEF;
+  --ref-gray-200: #DCDCE0;
+  --ref-gray-300: #C2C2C8;
+  --ref-gray-400: #9E9EA7;
+  --ref-gray-500: #7C7C86;
+  --ref-gray-550: #6E6E78;
+  --ref-gray-600: #5D5D67;
+  --ref-gray-650: #515159;
+  --ref-gray-700: #45454C;
+  --ref-gray-750: #3A3A40;
+  --ref-gray-800: #2E2E33;
+  --ref-gray-825: #27272B;
+  --ref-gray-850: #202024;
+  --ref-gray-900: #18181B;
+  --ref-gray-950: #0F0F11;
+
+  /* red */
+  --ref-red-50: #FEF2F2;
+  --ref-red-100: #FEE2E2;
+  --ref-red-200: #FECACA;
+  --ref-red-300: #FCA5A5;
+  --ref-red-400: #F87171;
+  --ref-red-500: #EF4444;
+  --ref-red-600: #DC2626;
+  --ref-red-700: #B91C1C;
+  --ref-red-800: #7F1D1D;
+  --ref-red-900: #4C1010;
+  --ref-red-950: #2A0A0A;
+
+  /* purple */
+  --ref-purple-50: #FAF5FF;
+  --ref-purple-100: #F3E8FF;
+  --ref-purple-200: #E9D5FF;
+  --ref-purple-300: #D8B4FE;
+  --ref-purple-400: #C084FC;
+  --ref-purple-500: #A855F7;
+  --ref-purple-600: #9333EA;
+  --ref-purple-700: #7E22CE;
+  --ref-purple-800: #581C87;
+  --ref-purple-900: #3B0764;
+  --ref-purple-950: #230442;
+
+  /* blue */
+  --ref-blue-50: #EFF6FF;
+  --ref-blue-100: #DBEAFE;
+  --ref-blue-200: #BFDBFE;
+  --ref-blue-300: #93C5FD;
+  --ref-blue-400: #60A5FA;
+  --ref-blue-500: #3B82F6;
+  --ref-blue-600: #2563EB;
+  --ref-blue-700: #1D4ED8;
+  --ref-blue-800: #1E3A8A;
+  --ref-blue-900: #172554;
+  --ref-blue-950: #0C142E;
+
+  /* cyan */
+  --ref-cyan-50: #ECFEFF;
+  --ref-cyan-100: #CFFAFE;
+  --ref-cyan-200: #A5F3FC;
+  --ref-cyan-300: #67E8F9;
+  --ref-cyan-400: #22D3EE;
+  --ref-cyan-500: #06B6D4;
+  --ref-cyan-600: #0891B2;
+  --ref-cyan-700: #0E7490;
+  --ref-cyan-800: #155E75;
+  --ref-cyan-900: #083344;
+  --ref-cyan-950: #04202B;
+
+  /* teal */
+  --ref-teal-50: #F0FDFA;
+  --ref-teal-100: #CCFBF1;
+  --ref-teal-200: #99F6E4;
+  --ref-teal-300: #5EEAD4;
+  --ref-teal-400: #2DD4BF;
+  --ref-teal-500: #14B8A6;
+  --ref-teal-600: #0D9488;
+  --ref-teal-700: #0F766E;
+  --ref-teal-800: #115E59;
+  --ref-teal-900: #042F2E;
+  --ref-teal-950: #02201F;
+
+  /* green */
+  --ref-green-50: #F0FDF4;
+  --ref-green-100: #DCFCE7;
+  --ref-green-200: #BBF7D0;
+  --ref-green-300: #86EFAC;
+  --ref-green-400: #4ADE80;
+  --ref-green-500: #22C55E;
+  --ref-green-600: #16A34A;
+  --ref-green-700: #15803D;
+  --ref-green-800: #14532D;
+  --ref-green-900: #052E16;
+  --ref-green-950: #03200F;
+
+  /* yellow */
+  --ref-yellow-50: #FEFCE8;
+  --ref-yellow-100: #FEF9C3;
+  --ref-yellow-200: #FEF08A;
+  --ref-yellow-300: #FDE047;
+  --ref-yellow-400: #FACC15;
+  --ref-yellow-500: #EAB308;
+  --ref-yellow-600: #CA8A04;
+  --ref-yellow-700: #A16207;
+  --ref-yellow-800: #713F12;
+  --ref-yellow-900: #422006;
+  --ref-yellow-950: #2A1503;
+
+  /* amber */
+  --ref-amber-50: #FFFBEB;
+  --ref-amber-100: #FEF3C7;
+  --ref-amber-200: #FDE68A;
+  --ref-amber-300: #FCD34D;
+  --ref-amber-400: #FBBF24;
+  --ref-amber-500: #F59E0B;
+  --ref-amber-600: #D97706;
+  --ref-amber-700: #B45309;
+  --ref-amber-800: #78350F;
+  --ref-amber-900: #451A03;
+  --ref-amber-950: #2C1002;
+
+  /* orange */
+  --ref-orange-50: #FFF7ED;
+  --ref-orange-100: #FFEDD5;
+  --ref-orange-200: #FED7AA;
+  --ref-orange-300: #FDBA74;
+  --ref-orange-400: #FB923C;
+  --ref-orange-500: #F97316;
+  --ref-orange-600: #EA580C;
+  --ref-orange-700: #C2410C;
+  --ref-orange-800: #7C2D12;
+  --ref-orange-900: #431407;
+  --ref-orange-950: #2A0C04;
+
+  /* deep-orange */
+  --ref-deep-orange-50: #FBF0EC;
+  --ref-deep-orange-100: #FBE0D6;
+  --ref-deep-orange-200: #FBC4AF;
+  --ref-deep-orange-300: #F79E7C;
+  --ref-deep-orange-400: #F2734A;
+  --ref-deep-orange-500: #E64A19;
+  --ref-deep-orange-600: #D84315;
+  --ref-deep-orange-700: #BF360C;
+  --ref-deep-orange-800: #8F2708;
+  --ref-deep-orange-900: #5C1905;
+  --ref-deep-orange-950: #380F03;
+}
+
+/* ---------------------------------------------------------------------------
+   TIER 2 — SEMANTIC TOKENS (LIGHT — default)
+   -------------------------------------------------------------------------- */
+:root {
+  /* text */
+  --sem-text-primary: #0F0F11;
+  --sem-text-secondary: #515159;
+  --sem-text-tertiary: #7C7C86;
+  --sem-text-quaternary: #9E9EA7;
+  --sem-text-on-color: #FFFFFF;
+
+  /* icon */
+  --sem-icon-primary: #0F0F11;
+  --sem-icon-secondary: #515159;
+  --sem-icon-tertiary: #7C7C86;
+  --sem-icon-quaternary: #9E9EA7;
+  --sem-icon-on-color: #FFFFFF;
+
+  /* stroke */
+  --sem-stroke-default: #DCDCE0;
+  --sem-stroke-active: #9E9EA7;
+  --sem-stroke-muted: #EDEDEF;
+  --sem-stroke-disabled: #EDEDEF;
+  --sem-stroke-on-color: #C2C2C8;
+
+  /* surface */
+  --sem-surface-page-background: #F7F7F8;
+  --sem-surface-container: #FFFFFF;
+  --sem-surface-raised: #FFFFFF;
+  --sem-surface-raised-x2: #F7F7F8;
+  --sem-surface-action: #EDEDEF;
+  --sem-surface-scroll-bar: #C2C2C8;
+
+  /* action-surface-primary */
+  --sem-action-surface-primary-default: #18181B;
+  --sem-action-surface-primary-hover: #2E2E33;
+  --sem-action-surface-primary-focused: #0F0F11;
+  --sem-action-surface-primary-disabled: #DCDCE0;
+  --sem-action-surface-primary-content: #FFFFFF;
+  --sem-action-surface-primary-content-disabled: #9E9EA7;
+
+  /* action-surface-secondary */
+  --sem-action-surface-secondary-default: #EDEDEF;
+  --sem-action-surface-secondary-hover: #DCDCE0;
+  --sem-action-surface-secondary-focused: #C2C2C8;
+  --sem-action-surface-secondary-disabled: #F7F7F8;
+  --sem-action-surface-secondary-content: #0F0F11;
+  --sem-action-surface-secondary-content-disabled: #9E9EA7;
+
+  /* action-surface-tertiary */
+  --sem-action-surface-tertiary-default: transparent;
+  --sem-action-surface-tertiary-hover: #EDEDEF;
+  --sem-action-surface-tertiary-focused: #DCDCE0;
+  --sem-action-surface-tertiary-disabled: transparent;
+  --sem-action-surface-tertiary-content: #515159;
+  --sem-action-surface-tertiary-content-disabled: #9E9EA7;
+
+  /* feedback */
+  --sem-feedback-success-content: #15803D;
+  --sem-feedback-success-icon: #16A34A;
+  --sem-feedback-success-stroke: #BBF7D0;
+  --sem-feedback-success-background: #F0FDF4;
+  --sem-feedback-info-content: #1D4ED8;
+  --sem-feedback-info-icon: #2563EB;
+  --sem-feedback-info-stroke: #BFDBFE;
+  --sem-feedback-info-background: #EFF6FF;
+  --sem-feedback-neutral-content: #515159;
+  --sem-feedback-neutral-icon: #7C7C86;
+  --sem-feedback-neutral-stroke: #DCDCE0;
+  --sem-feedback-neutral-background: #EDEDEF;
+  --sem-feedback-warning-content: #C2410C;
+  --sem-feedback-warning-icon: #EA580C;
+  --sem-feedback-warning-stroke: #FED7AA;
+  --sem-feedback-warning-background: #FFF7ED;
+  --sem-feedback-error-content: #B91C1C;
+  --sem-feedback-error-icon: #DC2626;
+  --sem-feedback-error-stroke: #FECACA;
+  --sem-feedback-error-background: #FEF2F2;
+  /* severity */
+  --sem-severity-critical: #DC2626;
+  --sem-severity-high: #D97706;
+  --sem-severity-medium: #EA580C;
+  --sem-severity-low: #2563EB;
+  --sem-severity-info: #2563EB;
+
+  /* categorical chart series */
+  --sem-chart-1: #2563EB;
+  --sem-chart-2: #16A34A;
+  --sem-chart-3: #D97706;
+  --sem-chart-4: #9333EA;
+  --sem-chart-5: #0891B2;
+}
+
+/* ---------------------------------------------------------------------------
+   TIER 2 — SEMANTIC TOKENS (DARK — primary target)
+   -------------------------------------------------------------------------- */
+.dark {
+  /* text */
+  --sem-text-primary: #F7F7F8;
+  --sem-text-secondary: #C2C2C8;
+  --sem-text-tertiary: #9E9EA7;
+  --sem-text-quaternary: #6E6E78;
+  --sem-text-on-color: #0F0F11;
+
+  /* icon */
+  --sem-icon-primary: #F7F7F8;
+  --sem-icon-secondary: #C2C2C8;
+  --sem-icon-tertiary: #9E9EA7;
+  --sem-icon-quaternary: #6E6E78;
+  --sem-icon-on-color: #0F0F11;
+
+  /* stroke */
+  --sem-stroke-default: #2E2E33;
+  --sem-stroke-active: #5D5D67;
+  --sem-stroke-muted: #202024;
+  --sem-stroke-disabled: #27272B;
+  --sem-stroke-on-color: #2E2E33;
+
+  /* surface */
+  --sem-surface-page-background: #000000;
+  --sem-surface-container: #0F0F11;
+  --sem-surface-raised: #18181B;
+  --sem-surface-raised-x2: #202024;
+  --sem-surface-action: #27272B;
+  --sem-surface-scroll-bar: #3A3A40;
+
+  /* action-surface-primary */
+  --sem-action-surface-primary-default: #EDEDEF;
+  --sem-action-surface-primary-hover: #F7F7F8;
+  --sem-action-surface-primary-focused: #DCDCE0;
+  --sem-action-surface-primary-disabled: #2E2E33;
+  --sem-action-surface-primary-content: #0F0F11;
+  --sem-action-surface-primary-content-disabled: #515159;
+
+  /* action-surface-secondary */
+  --sem-action-surface-secondary-default: #27272B;
+  --sem-action-surface-secondary-hover: #2E2E33;
+  --sem-action-surface-secondary-focused: #3A3A40;
+  --sem-action-surface-secondary-disabled: #18181B;
+  --sem-action-surface-secondary-content: #F7F7F8;
+  --sem-action-surface-secondary-content-disabled: #45454C;
+
+  /* action-surface-tertiary */
+  --sem-action-surface-tertiary-default: transparent;
+  --sem-action-surface-tertiary-hover: #202024;
+  --sem-action-surface-tertiary-focused: #27272B;
+  --sem-action-surface-tertiary-disabled: transparent;
+  --sem-action-surface-tertiary-content: #C2C2C8;
+  --sem-action-surface-tertiary-content-disabled: #45454C;
+
+  /* feedback */
+  --sem-feedback-success-content: #4ADE80;
+  --sem-feedback-success-icon: #4ADE80;
+  --sem-feedback-success-stroke: #14532D;
+  --sem-feedback-success-background: #052E16;
+  --sem-feedback-info-content: #60A5FA;
+  --sem-feedback-info-icon: #60A5FA;
+  --sem-feedback-info-stroke: #1E3A8A;
+  --sem-feedback-info-background: #172554;
+  --sem-feedback-neutral-content: #C2C2C8;
+  --sem-feedback-neutral-icon: #9E9EA7;
+  --sem-feedback-neutral-stroke: #3A3A40;
+  --sem-feedback-neutral-background: #202024;
+  --sem-feedback-warning-content: #FB923C;
+  --sem-feedback-warning-icon: #FB923C;
+  --sem-feedback-warning-stroke: #7C2D12;
+  --sem-feedback-warning-background: #431407;
+  --sem-feedback-error-content: #F87171;
+  --sem-feedback-error-icon: #F87171;
+  --sem-feedback-error-stroke: #7F1D1D;
+  --sem-feedback-error-background: #4C1010;
+  /* severity — the app's 4-level alert scale. Needs one more step than the
+     feedback families provide, so it gets its own semantic group. */
+  --sem-severity-critical: #F87171;
+  --sem-severity-high: #FBBF24;
+  --sem-severity-medium: #FB923C;
+  --sem-severity-low: #60A5FA;
+  --sem-severity-info: #60A5FA;
+
+  /* categorical chart series — for multi-series charts that carry no
+     good/bad meaning (model comparisons, per-model volumes). */
+  --sem-chart-1: #60A5FA;
+  --sem-chart-2: #4ADE80;
+  --sem-chart-3: #FBBF24;
+  --sem-chart-4: #C084FC;
+  --sem-chart-5: #22D3EE;
+}
+
+/* ---------------------------------------------------------------------------
+   SOLID STATUS FILLS
+
+   Status badges are read at a glance, so they use saturated fills rather than
+   the tinted background/content pairing used elsewhere. These are declared once
+   on :root and deliberately NOT overridden in .dark — a CRITICAL badge must be
+   the same red in both themes, or the severity vocabulary stops being learnable.
+   Each fill carries its own foreground, chosen for contrast against that fill.
+   -------------------------------------------------------------------------- */
+:root {
+  --sem-on-solid-light: #FFFFFF;
+  --sem-on-solid-dark: #1A1205;
+
+  --sem-solid-critical: #DC2626;
+  --sem-solid-critical-content: var(--sem-on-solid-light);
+  --sem-solid-high: #F59E0B;
+  --sem-solid-high-content: var(--sem-on-solid-dark);
+  --sem-solid-medium: #EA580C;
+  --sem-solid-medium-content: var(--sem-on-solid-light);
+  --sem-solid-low: #2563EB;
+  --sem-solid-low-content: var(--sem-on-solid-light);
+
+  --sem-solid-success: #16A34A;
+  --sem-solid-success-content: var(--sem-on-solid-light);
+  --sem-solid-warning: #F59E0B;
+  --sem-solid-warning-content: var(--sem-on-solid-dark);
+  --sem-solid-error: #DC2626;
+  --sem-solid-error-content: var(--sem-on-solid-light);
+  --sem-solid-info: #2563EB;
+  --sem-solid-info-content: var(--sem-on-solid-light);
+}
+
+/* neutral is the one status that must stay quiet, so it follows the theme. */
+:root { --sem-solid-neutral: #DCDCE0; --sem-solid-neutral-content: #0F0F11; }
+.dark { --sem-solid-neutral: #3A3A40; --sem-solid-neutral-content: #F7F7F8; }
+
+/* ---------------------------------------------------------------------------
+   RISK MATRIX BANDS
+
+   Cell fills for the likelihood x impact heat map. These are declared as their
+   own tokens rather than reusing feedback.*.background with an opacity
+   modifier: Tailwind's `/50` syntax silently no-ops on colours declared as a
+   raw var(), so the bands all collapsed to the same near-black. Explicit
+   values keep the heat gradient legible in both themes.
+   -------------------------------------------------------------------------- */
+:root {
+  --sem-matrix-low: #E6F6ED;
+  --sem-matrix-moderate: #FDF2D9;
+  --sem-matrix-high: #FCE6D5;
+  --sem-matrix-critical: #FBDDDD;
+  --sem-matrix-stroke: #DCDCE0;
+}
+.dark {
+  --sem-matrix-low: #10301C;
+  --sem-matrix-moderate: #40300B;
+  --sem-matrix-high: #4C290C;
+  --sem-matrix-critical: #571A1A;
+  --sem-matrix-stroke: #2E2E33;
+}

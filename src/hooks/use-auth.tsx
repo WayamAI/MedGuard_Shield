@@ -9,7 +9,7 @@ import * as React from "react";
  * and cleared entirely on logout.
  *
  * Swapping this for a real auth provider later only means changing the
- * body of `login`/`logout` below — every consumer just calls `useAuth()`.
+ * body of `login`/`logout` below, every consumer just calls `useAuth()`.
  */
 
 const SESSION_STORAGE_KEY = "medguard-auth-session";

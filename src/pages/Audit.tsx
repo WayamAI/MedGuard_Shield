@@ -54,19 +54,19 @@ export default function Audit() {
             <Btn variant="outline" onClick={() => setExportOpen(true)}>Export Full Trail</Btn>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
-              <thead className="text-muted-foreground uppercase text-[10px]"><tr className="border-b border-border">{["#", "Time", "User", "Action", "Resource", "IP", "Location", "Result"].map(h => <th key={h} className="text-left py-2 px-2">{h}</th>)}</tr></thead>
+            <table className="w-full text-caption">
+              <thead className="sticky top-0 z-10 bg-raised text-tertiary uppercase text-caption"><tr className="border-b border-default">{["#", "Time", "User", "Action", "Resource", "IP", "Location", "Result"].map(h => <th key={h} className="text-left py-2 px-2">{h}</th>)}</tr></thead>
               <tbody>
-                {filtered.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">No results found</td></tr>}
+                {filtered.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-tertiary">No results found</td></tr>}
                 {filtered.map((e, i) => {
                   const flagged = ["FLAGGED", "BLOCKED", "FAILED", "POLICY VIOLATION"].includes(e.result);
                   return (
-                    <tr key={i} onClick={() => setEvent(e)} className={`border-b border-border hover:bg-secondary/50 cursor-pointer ${flagged ? "border-l-2 border-l-red-500" : ""}`}>
-                      <td className="py-2 px-2 text-muted-foreground">{i + 1}</td>
+                    <tr key={i} onClick={() => setEvent(e)} className={`border-b border-default hover:bg-raised-2 cursor-pointer ${flagged ? "border-l-2 border-l-feedback-error-icon" : ""}`}>
+                      <td className="py-2 px-2 text-tertiary">{i + 1}</td>
                       <td className="px-2">{e.ts}</td>
                       <td className="px-2">{e.user}</td>
-                      <td className="px-2 font-mono text-[10px]">{e.action}</td>
-                      <td className="px-2 text-muted-foreground">{e.res}</td>
+                      <td className="px-2 font-mono text-caption">{e.action}</td>
+                      <td className="px-2 text-tertiary">{e.res}</td>
                       <td className="px-2 font-mono">{e.ip}</td>
                       <td className="px-2">{e.loc}</td>
                       <td className="px-2"><Badge tone={flagged ? "danger" : e.result === "Override" || e.result === "Flagged" || e.result === "Alert" ? "warning" : "success"}>{e.result}</Badge></td>
@@ -76,7 +76,7 @@ export default function Audit() {
               </tbody>
             </table>
           </div>
-          <div className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">Showing {filtered.length} of 98,441 events</div>
+          <div className="text-body-sm text-tertiary mt-3 pt-3 border-t border-default">Showing {filtered.length} of 98,441 events</div>
         </Card>
 
         <div className="space-y-4">
@@ -85,24 +85,24 @@ export default function Audit() {
             <div className="space-y-2">
               <Select className="w-full"><option>HIPAA Compliance Summary</option><option>SOC 2 Evidence Package</option><option>Incident Summary</option><option>Access Review</option><option>AI Governance Report</option><option>Custom</option></Select>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><Input type="date" /><Input type="date" /></div>
-              <div className="text-xs text-muted-foreground">Sections</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+              <div className="text-body-sm text-tertiary">Sections</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-body-sm">
                 {["Executive Summary", "Control Details", "Evidence Files", "User Access", "AI Decisions", "Risk Register"].map(s => (
                   <label key={s} className="flex items-center gap-1.5"><input type="checkbox" defaultChecked className="accent-primary" />{s}</label>
                 ))}
               </div>
-              <div className="flex gap-3 text-xs">
+              <div className="flex gap-3 text-body-sm">
                 {["PDF", "CSV", "JSON"].map(f => <label key={f} className="flex items-center gap-1"><input type="radio" name="fmt" defaultChecked={f === "PDF"} className="accent-primary" />{f}</label>)}
               </div>
               <div>
-                <div className="text-xs text-muted-foreground mb-1">Recipients</div>
+                <div className="text-body-sm text-tertiary mb-1">Recipients</div>
                 <div className="flex gap-1">
                   <Input placeholder="email@meridian.org" value={recipInput} onChange={e => setRecipInput(e.target.value)} className="flex-1" />
                   <Btn variant="outline" onClick={() => { if (recipInput) { setRecipients([...recipients, recipInput]); setRecipInput(""); } }}>Add +</Btn>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-1">{recipients.map(r => <Badge key={r} tone="info">{r}</Badge>)}</div>
               </div>
-              <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} className="accent-primary" /> Schedule Recurring</label>
+              <label className="flex items-center gap-2 text-body-sm"><input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} className="accent-primary" /> Schedule Recurring</label>
               {recurring && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><Select><option>Daily</option><option>Weekly</option><option>Monthly</option></Select><Select><option>Mon</option><option>Tue</option><option>Wed</option></Select></div>
               )}
@@ -112,14 +112,14 @@ export default function Audit() {
 
           <Card className="p-4">
             <SectionHeader title="Scheduled Reports" />
-            <table className="w-full text-[11px]">
-              <thead className="text-muted-foreground text-[10px] uppercase"><tr className="border-b border-border">{["Name", "Freq", "Next", "Actions"].map(h => <th key={h} className="text-left py-1 px-1">{h}</th>)}</tr></thead>
+            <table className="w-full text-caption">
+              <thead className="text-tertiary text-caption uppercase"><tr className="border-b border-default">{["Name", "Freq", "Next", "Actions"].map(h => <th key={h} className="text-left py-1 px-1">{h}</th>)}</tr></thead>
               <tbody>
                 {scheduled.map((s, i) => (
-                  <tr key={i} className="border-b border-border">
+                  <tr key={i} className="border-b border-default">
                     <td className="py-2 px-1">{s.name}{s.paused && <Badge tone="muted" className="ml-1">Paused</Badge>}</td>
-                    <td className="px-1 text-muted-foreground">{s.freq}</td>
-                    <td className="px-1 text-muted-foreground">{s.next}</td>
+                    <td className="px-1 text-tertiary">{s.freq}</td>
+                    <td className="px-1 text-tertiary">{s.next}</td>
                     <td className="px-1">
                       <div className="flex gap-1">
                         <Btn variant="outline" onClick={() => setEditSched(i)}>Edit</Btn>
@@ -137,22 +137,22 @@ export default function Audit() {
 
       <Modal open={!!event} onClose={() => setEvent(null)} title="Audit Event Detail" size="md">
         {event && (
-          <div className="space-y-3 text-sm">
+          <div className="space-y-3 text-body-md">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div><div className="text-xs text-muted-foreground">Timestamp</div><div>{event.ts}</div></div>
-              <div><div className="text-xs text-muted-foreground">User</div><div>{event.user}</div></div>
-              <div><div className="text-xs text-muted-foreground">Action</div><div className="font-mono">{event.action}</div></div>
-              <div><div className="text-xs text-muted-foreground">Result</div><div>{event.result}</div></div>
-              <div><div className="text-xs text-muted-foreground">IP</div><div className="font-mono">{event.ip}</div></div>
-              <div><div className="text-xs text-muted-foreground">Location</div><div>{event.loc}</div></div>
+              <div><div className="text-body-sm text-tertiary">Timestamp</div><div>{event.ts}</div></div>
+              <div><div className="text-body-sm text-tertiary">User</div><div>{event.user}</div></div>
+              <div><div className="text-body-sm text-tertiary">Action</div><div className="font-mono">{event.action}</div></div>
+              <div><div className="text-body-sm text-tertiary">Result</div><div>{event.result}</div></div>
+              <div><div className="text-body-sm text-tertiary">IP</div><div className="font-mono">{event.ip}</div></div>
+              <div><div className="text-body-sm text-tertiary">Location</div><div>{event.loc}</div></div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-1">Resource</div>
-              <div className="bg-secondary/40 p-2 rounded">{event.res}</div>
+              <div className="text-body-sm text-tertiary mb-1">Resource</div>
+              <div className="bg-raised-2 p-2 rounded">{event.res}</div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground mb-1">Raw log</div>
-              <pre className="bg-secondary/60 p-2 rounded text-[11px] font-mono overflow-x-auto">{JSON.stringify(event, null, 2)}</pre>
+              <div className="text-body-sm text-tertiary mb-1">Raw log</div>
+              <pre className="bg-action/60 p-2 rounded text-caption font-mono overflow-x-auto">{JSON.stringify(event, null, 2)}</pre>
             </div>
             <div className="flex gap-2">
               <Btn variant="outline" onClick={() => notify.success("Alert created from audit event")}>Create Alert</Btn>
@@ -164,22 +164,22 @@ export default function Audit() {
 
       <Modal open={exportOpen} onClose={() => setExportOpen(false)} title="Export Audit Trail" size="sm">
         <div className="space-y-3">
-          <div className="flex gap-3 text-xs">{["CSV", "JSON", "PDF"].map(f => <label key={f}><input type="radio" name="exp" defaultChecked={f === "CSV"} className="accent-primary mr-1" />{f}</label>)}</div>
+          <div className="flex gap-3 text-body-sm">{["CSV", "JSON", "PDF"].map(f => <label key={f}><input type="radio" name="exp" defaultChecked={f === "CSV"} className="accent-primary mr-1" />{f}</label>)}</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><Input type="date" /><Input type="date" /></div>
-          <Btn variant="primary" className="w-full" onClick={() => { setExportOpen(false); notify.success("Audit trail export ready — downloading audit_trail_2025-05-05.csv"); }}>Generate Export</Btn>
+          <Btn variant="primary" className="w-full" onClick={() => { setExportOpen(false); notify.success("Audit trail export ready, downloading audit_trail_2025-05-05.csv"); }}>Generate Export</Btn>
         </div>
       </Modal>
 
       <Modal open={genPhase !== "idle"} onClose={() => setGenPhase("idle")} title={genPhase === "done" ? "Report Ready" : "Generating Report"} size="sm" dismissOnBackdrop={false}>
         {genPhase === "running" && (
           <div className="py-4">
-            <p className="text-sm text-muted-foreground mb-2">Compiling 47 evidence files... Formatting PDF...</p>
-            <div className="h-2 bg-secondary rounded overflow-hidden"><div className="h-full bg-primary transition-all" style={{ width: `${progress}%` }} /></div>
+            <p className="text-body-md text-tertiary mb-2">Compiling 47 evidence files... Formatting PDF...</p>
+            <div className="h-2 bg-action rounded overflow-hidden"><div className="h-full bg-brand transition-all" style={{ width: `${progress}%` }} /></div>
           </div>
         )}
         {genPhase === "done" && (
           <div>
-            <p className="text-sm mb-3">✓ 47-page PDF generated successfully.</p>
+            <p className="text-body-md mb-3">✓ 47-page PDF generated successfully.</p>
             <div className="flex gap-2">
               <Btn variant="primary" onClick={() => { notify.success("Downloading..."); setGenPhase("idle"); }}>Download Now</Btn>
               <Btn variant="outline" onClick={() => { notify.success("Email sent"); setGenPhase("idle"); }}>Send via Email</Btn>
