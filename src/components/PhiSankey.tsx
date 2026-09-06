@@ -186,9 +186,14 @@ export function PhiSankey({
             <text x="11" y={h >= 40 ? 16 : h / 2 + 4} fill="var(--sem-text-primary)" fontSize="11.5" fontWeight="600">
               {node.name}
             </text>
-            {h >= 40 && (
+            {h >= 40 ? (
               <text x="11" y="30" fill="var(--sem-text-tertiary)" fontSize="10">
                 {node.records.toLocaleString()} rec/day
+              </text>
+            ) : (
+              /* Too short for a second line: fold the volume onto the label row. */
+              <text x={w - 9} y={h / 2 + 4} textAnchor="end" fill="var(--sem-text-tertiary)" fontSize="9.5">
+                {node.records.toLocaleString()}
               </text>
             )}
             {h >= 58 && (
