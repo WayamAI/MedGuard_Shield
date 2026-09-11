@@ -184,12 +184,3 @@ export const risks = [
   { id: "R-011", name: "Shadow IT Usage", cat: "Cybersecurity", L: 2, I: 2, owner: "IT Admin", status: "Open", due: "Jun 15" },
   { id: "R-012", name: "Physical Access Control", cat: "Physical", L: 1, I: 3, owner: "Facilities", status: "Closed", due: "N/A" },
 ];
-
-export const riskScoreOf = (L: number, I: number) => {
-  // Map approximated to spec
-  const map: Record<string, number> = {
-    "4-5": 95, "3-4": 72, "3-4-2": 68, "4-3": 61, "2-4": 48, "3-3": 44,
-    "2-4-2": 41, "2-3": 35, "3-2": 31, "1-4": 22, "2-2": 18, "1-3": 14,
-  };
-  return map[`${L}-${I}`] ?? L * I * 4;
-};
