@@ -419,6 +419,7 @@
   --sem-matrix-moderate: #FDF2D9;
   --sem-matrix-high: #FCE6D5;
   --sem-matrix-critical: #FBDDDD;
+  --sem-matrix-extreme: #F3C2C2;
   --sem-matrix-stroke: #DCDCE0;
 }
 .dark {
@@ -426,5 +427,6 @@
   --sem-matrix-moderate: #40300B;
   --sem-matrix-high: #4C290C;
   --sem-matrix-critical: #571A1A;
+  --sem-matrix-extreme: #6E1F1F;
   --sem-matrix-stroke: #2E2E33;
 }

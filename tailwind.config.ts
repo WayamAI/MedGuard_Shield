@@ -124,6 +124,7 @@ export default {
           moderate: sem("matrix-moderate"),
           high: sem("matrix-high"),
           critical: sem("matrix-critical"),
+          extreme: sem("matrix-extreme"),
           stroke: sem("matrix-stroke"),
         },
         solid: {
