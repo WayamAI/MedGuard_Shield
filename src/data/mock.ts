@@ -1,11 +1,3 @@
-export const SEVERITY_COLORS: Record<string, string> = {
-  CRITICAL: "var(--sem-severity-critical)",
-  HIGH: "var(--sem-severity-high)",
-  MEDIUM: "var(--sem-severity-medium)",
-  LOW: "var(--sem-severity-low)",
-  INFO: "var(--sem-severity-low)",
-};
-
 export const initialNotifications = [
   { id: 1, sev: "CRITICAL", title: "Bulk data export attempt", desc: "Billing dept", time: "2 mins ago", page: "/threats" },
   { id: 2, sev: "CRITICAL", title: "Tor exit node login detected", desc: "IT Infrastructure", time: "8 mins ago", page: "/threats" },
@@ -27,14 +19,6 @@ export const frameworks: {
   { name: "SOC 2 Type II", score: 91, controls: "187/205", last: "Jan 20 2025", next: "Jul 20 2025", tone: "success", overdue: false },
   { name: "ISO 27001", score: 88, controls: "312/354", last: "Feb 01 2025", next: "Aug 01 2025", tone: "warning", overdue: false },
   { name: "HITRUST", score: 79, controls: "289/365", last: "Nov 2024", next: "May 19 2025", tone: "danger", overdue: true },
-];
-
-export const recentAlerts = [
-  { id: "A-2849", sev: "CRITICAL", type: "Bulk Export", dept: "Billing", time: "9:14 AM" },
-  { id: "A-2848", sev: "CRITICAL", type: "Tor Login", dept: "IT Infra", time: "7:32 AM" },
-  { id: "A-2847", sev: "HIGH", type: "Bias Drift", dept: "AI/Clinical", time: "6:18 AM" },
-  { id: "A-2846", sev: "HIGH", type: "PHI Email", dept: "Oncology", time: "Yesterday 8:55 PM" },
-  { id: "A-2845", sev: "MEDIUM", type: "MFA Disabled", dept: "HR", time: "Yesterday 6:30 PM" },
 ];
 
 export const departmentRisks = [
@@ -168,19 +152,4 @@ export const auditLog = [
   { ts: "Yesterday 8:55 PM", user: "p.sharma", action: "EMAIL_SEND", res: "PHI attachment to ext. address", ip: "10.0.4.22", loc: "Oncology", result: "POLICY VIOLATION" },
   { ts: "Yesterday 6:30 PM", user: "SYSTEM", action: "MFA_ALERT", res: "j.wilson account, 3 failures", ip: "System", loc: "Automated", result: "Alert" },
   { ts: "Yesterday 5:14 PM", user: "fatima.alrashid", action: "COMPLIANCE_CHECK", res: "HIPAA control suite full run", ip: "10.0.7.01", loc: "Compliance Office", result: "Success" },
-];
-
-export const risks = [
-  { id: "R-001", name: "Ransomware Attack on EHR", cat: "Cybersecurity", L: 4, I: 5, owner: "IT Security", status: "Mitigating", due: "May 30" },
-  { id: "R-002", name: "HIPAA Breach via Vendor", cat: "Compliance", L: 3, I: 4, owner: "Legal Team", status: "Open", due: "Jun 15" },
-  { id: "R-003", name: "Clinical AI Bias (Triage)", cat: "AI Governance", L: 3, I: 4, owner: "CMO Office", status: "Open", due: "May 20" },
-  { id: "R-004", name: "PHI Overprovisioned Access", cat: "IAM", L: 4, I: 3, owner: "IT Admin", status: "Mitigating", due: "May 25" },
-  { id: "R-005", name: "HITRUST Audit Readiness Gap", cat: "Compliance", L: 2, I: 4, owner: "Compliance", status: "Open", due: "May 19" },
-  { id: "R-006", name: "Insider Threat · Billing", cat: "Insider Risk", L: 3, I: 3, owner: "HR + Security", status: "Investigating", due: "Jun 1" },
-  { id: "R-007", name: "EHR System Downtime (>4hr)", cat: "Operational", L: 2, I: 4, owner: "IT Ops", status: "Mitigating", due: "Jul 1" },
-  { id: "R-008", name: "Third Party API Vulnerabilities", cat: "Cybersecurity", L: 2, I: 3, owner: "IT Security", status: "Open", due: "Jun 30" },
-  { id: "R-009", name: "Staff Training Compliance Gap", cat: "Compliance", L: 3, I: 2, owner: "HR", status: "Open", due: "May 31" },
-  { id: "R-010", name: "Data Backup Failure", cat: "Operational", L: 1, I: 4, owner: "IT Ops", status: "Mitigating", due: "Jul 15" },
-  { id: "R-011", name: "Shadow IT Usage", cat: "Cybersecurity", L: 2, I: 2, owner: "IT Admin", status: "Open", due: "Jun 15" },
-  { id: "R-012", name: "Physical Access Control", cat: "Physical", L: 1, I: 3, owner: "Facilities", status: "Closed", due: "N/A" },
 ];
