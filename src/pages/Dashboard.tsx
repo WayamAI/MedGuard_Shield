@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { AppIcon } from "@/components/AppIcon";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   Card, KPI, Badge, Btn, Gauge, Modal, SectionHeader, Textarea, Select, Input, FilterChip,
 } from "@/components/ui-bits";
@@ -8,6 +8,9 @@ import { toneVar, riskTone, type Tone } from "@/lib/tone";
 import type { IconName } from "@/lib/icons";
 import { frameworks, departmentRisks, activitySamples } from "@/data/mock";
 import { useStore } from "@/store/AppStore";
+import { useAssets } from "@/hooks/useAssets";
+import { useRisks } from "@/hooks/useRisks";
+import { useDataFlows } from "@/hooks/useDataFlows";
 import { notify } from "@/lib/notify";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
 
@@ -169,6 +172,28 @@ function ExportAuditModal({ open, onClose }: { open: boolean; onClose: () => voi
 export default function Dashboard() {
   const navigate = useNavigate();
   const { alerts, resolveAlert } = useStore();
+
+  /* Summary figures are computed client-side from the three read endpoints
+     rather than a dedicated aggregate route, per the demo's scope. */
+  const assets = useAssets();
+  const risks = useRisks();
+  const flows = useDataFlows();
+
+  const summary = useMemo(() => {
+    const riskRows = risks.data ?? [];
+    const byBand = (b: string) => riskRows.filter(r => r.band === b).length;
+    const links = flows.data?.links ?? [];
+    return {
+      assetCount: assets.data?.length,
+      severe: risks.data ? byBand("extreme") + byBand("critical") : undefined,
+      severeTrend: risks.data
+        ? `${byBand("extreme")} extreme · ${byBand("critical")} critical`
+        : undefined,
+      phiPerDay: flows.data ? links.reduce((sum, l) => sum + l.value, 0) : undefined,
+      unencrypted: flows.data ? links.filter(l => l.tone === "violation").length : undefined,
+      flowCount: links.length,
+    };
+  }, [assets.data, risks.data, flows.data]);
   const [reportFw, setReportFw] = useState<any>(null);
   const [resolveId, setResolveId] = useState<string | null>(null);
   const [runRiskOpen, setRunRiskOpen] = useState(false);
@@ -200,10 +225,34 @@ export default function Dashboard() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <KPI icon="compliance" label="Compliance Score" value="94%" trend="+2.1% this week" accent="success" />
-        <KPI icon="threats" label="Active Alerts" value={String(alerts.filter(a => a.status !== "Resolved").length)} trend="+3 since yesterday" accent="danger" onClick={() => navigate("/threats")} />
-        <KPI icon="database" label="PHI Records Monitored" value="2,401,847" trend="+12,043 today" accent="info" />
-        <KPI icon="success" label="Controls Passing" value="847 / 901" trend="94% pass rate" accent="success" />
+        <KPI
+          icon="server" label="Assets Monitored"
+          value={summary.assetCount?.toLocaleString()}
+          trend={summary.assetCount !== undefined ? `${summary.flowCount} PHI flows mapped` : undefined}
+          accent="info" loading={assets.isLoading} stale={assets.isReconnecting}
+        />
+        <KPI
+          icon="threats" label="Critical or Extreme"
+          value={summary.severe !== undefined ? String(summary.severe) : undefined}
+          trend={summary.severeTrend}
+          accent="danger" loading={risks.isLoading} stale={risks.isReconnecting}
+          onClick={() => navigate("/risks")}
+        />
+        <KPI
+          icon="database" label="PHI Records / Day"
+          value={summary.phiPerDay?.toLocaleString()}
+          trend={summary.phiPerDay !== undefined ? "across all mapped flows" : undefined}
+          accent="info" loading={flows.isLoading} stale={flows.isReconnecting}
+          onClick={() => navigate("/phi-flow")}
+        />
+        <KPI
+          icon="unlocked" label="Unencrypted Flows"
+          value={summary.unencrypted !== undefined ? String(summary.unencrypted) : undefined}
+          trend={summary.unencrypted !== undefined ? `of ${summary.flowCount} total` : undefined}
+          accent={summary.unencrypted ? "danger" : "success"}
+          loading={flows.isLoading} stale={flows.isReconnecting}
+          onClick={() => navigate("/phi-flow")}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
