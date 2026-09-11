@@ -231,7 +231,16 @@ export const Gauge = ({ value, size = 120, tone = "info", label }: { value: numb
   );
 };
 
-export const KPI = ({ icon, label, value, trend, accent = "info", onClick }: { icon: IconName; label: string; value: string; trend?: string; accent?: Tone; onClick?: () => void }) => (
+export const KPI = ({ icon, label, value, trend, accent = "info", onClick, loading, stale }: {
+  icon: IconName; label: string;
+  /** `undefined` renders a dash rather than "undefined" when a fetch fails. */
+  value?: string;
+  trend?: string; accent?: Tone; onClick?: () => void;
+  /** First load: shimmer in place of the figure, same height, no layout jump. */
+  loading?: boolean;
+  /** Last known figure, backend currently unreachable. */
+  stale?: boolean;
+}) => (
   <Card
     className={cn(
       "p-4 transition-colors duration-200",
@@ -243,8 +252,22 @@ export const KPI = ({ icon, label, value, trend, accent = "info", onClick }: { i
         <AppIcon name={icon} size="lg" className={TONE_ICON[accent]} />
         <span className="text-caption uppercase tracking-wider text-tertiary">{label}</span>
       </div>
-      <div className="font-display text-display-metric-sm tabular text-primary">{value}</div>
-      {trend && <div className={cn("mt-1 text-caption tabular", TONE_TEXT[accent])}>{trend}</div>}
+      {loading ? (
+        <div
+          role="status"
+          aria-label={`Loading ${label}`}
+          className="h-[--kpi-metric-h] w-24 animate-pulse rounded bg-raised-2"
+          style={{ height: "1.9rem" }}
+        />
+      ) : (
+        <div
+          className={cn("font-display text-display-metric-sm tabular text-primary", stale && "opacity-60")}
+          title={stale ? "Last known value — backend unreachable" : undefined}
+        >
+          {value ?? "—"}
+        </div>
+      )}
+      {trend && !loading && <div className={cn("mt-1 text-caption tabular", TONE_TEXT[accent])}>{trend}</div>}
     </div>
   </Card>
 );
@@ -254,6 +277,92 @@ export const SectionHeader = ({ title, subtitle, action }: { title: string; subt
     <div className="min-w-0">
       <h3 className="text-heading-sm text-primary">{title}</h3>
       {subtitle && <p className="mt-0.5 text-body-sm text-tertiary">{subtitle}</p>}
+    </div>
+    {action}
+  </div>
+);
+
+/* ---------------------------------------------------------------------------
+   Data-state primitives
+
+   Every component that will read from the backend needs the same three
+   non-happy paths. Defining them once keeps a failed fetch looking like part
+   of the product rather than a stack trace, and keeps the skeleton the same
+   height as the content it replaces so nothing jumps on load.
+   -------------------------------------------------------------------------- */
+
+/** Placeholder occupying the exact footprint of the chart it stands in for. */
+export const ChartSkeleton = ({ height = 470, label = "Loading data" }: { height?: number; label?: string }) => (
+  <div
+    role="status"
+    aria-label={label}
+    className="flex w-full animate-pulse flex-col justify-center gap-3 rounded-lg border border-default bg-raised p-6"
+    style={{ height }}
+  >
+    {[0.9, 0.6, 0.75, 0.45, 0.8].map((w, i) => (
+      <div key={i} className="h-4 rounded bg-raised-2" style={{ width: `${w * 100}%` }} />
+    ))}
+    <span className="sr-only">{label}</span>
+  </div>
+);
+
+/**
+ * Failed fetch. `error` is inspected rather than printed raw: an unreachable
+ * backend and an expired session are different problems for the viewer.
+ */
+export const ErrorState = ({
+  title,
+  message,
+  onRetry,
+  isRetrying,
+  height,
+}: {
+  title?: string;
+  message?: string;
+  onRetry?: () => void;
+  isRetrying?: boolean;
+  height?: number;
+}) => (
+  <div
+    role="alert"
+    className="flex w-full flex-col items-center justify-center gap-3 rounded-lg border border-default bg-raised-2 p-8 text-center"
+    style={height ? { minHeight: height } : undefined}
+  >
+    <AppIcon name="warning" size="2xl" className="text-feedback-error" />
+    <div>
+      <div className="text-heading-sm text-primary">{title ?? "Could not load this data"}</div>
+      {message && <p className="mt-1 max-w-md text-body-sm text-tertiary">{message}</p>}
+    </div>
+    {onRetry && (
+      <Btn variant="outline" onClick={onRetry} disabled={isRetrying}>
+        {isRetrying ? "Retrying…" : "Retry"}
+      </Btn>
+    )}
+  </div>
+);
+
+/** Request succeeded, there is simply nothing to draw. Not an error. */
+export const EmptyState = ({
+  icon = "info",
+  title,
+  message,
+  action,
+  height,
+}: {
+  icon?: IconName;
+  title: string;
+  message?: string;
+  action?: ReactNode;
+  height?: number;
+}) => (
+  <div
+    className="flex w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-default bg-raised-2 p-8 text-center"
+    style={height ? { minHeight: height } : undefined}
+  >
+    <AppIcon name={icon} size="2xl" className="text-icon-tertiary" />
+    <div>
+      <div className="text-heading-sm text-primary">{title}</div>
+      {message && <p className="mt-1 max-w-md text-body-sm text-tertiary">{message}</p>}
     </div>
     {action}
   </div>
