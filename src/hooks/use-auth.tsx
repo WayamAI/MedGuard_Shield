@@ -1,27 +1,40 @@
 import * as React from "react";
+import { api, ApiError, setAuthTokenGetter } from "@/lib/apiClient";
 
 /**
- * Demo authentication layer.
+ * Session management against the MedGuard API, bearer-token flow.
  *
- * This app has no real backend, so this provider simulates one: any
- * syntactically valid email plus any non-empty password is accepted.
- * The session is kept in localStorage so a browser refresh preserves it,
- * and cleared entirely on logout.
+ * The token is held in memory only — a ref inside this provider. It is never
+ * written to localStorage or sessionStorage, so an XSS payload that can read
+ * browser storage finds nothing, and closing or reloading the tab ends the
+ * session. The cost is that a reload requires signing in again; see
+ * "Reload behaviour" below for why that is the right trade here.
  *
- * Swapping this for a real auth provider later only means changing the
- * body of `login`/`logout` below, every consumer just calls `useAuth()`.
+ * Reload behaviour: the API exposes /api/auth/login, /logout and /me and has
+ * no refresh-token endpoint, so there is nothing to silently re-authenticate
+ * against. Rather than fake it, a reload lands on a clean logged-out state and
+ * ProtectedRoute redirects to /login — never an authenticated-looking shell
+ * with no valid token behind it.
+ *
+ * The public shape of this hook (user / isAuthenticated / isInitializing /
+ * login / logout) is unchanged from the demo implementation it replaced, so
+ * ProtectedRoute and every consumer are untouched.
  */
 
-const SESSION_STORAGE_KEY = "medguard-auth-session";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type AuthUser = {
   email: string;
   name: string;
+  id?: number;
+  role?: string;
 };
 
-type Session = {
-  user: AuthUser;
+/** POST /api/auth/login -> { data: { token, expiresIn, user } }. */
+type LoginResponse = {
+  token: string;
+  expiresIn: number;
+  user: { id: number; email: string; role: string };
 };
 
 type AuthContextValue = {
@@ -41,28 +54,41 @@ function deriveName(email: string): string {
   return words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
 }
 
-function readSession(): Session | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Session;
-    if (!parsed?.user?.email) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
+const toAuthUser = (u: LoginResponse["user"]): AuthUser => ({
+  email: u.email,
+  name: deriveName(u.email),
+  id: u.id,
+  role: u.role,
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<AuthUser | null>(null);
-  const [isInitializing, setIsInitializing] = React.useState(true);
 
+  /**
+   * The live bearer token. A ref rather than state because apiClient needs to
+   * read it synchronously from any call site, and because the token changing
+   * should not by itself re-render the tree — `user` already does that.
+   */
+  const tokenRef = React.useRef<string | null>(null);
+
+  /**
+   * Registered during render, not in an effect: a child could fire a request
+   * on its first render, which happens before effects run.
+   */
+  if (tokenRef.current === null) {
+    setAuthTokenGetter(() => tokenRef.current);
+  }
   React.useEffect(() => {
-    const session = readSession();
-    setUser(session?.user ?? null);
-    setIsInitializing(false);
+    setAuthTokenGetter(() => tokenRef.current);
+    return () => setAuthTokenGetter(null);
   }, []);
+
+  /**
+   * Nothing is persisted, so there is nothing to restore and no async probe to
+   * wait on. Kept in the interface because ProtectedRoute and Login both read
+   * it, and because a future refresh-token flow would make it meaningful again.
+   */
+  const isInitializing = false;
 
   const login = React.useCallback(async (email: string, password: string) => {
     const trimmedEmail = email.trim();
@@ -74,18 +100,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { ok: false as const, error: "Password is required." };
     }
 
-    // Simulate network latency for a realistic loading state.
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const authUser: AuthUser = { email: trimmedEmail, name: deriveName(trimmedEmail) };
-    window.localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({ user: authUser } satisfies Session));
-    setUser(authUser);
-    return { ok: true as const };
+    try {
+      const result = await api.post<LoginResponse>("/api/auth/login", {
+        email: trimmedEmail,
+        password,
+      });
+      if (!result?.token) {
+        return { ok: false as const, error: "Sign-in failed: no token returned." };
+      }
+      tokenRef.current = result.token;
+      setUser(toAuthUser(result.user));
+      return { ok: true as const };
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.isAuthError) return { ok: false as const, error: "Invalid email or password." };
+        if (err.isNetworkError) {
+          return { ok: false as const, error: "Can't reach the server. Check that the API is running." };
+        }
+        return { ok: false as const, error: `Sign-in failed (${err.status}). Please try again.` };
+      }
+      return { ok: false as const, error: "Sign-in failed. Please try again." };
+    }
   }, []);
 
   const logout = React.useCallback(() => {
-    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    // Drop the token first: the session must end even if the API is down.
+    tokenRef.current = null;
     setUser(null);
+    void api.post("/api/auth/logout").catch(() => {});
   }, []);
 
   const value = React.useMemo<AuthContextValue>(() => ({

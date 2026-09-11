@@ -120,7 +120,7 @@ export default function Login() {
 
           <div className="mt-5 flex items-start gap-2 text-body-sm text-tertiary bg-action/60 border border-default rounded-md px-3 py-2.5">
             <AppIcon name="compliance" size="sm" className="mt-0.5 flex-shrink-0 text-brand" />
-            <span>Demo mode: any valid email and password will sign you in.</span>
+            <span>Sign in with your MedGuard account. Credentials are verified by the API.</span>
           </div>
         </div>
 
