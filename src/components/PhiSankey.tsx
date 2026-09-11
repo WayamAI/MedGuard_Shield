@@ -54,23 +54,31 @@ export function PhiSankey({
   const [hoverId, setHoverId] = useState<string | null>(null);
 
   const layout = useMemo(() => {
-    const stages = Math.max(...nodes.map(n => n.stage)) + 1;
+    /* Real data arrives over the wire, so a stage may be absent, fractional or
+       NaN. Geometry maths on a NaN silently poisons every downstream value and
+       takes the whole chart out, so inputs are coerced to a sane integer here
+       rather than trusted. */
+    const stageOf = (n: FlowNode) =>
+      Number.isFinite(n.stage) ? Math.max(0, Math.round(n.stage)) : 0;
+    const valueOf = (v: number) => (Number.isFinite(v) ? Math.max(0, v) : 0);
+
+    const stages = nodes.length ? Math.max(...nodes.map(stageOf)) + 1 : 0;
     const byStage: FlowNode[][] = Array.from({ length: stages }, () => []);
-    nodes.forEach(n => byStage[n.stage].push(n));
+    nodes.forEach(n => byStage[stageOf(n)].push(n));
 
     // A node is as tall as the larger of what flows in and what flows out.
     const throughput = (id: string) => {
-      const inSum = links.filter(l => l.to === id).reduce((a, l) => a + l.value, 0);
-      const outSum = links.filter(l => l.from === id).reduce((a, l) => a + l.value, 0);
+      const inSum = links.filter(l => l.to === id).reduce((a, l) => a + valueOf(l.value), 0);
+      const outSum = links.filter(l => l.from === id).reduce((a, l) => a + valueOf(l.value), 0);
       return Math.max(inSum, outSum, 1);
     };
 
     // One scale across every column, otherwise thickness isn't comparable.
     const stageTotals = byStage.map(col => col.reduce((a, n) => a + throughput(n.id), 0));
-    const busiest = Math.max(...stageTotals);
-    const busiestIdx = stageTotals.indexOf(busiest);
-    const gapsInBusiest = Math.max(0, byStage[busiestIdx].length - 1) * NODE_GAP;
-    const scale = (H - gapsInBusiest) / busiest;
+    const busiest = stageTotals.length ? Math.max(...stageTotals) : 0;
+    const busiestIdx = Math.max(0, stageTotals.indexOf(busiest));
+    const gapsInBusiest = Math.max(0, (byStage[busiestIdx]?.length ?? 1) - 1) * NODE_GAP;
+    const scale = busiest > 0 ? (H - gapsInBusiest) / busiest : 0;
 
     const MIN_H = 26; // keeps a one-line label readable in the smallest node
     const box: Record<string, { x: number; y: number; w: number; h: number; node: FlowNode }> = {};
@@ -188,12 +196,12 @@ export function PhiSankey({
             </text>
             {h >= 40 ? (
               <text x="11" y="30" fill="var(--sem-text-tertiary)" fontSize="10">
-                {node.records.toLocaleString()} rec/day
+                {(Number.isFinite(node.records) ? node.records : 0).toLocaleString()} rec/day
               </text>
             ) : (
               /* Too short for a second line: fold the volume onto the label row. */
               <text x={w - 9} y={h / 2 + 4} textAnchor="end" fill="var(--sem-text-tertiary)" fontSize="9.5">
-                {node.records.toLocaleString()}
+                {(Number.isFinite(node.records) ? node.records : 0).toLocaleString()}
               </text>
             )}
             {h >= 58 && (
@@ -205,7 +213,7 @@ export function PhiSankey({
                 {node.encryption === "AES-256" ? "AES-256" : "UNENCRYPTED"}
               </text>
             )}
-            <title>{`${node.name} · ${node.records.toLocaleString()} PHI records/day · ${node.encryption}`}</title>
+            <title>{`${node.name} · ${(Number.isFinite(node.records) ? node.records : 0).toLocaleString()} PHI records/day · ${node.encryption}`}</title>
           </g>
         );
       })}

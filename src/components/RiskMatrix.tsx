@@ -1,7 +1,22 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 
-export type MatrixRisk = { id: string; name: string; cat: string; L: number; I: number; status: string };
+export type Band = "low" | "moderate" | "high" | "critical" | "extreme";
+
+export type MatrixRisk = {
+  id: string;
+  name: string;
+  L: number;
+  I: number;
+  /**
+   * The API's band. Authoritative when present: the backend scores on
+   * likelihood x impact x exposure x controlGap, which L x I alone cannot
+   * reproduce. Absent (e.g. hand-entered rows), we fall back to L x I.
+   */
+  band?: Band;
+  cat?: string;
+  status?: string;
+};
 
 /**
  * Likelihood x Impact matrix.
@@ -19,14 +34,19 @@ export type MatrixRisk = { id: string; name: string; cat: string; L: number; I: 
 const LIKELIHOOD = ["Rare", "Unlikely", "Possible", "Likely", "Almost Certain"];
 const IMPACT = ["Negligible", "Minor", "Moderate", "Major", "Catastrophic"];
 
-type Band = "low" | "moderate" | "high" | "critical";
-
 /** Standard 5x5 risk banding on the L x I product. */
+/** Clamp an API-supplied 1-5 axis value onto a 0-based grid index. */
+const cellIndex = (v: number) =>
+  Number.isFinite(v) ? Math.min(5, Math.max(1, Math.round(v))) - 1 : 0;
+
 const bandOf = (score: number): Band =>
   score >= 15 ? "critical" : score >= 10 ? "high" : score >= 5 ? "moderate" : "low";
 
+/** Worst band first: used for legend order and for picking a cell's fill. */
+const ORDER: Band[] = ["extreme", "critical", "high", "moderate", "low"];
+
 const BAND_LABEL: Record<Band, string> = {
-  low: "Low", moderate: "Moderate", high: "High", critical: "Critical",
+  low: "Low", moderate: "Moderate", high: "High", critical: "Critical", extreme: "Extreme",
 };
 
 /** Cell fill + the chip fill used for risks sitting in that band. */
@@ -35,20 +55,23 @@ const BAND_CELL: Record<Band, string> = {
   moderate: "bg-matrix-moderate",
   high: "bg-matrix-high",
   critical: "bg-matrix-critical",
+  extreme: "bg-matrix-extreme",
 };
 
 const BAND_CHIP: Record<Band, string> = {
   low: "bg-solid-success text-on-solid-success",
-  moderate: "bg-solid-high text-on-solid-high",
+  moderate: "bg-solid-low text-on-solid-low",
   high: "bg-solid-medium text-on-solid-medium",
-  critical: "bg-solid-critical text-on-solid-critical",
+  critical: "bg-solid-high text-on-solid-high",
+  extreme: "bg-solid-critical text-on-solid-critical",
 };
 
 const BAND_SWATCH: Record<Band, string> = {
   low: "bg-solid-success",
-  moderate: "bg-solid-high",
+  moderate: "bg-solid-low",
   high: "bg-solid-medium",
-  critical: "bg-solid-critical",
+  critical: "bg-solid-high",
+  extreme: "bg-solid-critical",
 };
 
 export function RiskMatrix({
@@ -68,34 +91,47 @@ export function RiskMatrix({
       Array.from({ length: 5 }, () => [] as MatrixRisk[]),
     );
     for (const r of risks) {
-      const l = Math.min(5, Math.max(1, r.L)) - 1;
-      const i = Math.min(5, Math.max(1, r.I)) - 1;
-      grid[l][i].push(r);
+      // A non-finite L or I from the API would index the grid with NaN and
+      // take the matrix down; park those in the lowest cell instead.
+      grid[cellIndex(r.L)][cellIndex(r.I)].push(r);
     }
     return grid;
   }, [risks]);
 
+  /** API band when the row carries one, else the L x I fallback. */
+  const bandForRisk = (r: MatrixRisk): Band =>
+    r.band ?? bandOf((cellIndex(r.L) + 1) * (cellIndex(r.I) + 1));
+
   const bandCounts = useMemo(() => {
-    const c: Record<Band, number> = { low: 0, moderate: 0, high: 0, critical: 0 };
-    for (const r of risks) c[bandOf(r.L * r.I)]++;
+    const c: Record<Band, number> = { low: 0, moderate: 0, high: 0, critical: 0, extreme: 0 };
+    for (const r of risks) c[bandForRisk(r)]++;
     return c;
   }, [risks]);
+
+  /** True when the rows are scored server-side, which changes what the legend can honestly claim. */
+  const serverScored = risks.some(r => r.band !== undefined);
 
   return (
     <div>
       {/* Legend doubles as a distribution summary. */}
       <div className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2">
-        {(["critical", "high", "moderate", "low"] as Band[]).map(b => (
+        {ORDER.map(b => (
           <div key={b} className="flex items-center gap-2">
             <span className={cn("h-2.5 w-2.5 rounded-sm", BAND_SWATCH[b])} />
             <span className="text-label-sm text-secondary">{BAND_LABEL[b]}</span>
-            <span className="tabular text-caption text-quaternary">
-              {b === "critical" ? "15-25" : b === "high" ? "10-14" : b === "moderate" ? "5-9" : "1-4"}
-            </span>
+            {!serverScored && (
+              <span className="tabular text-caption text-quaternary">
+                {b === "extreme" ? "—" : b === "critical" ? "15-25" : b === "high" ? "10-14" : b === "moderate" ? "5-9" : "1-4"}
+              </span>
+            )}
             <span className="tabular rounded-full bg-action px-1.5 text-caption text-secondary">{bandCounts[b]}</span>
           </div>
         ))}
-        <span className="ml-auto text-caption text-quaternary">Score = Likelihood x Impact</span>
+        <span className="ml-auto text-caption text-quaternary">
+          {serverScored
+            ? "Band = Likelihood x Impact x Exposure x Control gap (API)"
+            : "Score = Likelihood x Impact"}
+        </span>
       </div>
 
       <div className="overflow-x-auto">
@@ -124,8 +160,13 @@ export function RiskMatrix({
 
                 {[0, 1, 2, 3, 4].map(i => {
                   const score = (l + 1) * (i + 1);
-                  const band = bandOf(score);
                   const items = cellRisks[l][i];
+                  // With server scoring, two risks in the same cell can differ,
+                  // so the cell takes the worst band present and each chip keeps
+                  // its own. Empty cells fall back to the positional band.
+                  const band = items.length
+                    ? ORDER.find(b => items.some(r => bandForRisk(r) === b)) ?? bandOf(score)
+                    : bandOf(score);
                   return (
                     <div
                       key={i}
@@ -143,11 +184,11 @@ export function RiskMatrix({
                           <button
                             key={r.id}
                             type="button"
-                            title={`${r.id} · ${r.name} · ${r.cat} · score ${score} (${BAND_LABEL[band]})`}
+                            title={`${r.id} · ${r.name}${r.cat ? ` · ${r.cat}` : ""} · L${cellIndex(r.L) + 1} x I${cellIndex(r.I) + 1} · ${BAND_LABEL[bandForRisk(r)]}`}
                             onClick={() => onSelect(r.id)}
                             className={cn(
                               "tabular rounded px-1.5 py-0.5 text-caption font-semibold transition-transform duration-150 hover:scale-105",
-                              BAND_CHIP[band],
+                              BAND_CHIP[bandForRisk(r)],
                               highlightId === r.id && "ring-2 ring-brand ring-offset-1 ring-offset-raised",
                               r.status === "Closed" && "opacity-45 line-through",
                             )}
