@@ -1,5 +1,6 @@
 import * as React from "react";
 import { api, ApiError, setAuthTokenGetter } from "@/lib/apiClient";
+import { setHadSession } from "@/lib/sessionBreadcrumb";
 
 /**
  * Session management against the MedGuard API, bearer-token flow.
@@ -109,6 +110,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: false as const, error: "Sign-in failed: no token returned." };
       }
       tokenRef.current = result.token;
+      // Breadcrumb only - never the token. Lets the login page explain itself
+      // after a reload instead of showing a bare form.
+      setHadSession(true);
       setUser(toAuthUser(result.user));
       return { ok: true as const };
     } catch (err) {
@@ -126,6 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = React.useCallback(() => {
     // Drop the token first: the session must end even if the API is down.
     tokenRef.current = null;
+    setHadSession(false);   // chose to leave; not a lost session
     setUser(null);
     void api.post("/api/auth/logout").catch(() => {});
   }, []);

@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { AppIcon } from "@/components/AppIcon";
 import { useAuth } from "@/hooks/use-auth";
+import { hadSession } from "@/lib/sessionBreadcrumb";
 import { useTheme } from "@/hooks/use-theme";
 import wayamLogoLight from "@/assets/brand/wayam-logo-light.svg";
 import wayamLogoDark from "@/assets/brand/wayam-logo-dark.svg";
@@ -17,6 +18,14 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  /*
+   * Read once on mount: signing in clears the breadcrumb, and we do not want
+   * the notice to vanish mid-typing. Shown only when a session existed in this
+   * tab and is now gone - not after an explicit logout, and not on a first
+   * visit, where it would be baffling.
+   */
+  const [sessionEnded] = useState(() => hadSession());
 
   if (!isInitializing && isAuthenticated) {
     const from = (location.state as { from?: string } | null)?.from ?? "/";
@@ -53,6 +62,16 @@ export default function Login() {
         </div>
 
         <div className="bg-raised border border-default rounded-xl shadow-sm p-6 sm:p-8">
+          {sessionEnded && !error && (
+            <div
+              role="status"
+              className="mb-4 flex items-start gap-2 rounded-md border border-feedback-info-stroke bg-feedback-info-background px-3 py-2.5 text-body-sm text-feedback-info"
+            >
+              <AppIcon name="info" size="sm" className="mt-0.5 flex-shrink-0 text-feedback-info-icon" />
+              <span>Your session ended. Please sign in again to continue.</span>
+            </div>
+          )}
+
           <form onSubmit={onSubmit} noValidate className="space-y-4">
             <div>
               <label htmlFor="email" className="block text-label-md text-primary mb-1.5">
