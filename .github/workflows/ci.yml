@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, post-demo/expansion]
+  pull_request:
+    branches: [main, post-demo/expansion]
+
+# A newer push supersedes an in-flight run on the same ref.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: typecheck · lint · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The root tsconfig sets "files": [], so a bare `tsc --noEmit` checks
+      # nothing at all. The app project is the one that matters.
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.app.json
+
+      # Not gating on lint yet: the repo carries a known backlog of
+      # no-explicit-any errors that predate this pipeline. Reported, not fatal,
+      # so the signal is visible without blocking every push.
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      # live-backend.test.tsx needs a running API and is excluded here; it
+      # skips itself when the backend is unreachable, but excluding it keeps
+      # the intent explicit rather than relying on that fallback.
+      - name: Test
+        run: npx vitest run --exclude "**/live-backend.test.tsx"
+
+      - name: Build
+        run: npm run build
