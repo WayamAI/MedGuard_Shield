@@ -58,19 +58,22 @@ const BAND_CELL: Record<Band, string> = {
   extreme: "bg-matrix-extreme",
 };
 
+/* Ramp must escalate green -> blue -> amber -> orange -> red. Note the app's
+   severity tokens are inverted against their own names: --sem-solid-high is
+   amber and --sem-solid-medium is orange, so these are picked by colour. */
 const BAND_CHIP: Record<Band, string> = {
   low: "bg-solid-success text-on-solid-success",
   moderate: "bg-solid-low text-on-solid-low",
-  high: "bg-solid-medium text-on-solid-medium",
-  critical: "bg-solid-high text-on-solid-high",
+  high: "bg-solid-high text-on-solid-high",
+  critical: "bg-solid-medium text-on-solid-medium",
   extreme: "bg-solid-critical text-on-solid-critical",
 };
 
 const BAND_SWATCH: Record<Band, string> = {
   low: "bg-solid-success",
   moderate: "bg-solid-low",
-  high: "bg-solid-medium",
-  critical: "bg-solid-high",
+  high: "bg-solid-high",
+  critical: "bg-solid-medium",
   extreme: "bg-solid-critical",
 };
 
