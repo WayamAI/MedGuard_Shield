@@ -15,6 +15,7 @@ import { AppStoreProvider } from "@/store/AppStore";
 import PhiFlow from "@/pages/PhiFlow";
 import Risks from "@/pages/Risks";
 import Dashboard from "@/pages/Dashboard";
+import Vendors from "@/pages/Vendors";
 
 /**
  * Integration checks against a running backend. No mocks: real fetch, real
@@ -315,5 +316,32 @@ describe("live backend: wired pages render real data", () => {
       { timeout: 15_000 },
     );
     console.info(`[live] Dashboard: ${assets.length} assets, ${phiPerDay.toLocaleString()} PHI records/day`);
+  }, 30_000);
+});
+
+describe("live backend: vendor risk", () => {
+  live("Vendor page renders the seeded vendors and leads with the BAA gap", async () => {
+    const raw = await api.get<Array<{ name: string; baaStatus: string; risk: { band: string } }>>("/api/vendors");
+    expect(raw.length).toBeGreaterThan(0);
+
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { gcTime: 0 } } })}>
+        <MemoryRouter><Vendors /></MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText(raw[0].name)).toBeInTheDocument(), { timeout: 15_000 });
+
+    // Every seeded vendor reaches the table.
+    raw.forEach(v => expect(screen.getAllByText(v.name).length).toBeGreaterThan(0));
+
+    // The compliance gap is surfaced, not buried, whenever one exists.
+    const nonCompliant = raw.filter(v => v.baaStatus !== "SIGNED");
+    if (nonCompliant.length) {
+      expect(screen.getByText(/BAA gap:/)).toBeInTheDocument();
+    }
+
+    console.info(`[live] vendors: ${raw.length}, without valid BAA: ${nonCompliant.length}, ` +
+      `bands: ${JSON.stringify([...new Set(raw.map(v => v.risk.band))])}`);
   }, 30_000);
 });

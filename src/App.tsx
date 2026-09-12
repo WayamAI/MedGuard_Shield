@@ -16,6 +16,7 @@ const Policy = lazy(() => import("@/pages/Policy"));
 const AI = lazy(() => import("@/pages/AI"));
 const Audit = lazy(() => import("@/pages/Audit"));
 const Risks = lazy(() => import("@/pages/Risks"));
+const Vendors = lazy(() => import("@/pages/Vendors"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -49,6 +50,7 @@ const App = () => (
                         <Route path="/ai" element={<AI />} />
                         <Route path="/audit" element={<Audit />} />
                         <Route path="/risks" element={<Risks />} />
+                        <Route path="/vendors" element={<Vendors />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </Suspense>

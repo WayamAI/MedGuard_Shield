@@ -23,6 +23,7 @@ const NAV: SidebarNavItem[] = [
   { to: "/ai", label: "AI Governance", icon: "ai", badge: "1", badgeTone: "warning" },
   { to: "/audit", label: "Audit & Reports", icon: "audit" },
   { to: "/risks", label: "Risk Register", icon: "risks" },
+  { to: "/vendors", label: "Vendor Risk", icon: "facility" },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
@@ -33,6 +34,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/policy": "Policy & Compliance Engine",
   "/ai": "AI Governance Monitor",
   "/audit": "Audit Trail & Reports",
+  "/vendors": "Vendor Risk Management",
   "/risks": "Risk Register",
 };
 

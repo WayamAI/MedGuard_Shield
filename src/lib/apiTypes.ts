@@ -48,3 +48,22 @@ export type ApiAsset = {
   phiRecords?: number;
   riskBand?: "low" | "moderate" | "high" | "critical";
 };
+
+/** GET /api/vendors — third parties with access to PHI. */
+export type BaaStatus = "SIGNED" | "PENDING" | "EXPIRED" | "MISSING";
+
+export type ApiVendor = {
+  id: number;
+  name: string;
+  baaStatus: BaaStatus;
+  phiVolume: number;
+  /** null when the vendor has never been assessed. */
+  lastAssessedAt: string | null;
+  daysSinceAssessment: number | null;
+  assessmentOverdue: boolean;
+  /** The API's own judgement: only SIGNED counts as compliant. */
+  baaCompliant: boolean;
+  assetCount: number;
+  assets: string[];
+  risk: { score: number; band: RiskBand; computedAt: string };
+};
