@@ -95,3 +95,31 @@ describe("data-state primitives", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
+
+describe("risk band colour ramp", () => {
+  /**
+   * Pins the fix for the inverted ramp: Critical rendered amber while High
+   * rendered orange, so High read as the more severe of the two. The app's
+   * severity tokens are inverted against their own names (--sem-solid-high is
+   * amber #F59E0B, --sem-solid-medium is orange #EA580C), so this asserts the
+   * classes that actually produce an escalating green -> red ramp.
+   */
+  const chipClassFor = (band: ApiRisk["band"]) => {
+    const { container } = render(
+      <RiskMatrix risks={toMatrixRisks([mkRisk(1, "Asset", 3, 3, band)])} onSelect={vi.fn()} />,
+    );
+    return container.querySelector("button")?.className ?? "";
+  };
+
+  it("escalates Low -> Moderate -> High -> Critical -> Extreme", () => {
+    expect(chipClassFor("LOW")).toContain("bg-solid-success");        // green
+    expect(chipClassFor("MODERATE")).toContain("bg-solid-low");       // blue
+    expect(chipClassFor("HIGH")).toContain("bg-solid-high");          // amber
+    expect(chipClassFor("CRITICAL")).toContain("bg-solid-medium");    // orange
+    expect(chipClassFor("EXTREME")).toContain("bg-solid-critical");   // red
+  });
+
+  it("never gives High and Critical the same fill", () => {
+    expect(chipClassFor("HIGH")).not.toBe(chipClassFor("CRITICAL"));
+  });
+});
