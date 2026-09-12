@@ -5,7 +5,8 @@
  * returned so a component can tell "backend unreachable" (status 0) from
  * "session expired" (401) and render different states for each.
  */
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
+import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/apiClient";
 
 export type ApiQueryResult<T> = {
@@ -21,6 +22,8 @@ export type ApiQueryResult<T> = {
   isReconnecting: boolean;
   error: ApiError | null;
   refetch: UseQueryResult<T, ApiError>["refetch"];
+  /** Explicit user-driven reload. Unlike refetch, a failure is observable. */
+  refresh: () => Promise<void>;
 };
 
 export type ApiQueryOptions = {
@@ -51,6 +54,17 @@ export function useApiQuery<TWire, TData = TWire>(
     retry: maxRetries = 3,
   } = options;
 
+  const queryClient = useQueryClient();
+
+  /*
+   * A manual refetch that fails on a query which already holds data is
+   * invisible through the hook: TanStack keeps status 'success' and leaves
+   * error, failureReason and failureCount all empty. fetchQuery is the one
+   * path that surfaces the rejection, so an explicit refresh goes through it
+   * and parks the error here.
+   */
+  const [refreshError, setRefreshError] = useState<ApiError | null>(null);
+
   const query = useQuery<TWire, ApiError, TData>({
     queryKey: key,
     queryFn: () => api.get<TWire>(path),
@@ -70,13 +84,31 @@ export function useApiQuery<TWire, TData = TWire>(
     refetchIntervalInBackground: false,
   });
 
+  const refresh = useCallback(async () => {
+    try {
+      await queryClient.fetchQuery<TWire>({ queryKey: key, queryFn: () => api.get<TWire>(path) });
+      setRefreshError(null);
+    } catch (err) {
+      setRefreshError(err instanceof ApiError ? err : null);
+    }
+  }, [queryClient, key, path]);
+
   return {
+    refresh,
     data: query.data,
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,
-    isReconnecting: query.isError && query.data !== undefined,
-    error: query.error ?? null,
+    /*
+     * TanStack keeps status 'success' when a *manual* refetch fails on a query
+     * that already holds data, so isError alone misses that case and the
+     * Refresh button would fail silently. failureReason is set on any failed
+     * attempt, which covers both the heartbeat and an explicit refetch.
+     */
+    isReconnecting:
+      query.data !== undefined &&
+      (query.isError || query.failureReason !== null || refreshError !== null),
+    error: query.error ?? query.failureReason ?? refreshError,
     refetch: query.refetch,
   };
 }

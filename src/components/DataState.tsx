@@ -58,7 +58,7 @@ export function DataState<T>({
   height = 470,
   skeleton,
 }: DataStateProps<T>) {
-  const { data, isLoading, isError, isReconnecting, isFetching, error, refetch } = query;
+  const { data, isLoading, isError, isReconnecting, isFetching, error, refresh } = query;
 
   // First load: hold the space rather than flashing an empty container.
   if (isLoading || (data === undefined && isFetching)) {
@@ -68,7 +68,7 @@ export function DataState<T>({
   // Failed with nothing cached to fall back on.
   if (isError && data === undefined) {
     const { title, message } = describeApiError(error);
-    return <ErrorState title={title} message={message} onRetry={() => refetch()} isRetrying={isFetching} height={height} />;
+    return <ErrorState title={title} message={message} onRetry={() => refresh()} isRetrying={isFetching} height={height} />;
   }
 
   if (data === undefined) {
@@ -82,7 +82,7 @@ export function DataState<T>({
   // Success — possibly stale, if the backend vanished after we loaded.
   return (
     <>
-      {isReconnecting && <ReconnectingBanner onRetry={() => refetch()} />}
+      {isReconnecting && <ReconnectingBanner onRetry={() => refresh()} />}
       <div className={isReconnecting ? "opacity-60 transition-opacity" : undefined}>
         {children(data)}
       </div>

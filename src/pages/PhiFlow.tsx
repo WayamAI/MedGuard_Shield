@@ -25,7 +25,7 @@ export default function PhiFlow() {
 
   const onScan = () => {
     setScanning(true);
-    flows.refetch().finally(() => {
+    flows.refresh().finally(() => {
       setScanning(false);
       notify.success("Scan complete");
     });

@@ -97,7 +97,7 @@ export default function Risks() {
             {["All", "EXTREME", "CRITICAL", "HIGH", "MODERATE", "LOW"].map(o => <option key={o}>{o}</option>)}
           </Select>
           <div className="flex-1" />
-          <Btn variant="outline" onClick={() => risks.refetch()} disabled={risks.isFetching}>
+          <Btn variant="outline" onClick={() => risks.refresh()} disabled={risks.isFetching}>
             {risks.isFetching ? "Refreshing…" : "Refresh"}
           </Btn>
         </div>
