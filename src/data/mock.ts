@@ -45,24 +45,6 @@ export const activitySamples = [
   { user: "fatima.alrashid", action: "compliance check", res: "HIPAA suite" },
 ];
 
-export const users = [
-  { id: 1, name: "Dr. Aisha Patel", email: "a.patel@meridian.org", role: "Doctor", dept: "ICU", access: "Clinical R/W", mfa: true, login: "Today 8:23 AM", risk: 12 },
-  { id: 2, name: "Marcus Thompson", email: "m.thompson@meridian.org", role: "IT Admin", dept: "IT Infra", access: "System Admin", mfa: true, login: "Today 9:14 AM", risk: 34 },
-  { id: 3, name: "James Wilson", email: "j.wilson@meridian.org", role: "Billing Analyst", dept: "Billing", access: "Financial Full", mfa: false, login: "Today 7:32 AM", risk: 89, flag: "No MFA + sensitive access" },
-  { id: 4, name: "Dr. Priya Sharma", email: "p.sharma@meridian.org", role: "Doctor", dept: "Oncology", access: "Clinical R/W", mfa: true, login: "Today 7:55 AM", risk: 18 },
-  { id: 5, name: "Nina Kowalski", email: "n.kowalski@meridian.org", role: "Nurse", dept: "Emergency", access: "Clinical Read", mfa: true, login: "Today 9:02 AM", risk: 22 },
-  { id: 6, name: "Robert Chen", email: "r.chen@meridian.org", role: "Radiologist", dept: "Radiology", access: "Radiology Full", mfa: true, login: "Yesterday 11:44 PM", risk: 71, flag: "Login 11:44 PM new device" },
-  { id: 7, name: "Sarah Mitchell", email: "s.mitchell@meridian.org", role: "Pharmacist", dept: "Pharmacy", access: "Pharmacy R/W", mfa: true, login: "Today 6:18 AM", risk: 29 },
-  { id: 8, name: "David Kim", email: "d.kim@meridian.org", role: "Billing Analyst", dept: "Billing", access: "Financial Full", mfa: true, login: "Today 8:01 AM", risk: 44 },
-  { id: 9, name: "Emily Torres", email: "e.torres@meridian.org", role: "HR Manager", dept: "HR/Payroll", access: "HR Full", mfa: true, login: "Yesterday 3:22 PM", risk: 31 },
-  { id: 10, name: "Dr. Liam O'Brien", email: "l.obrien@meridian.org", role: "Doctor", dept: "Radiology", access: "Clinical R/W", mfa: true, login: "Today 7:48 AM", risk: 15 },
-  { id: 11, name: "Fatima Al-Rashid", email: "f.alrashid@meridian.org", role: "Compliance Officer", dept: "Compliance", access: "Full Audit", mfa: true, login: "Today 9:30 AM", risk: 8 },
-  { id: 12, name: "Tyler Brooks", email: "t.brooks@meridian.org", role: "Nurse", dept: "ICU", access: "Clinical Read", mfa: true, login: "Today 8:55 AM", risk: 19 },
-  { id: 13, name: "Maria Santos", email: "m.santos@meridian.org", role: "Billing Analyst", dept: "Billing", access: "Financial Full", mfa: false, login: "Today 7:32 AM", risk: 94, flag: "Bulk download 847 records" },
-  { id: 14, name: "Kevin Park", email: "k.park@meridian.org", role: "IT Admin", dept: "IT Infra", access: "System Admin", mfa: true, login: "Today 8:40 AM", risk: 27 },
-  { id: 15, name: "Dr. Ananya Iyer", email: "an.iyer@meridian.org", role: "Doctor", dept: "Pharmacy", access: "Clinical R/W", mfa: true, login: "Today 8:12 AM", risk: 11 },
-];
-
 export const alerts = [
   { id: "A-2847", sev: "CRITICAL", type: "Data Exfiltration", desc: "Bulk download 847 records by m.santos", dept: "Billing", time: "07:32 AM", status: "Investigating", assigned: "IT Security Team" },
   { id: "A-2846", sev: "CRITICAL", type: "Unauthorized Access", desc: "Login from Tor exit node 185.220.xx.xx", dept: "IT Infra", time: "09:14 AM", status: "Open", assigned: "Unassigned" },

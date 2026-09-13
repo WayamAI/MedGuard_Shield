@@ -1,21 +1,15 @@
 /**
- * GET /api/access — access grants: who can reach which system, and how stale
- * or over-privileged that grant is.
+ * GET /api/access — access grants plus a server-computed summary.
  *
- * PLUMBING ONLY. The row shape is deliberately left as a type parameter
- * because the endpoint is not live yet and its contract has not been
- * confirmed. Guessing field names here would spread an invented shape through
- * the mapper and the page, and be worse than no type at all.
- *
- * When the backend confirms the response, the one change needed is:
- *   1. add `ApiAccessGrant` to src/lib/apiTypes.ts from the real payload
- *   2. default the parameter to it, i.e. `useAccess<T = ApiAccessGrant>`
- * Nothing else in this file, and no call site, has to move.
+ * Returns the envelope, not a bare array: the server derives the summary
+ * counts itself, so the page renders the same numbers the API asserts rather
+ * than recomputing and risking a quiet disagreement.
  */
 import { useApiQuery, type ApiQueryResult, type ApiQueryOptions } from "@/hooks/useApiQuery";
+import type { ApiAccessResponse } from "@/lib/apiTypes";
 
 export const accessKey = ["access"] as const;
 
-export function useAccess<T = unknown>(options?: ApiQueryOptions): ApiQueryResult<T[]> {
-  return useApiQuery<T[]>(accessKey, "/api/access", undefined, options);
+export function useAccess(options?: ApiQueryOptions): ApiQueryResult<ApiAccessResponse> {
+  return useApiQuery<ApiAccessResponse>(accessKey, "/api/access", undefined, options);
 }

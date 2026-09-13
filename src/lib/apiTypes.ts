@@ -67,3 +67,93 @@ export type ApiVendor = {
   assets: string[];
   risk: { score: number; band: RiskBand; computedAt: string };
 };
+
+/* ---------------------------------------------------------------------------
+   GET /api/access — identity and access review.
+
+   Note the envelope: this endpoint returns an object, not a bare array. The
+   server computes the summary itself rather than leaving the client to derive
+   it, so the two can never disagree.
+   -------------------------------------------------------------------------- */
+
+export type AccessFlag =
+  | "STALE"              // not used within staleAfterDays
+  | "NEVER_USED"         // granted and never exercised
+  | "NO_MFA"             // identity has no second factor
+  | "INACTIVE_IDENTITY"  // person or account is deactivated, grant still live
+  | "EXCESSIVE_LEVEL";   // level exceeds what the role needs
+
+export type AccessLevel = "READ" | "WRITE" | "ADMIN";
+export type IdentityKind = "USER" | "SERVICE_ACCOUNT";
+
+export type ApiAccessGrant = {
+  id: number;
+  identityId: number;
+  identityName: string;
+  /** null for service accounts. */
+  identityEmail: string | null;
+  kind: IdentityKind;
+  department: string;
+  active: boolean;
+  mfaEnabled: boolean;
+  assetId: number;
+  assetName: string;
+  assetType: string;
+  level: AccessLevel;
+  grantedAt: string;
+  /** null when the grant has never been used. */
+  lastUsedAt: string | null;
+  daysSinceUse: number | null;
+  daysSinceGrant: number;
+  flags: AccessFlag[];
+  riskFlagCount: number;
+};
+
+export type ApiAccessResponse = {
+  summary: {
+    total: number;
+    flagged: number;
+    stale: number;
+    neverUsed: number;
+    withoutMfa: number;
+    inactiveIdentities: number;
+    excessiveLevel: number;
+    /** The threshold the server used to decide STALE. */
+    staleAfterDays: number;
+  };
+  grants: ApiAccessGrant[];
+};
+
+/* ---------------------------------------------------------------------------
+   GET /api/threats — detected threats. Same envelope shape as access.
+   -------------------------------------------------------------------------- */
+
+export type ThreatSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+export type ThreatStatus = "OPEN" | "INVESTIGATING" | "RESOLVED" | "FALSE_POSITIVE";
+
+export type ApiThreat = {
+  id: number;
+  severity: ThreatSeverity;
+  status: ThreatStatus;
+  title: string;
+  description: string;
+  assetId: number;
+  assetName: string;
+  assetType: string;
+  detectedAt: string;
+  resolvedAt: string | null;
+  hoursSinceDetection: number;
+  /** Server's own view of "still needs attention". */
+  open: boolean;
+};
+
+export type ApiThreatsResponse = {
+  summary: {
+    total: number;
+    open: number;
+    bySeverity: Partial<Record<ThreatSeverity, number>>;
+    byStatus: Partial<Record<ThreatStatus, number>>;
+    openCritical: number;
+  };
+  threats: ApiThreat[];
+};
