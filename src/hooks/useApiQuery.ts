@@ -62,8 +62,13 @@ export function useApiQuery<TWire, TData = TWire>(
    * error, failureReason and failureCount all empty. fetchQuery is the one
    * path that surfaces the rejection, so an explicit refresh goes through it
    * and parks the error here.
+   *
+   * Stamped with the moment it happened so it can expire. The reconnect poll
+   * heals the query without ever going through refresh(), so a failure the
+   * backend has since disproved must not keep the notice pinned open.
    */
-  const [refreshError, setRefreshError] = useState<ApiError | null>(null);
+  const [refreshFailure, setRefreshFailure] =
+    useState<{ error: ApiError | null; at: number } | null>(null);
 
   const query = useQuery<TWire, ApiError, TData>({
     queryKey: key,
@@ -87,11 +92,21 @@ export function useApiQuery<TWire, TData = TWire>(
   const refresh = useCallback(async () => {
     try {
       await queryClient.fetchQuery<TWire>({ queryKey: key, queryFn: () => api.get<TWire>(path) });
-      setRefreshError(null);
+      setRefreshFailure(null);
     } catch (err) {
-      setRefreshError(err instanceof ApiError ? err : null);
+      setRefreshFailure({ error: err instanceof ApiError ? err : null, at: Date.now() });
     }
   }, [queryClient, key, path]);
+
+  /*
+   * Any successful fetch that landed after the failure supersedes it, whoever
+   * triggered that fetch — so the background poll retires the notice exactly
+   * like a second manual click would.
+   */
+  const refreshError =
+    refreshFailure !== null && query.dataUpdatedAt <= refreshFailure.at
+      ? refreshFailure.error
+      : null;
 
   return {
     refresh,

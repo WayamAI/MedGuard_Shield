@@ -82,6 +82,22 @@ function SankeyView({ pollIntervalMs = 60_000, reconnectIntervalMs = 20 }: {
   );
 }
 
+/** Same view, plus the explicit Refresh control the wired pages carry. */
+function RefreshableSankeyView() {
+  const query = useApiQuery<ApiDataFlow[], ReturnType<typeof toSankeyData>>(
+    ["dataflows"], "/api/dataflows", toSankeyData,
+    { retry: 0, staleTime: 0, pollIntervalMs: 25, reconnectIntervalMs: 25 },
+  );
+  return (
+    <>
+      <button type="button" onClick={() => query.refresh()}>Refresh</button>
+      <DataState query={query} emptyTitle="No PHI flows recorded" height={470}>
+        {d => <PhiSankey nodes={d.nodes} links={d.links} onSelect={vi.fn()} />}
+      </DataState>
+    </>
+  );
+}
+
 function MatrixView() {
   const query = useApiQuery<ApiRisk[], ReturnType<typeof toMatrixRisks>>(
     ["risks"], "/api/risks", toMatrixRisks, { retry: 0, staleTime: 0 },
@@ -211,6 +227,36 @@ describe("backend killed mid-session", () => {
     );
     expect(screen.getByText("Epic EHR Core")).toBeInTheDocument();
     expect(mounts).toBe(1);
+  });
+
+  it("clears a notice raised by a failed manual refresh once the backend returns", async () => {
+    /*
+     * The outage can be discovered two ways, and they set different flags:
+     * the heartbeat sets failureReason, an explicit Refresh sets refreshError.
+     * The self-healing poll clears the first. If it does not also clear the
+     * second, a user who found the outage by clicking Refresh is left staring
+     * at a reconnecting notice over data that is, in fact, current — and the
+     * only way out is another click.
+     */
+    scenario = { kind: "ok", body: FLOWS };
+    render(<RefreshableSankeyView />, { wrapper });
+
+    await waitFor(() => expect(screen.getByText("Epic EHR Core")).toBeInTheDocument());
+    expect(screen.queryByText(/Lost connection/)).not.toBeInTheDocument();
+
+    // The user, not the heartbeat, discovers the outage.
+    scenario = { kind: "down" };
+    await act(async () => { screen.getByRole("button", { name: "Refresh" }).click(); });
+    await waitFor(() => expect(screen.getByText(/Lost connection to the backend/)).toBeInTheDocument());
+    expect(screen.getByText("Epic EHR Core")).toBeInTheDocument();   // stale, not blank
+
+    // Backend returns. Recovery must be automatic — no second click.
+    scenario = { kind: "ok", body: FLOWS };
+    await waitFor(
+      () => expect(screen.queryByText(/Lost connection to the backend/)).not.toBeInTheDocument(),
+      { timeout: 3000 },
+    );
+    expect(screen.getByText("Epic EHR Core")).toBeInTheDocument();
   });
 
   it("stops polling once the session is the problem", async () => {
