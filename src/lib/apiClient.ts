@@ -1,10 +1,11 @@
 /**
  * Base fetch wrapper for the MedGuard backend.
  *
- * Auth is pluggable on purpose. The backend and its identity provider are
- * being built separately, so nothing here imports an auth SDK. Whichever
- * provider is chosen calls `setAuthTokenGetter` once at startup and every
- * request picks up the token from then on — no call site changes.
+ * Auth stays behind an indirection on purpose: nothing here imports the auth
+ * layer, so this module has no cycle with it and is trivial to test. The
+ * provider calls `setAuthTokenGetter` once and every request picks up the
+ * token from then on — no call site changes. Today that caller is
+ * src/hooks/use-auth.tsx, against the backend's own /api/auth/login.
  */
 
 export class ApiError extends Error {
@@ -36,9 +37,12 @@ type TokenGetter = () => string | null | undefined | Promise<string | null | und
 let authTokenGetter: TokenGetter | null = null;
 
 /**
- * Register the session-token source. Call once during app startup, e.g.
- *   setAuthTokenGetter(() => supabase.auth.getSession().then(s => s.data.session?.access_token))
- *   setAuthTokenGetter(() => window.Clerk?.session?.getToken())
+ * Register the session-token source. AuthProvider (src/hooks/use-auth.tsx)
+ * calls this with a reader for its in-memory token ref, and passes null on
+ * unmount so a torn-down provider cannot keep authorizing requests.
+ *
+ * The getter may return a promise, so a provider that has to mint or refresh
+ * a token asynchronously fits without changing anything here.
  */
 export function setAuthTokenGetter(getter: TokenGetter | null) {
   authTokenGetter = getter;

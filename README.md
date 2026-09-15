@@ -1,21 +1,21 @@
 # MedGuard — by Wayam AI
 
-A healthcare governance and compliance dashboard demo built for Meridian
+A healthcare governance and compliance dashboard built for Meridian
 Health: real time PHI monitoring, access and identity management, threat
 detection, policy and compliance tracking, AI governance oversight, audit
 trails, and a risk register, all in one console.
 
-This is a frontend only demo. There is no backend or database — every
-screen is driven by realistic mock data and an in-memory app store, and
-authentication is a demo layer (see below) rather than a real identity
-provider.
+This is the frontend. It talks to the MedGuard backend API over HTTP —
+authentication and six screens read live data; the remaining screens are
+still driven by the mock dataset while their endpoints are built. See
+[Data sources](#data-sources) for exactly which is which.
 
 ## Stack
 
 - [Vite](https://vitejs.dev/) + [React 18](https://react.dev/) + TypeScript
 - [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/) component primitives
 - [React Router](https://reactrouter.com/) for routing and route protection
-- [TanStack Query](https://tanstack.com/query) (provider is wired in; pages currently read from local mock data)
+- [TanStack Query](https://tanstack.com/query) for all backend reads, behind the shared `useApiQuery` hook
 - [Recharts](https://recharts.org/) for charts, [Sonner](https://sonner.emilkowal.ski/) for toasts
 - [Vitest](https://vitest.dev/) + Testing Library for tests
 
@@ -23,12 +23,18 @@ provider.
 
 ```bash
 npm install
+cp .env.example .env.local   # then point VITE_API_BASE_URL at the backend
 npm run dev
 ```
 
-The dev server prints its local URL (Vite falls back to the next free
-port if 8080 is taken). No environment variables are required — see
-`.env.example` for details.
+`VITE_API_BASE_URL` **is required**. There is no mock fallback on the
+API-backed pages: with it unset, `getApiBaseUrl()` in
+`src/lib/apiClient.ts` throws and those pages render their error state.
+The backend listens on **port 4000**, which is what `.env.example` ships.
+
+The dev server is pinned to port 8080 in `vite.config.ts`, and Vite falls
+back to the next free port if 8080 is already taken — check the URL it
+prints.
 
 > **Note:** if your checkout path contains a space (e.g. a folder named
 > `Wayam AI`), use `npm` rather than `bun` — `bun install`/`bun run` hit an
@@ -37,22 +43,41 @@ port if 8080 is taken). No environment variables are required — see
 
 Other scripts: `npm run build`, `npm run lint`, `npm run test`, `npm run preview`.
 
-## Signing in (demo authentication)
+## Data sources
 
-There is no real backend, so `src/hooks/use-auth.tsx` implements a demo
-auth layer: **any syntactically valid email plus any non-empty password**
-signs you in — for example `demo@example.com` / `anything works`. The
-display name in the sidebar is derived from the email's local part.
+| Screen | Source |
+| --- | --- |
+| PHI Flow | `GET /api/dataflows` via `useDataFlows` |
+| Risk Register | `GET /api/risks` via `useRisks` / `useRawRisks` |
+| Vendor Risk | `GET /api/vendors` via `useVendors` |
+| Access | `GET /api/access` via `useAccess` |
+| Threats | `GET /api/threats` via `useThreats` |
+| Dashboard | **Mixed** — the four KPI cards aggregate `useAssets` + `useRisks` + `useDataFlows`; the frameworks strip, department bar chart and activity feed are still `src/data/mock.ts` |
+| Policy, Audit, AI Governance | `src/data/mock.ts` — no endpoints for these yet |
 
-The session is stored in `localStorage` and survives a page refresh.
-Logging out (via the button in the sidebar's user footer) clears it
-completely; protected routes then redirect back to `/login`, including
-if you try the browser back button afterward, since route protection
-checks live auth state on every render rather than a cached flag.
+Every API-backed hook goes through `useApiQuery` (`src/hooks/useApiQuery.ts`),
+which adds a polling heartbeat, a tighter retry cadence while the backend
+is down, and an `isReconnecting` state so a view keeps its last good data
+behind a notice instead of blanking out.
 
-The auth layer is intentionally isolated behind `useAuth()` so swapping
-in a real identity provider later only means rewriting the inside of
-`login`/`logout` — no consuming component needs to change.
+## Signing in
+
+`src/hooks/use-auth.tsx` authenticates against the backend:
+`POST /api/auth/login` returns a bearer token, and the hook registers that
+token with `setAuthTokenGetter()` so every subsequent request carries it.
+Credentials are real — the backend decides who gets in.
+
+The token is held **in memory only**, in a ref inside `AuthProvider`. It is
+never written to `localStorage` or `sessionStorage`, so an XSS payload that
+can read browser storage finds nothing. The cost is that a reload ends the
+session: the API exposes `/login`, `/logout` and `/me` but no refresh-token
+endpoint, so rather than fake a restore, a reload lands on a clean
+logged-out state and `ProtectedRoute` redirects to `/login`. A breadcrumb
+flag (`src/lib/sessionBreadcrumb.ts`) lets the login page say the session
+ended rather than showing a bare form. No token is ever in that flag.
+
+Logging out clears the token first and then calls `/api/auth/logout`, so
+the session ends locally even if the API is unreachable.
 
 ## Wayam AI rebrand
 
@@ -78,21 +103,48 @@ Wayam AI:
 ```
 src/
   pages/         One file per route (Dashboard, PhiFlow, Access, Threats,
-                 Policy, AI, Audit, Risks, Login, NotFound)
-  components/    Layout (sidebar + topbar), ProtectedRoute, ui-bits.tsx
-                 (Card/Btn/Badge/Modal/etc.), components/ui/* (shadcn primitives)
-  hooks/         use-auth (demo auth), use-theme (light/dark), use-mobile
+                 Policy, AI, Audit, Risks, Vendors, Login, NotFound)
+  components/    Layout (sidebar + topbar), ProtectedRoute, DataState,
+                 PhiSankey, RiskMatrix, ui-bits.tsx (Card/Btn/Badge/Modal/
+                 etc.), components/ui/* (shadcn primitives)
+  hooks/         use-auth (bearer-token session), useApiQuery (shared query
+                 behaviour) and the per-endpoint hooks built on it
+                 (useAssets, useRisks, useDataFlows, useVendors, useAccess,
+                 useThreats), use-theme, use-mobile
+  lib/           apiClient (fetch wrapper + ApiError), apiTypes (wire
+                 shapes), mappers (wire -> chart props), tone, icons
   store/         AppStore — in-memory state for alerts, approvals,
-                 notifications, suspended users
-  data/          mock.ts — the demo dataset
+                 notifications
+  data/          mock.ts — the dataset still backing the unwired screens
+  test/          Vitest suites; live-backend.test.tsx needs a running API
 ```
+
+## Testing
+
+```bash
+npx vitest run --exclude "**/live-backend.test.tsx"   # what CI runs
+npx vitest run src/test/live-backend.test.tsx          # needs a live backend
+```
+
+`live-backend.test.tsx` **skips itself when the API is unreachable** rather
+than failing, so it reports green on a frontend-only machine without having
+asserted anything. Check its output for `[skip]` lines before treating it
+as coverage. CI excludes it outright.
 
 ## Known limitations
 
-- **No real backend**: everything is mock data in `src/data/mock.ts` plus
-  client-side state in `src/store/AppStore.tsx`. Actions like "resolve
-  alert" or "suspend user" update local state and show a toast, but
-  nothing persists server-side or across a hard refresh.
+- **Read-only**: there are no write endpoints yet beyond auth. Actions like
+  "resolve alert", "flag for retraining" or "generate export" update local
+  state and show a toast; nothing persists server-side.
+- **Policy, Audit and AI Governance are still mock-backed**, and the
+  Dashboard's frameworks strip, department chart and activity feed are too.
+  The activity feed cycles a fixed sample array on a timer.
+- **The Dashboard health-period chips (7d/30d/90d) are inert** — see the
+  TODO in `src/pages/Dashboard.tsx`; the underlying score is a
+  point-in-time value with no time-range query behind it.
+- **Lint carries a backlog** of ~15 errors, mostly `@typescript-eslint/no-explicit-any`
+  in the mock-backed pages. CI reports them but does not gate on them.
+- **A reload signs you out**, by design — see [Signing in](#signing-in).
 - **Main bundle is still ~344 KB gzip 108 KB** even after route-level
   code splitting, mostly React/Router/Query/shadcn. Recharts (the
   largest single dependency, ~365 KB) is already isolated into its own
