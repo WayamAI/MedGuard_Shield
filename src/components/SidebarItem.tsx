@@ -10,6 +10,22 @@ export interface SidebarNavItem {
   end?: boolean;
   badge?: string;
   badgeTone?: "danger" | "warning";
+  /**
+   * Marks a destination whose endpoint does not exist yet, so the screen is
+   * drawn from the bundled sample dataset.
+   *
+   * Deliberately not rendered inline. These labels run to "Policy &
+   * Compliance", and every visible marker tried — a pill reading "Sample
+   * data", one reading "Sample", a dot on the icon — either truncated the
+   * label or read as an unfinished control. A truncated product name in the
+   * sidebar is a worse artefact than no marker, so the visible statement
+   * lives on the page itself (SampleDataNotice), where there is room to say
+   * it in full, and this supplies the hover title and the accessible name.
+   *
+   * It still suppresses the item's badge: a severity count drawn from sample
+   * data is the one number nobody should be reading closely.
+   */
+  note?: string;
 }
 
 /**
@@ -25,12 +41,19 @@ export interface SidebarNavItem {
  * native tooltip, and any badge shrinks to a dot on the icon slot.
  */
 export function SidebarItem({ item, collapsed = false }: { item: SidebarNavItem; collapsed?: boolean }) {
+  const showBadge = item.badge !== undefined && item.note === undefined;
   return (
     <NavLink
       to={item.to}
       end={item.end}
-      aria-label={item.label}
-      title={collapsed ? item.label : undefined}
+      aria-label={item.note ? `${item.label} (${item.note})` : item.label}
+      title={
+        item.note
+          ? `${item.label} — ${item.note}`
+          : collapsed
+            ? item.label
+            : undefined
+      }
       className={({ isActive }) =>
         cn(
           "group relative mb-0.5 flex items-center gap-3 rounded-lg py-1.5 transition-colors duration-200",
@@ -52,7 +75,7 @@ export function SidebarItem({ item, collapsed = false }: { item: SidebarNavItem;
             <AppIcon name={item.icon} size="lg" />
 
             {/* Collapsed: the count has nowhere to sit, so it becomes a dot. */}
-            {collapsed && item.badge && (
+            {collapsed && showBadge && (
               <span
                 className={cn(
                   "absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-container",
@@ -60,6 +83,7 @@ export function SidebarItem({ item, collapsed = false }: { item: SidebarNavItem;
                 )}
               />
             )}
+
           </span>
 
           {!collapsed && (
@@ -73,7 +97,7 @@ export function SidebarItem({ item, collapsed = false }: { item: SidebarNavItem;
                 {item.label}
               </span>
 
-              {item.badge && (
+              {showBadge && (
                 <span
                   className={cn(
                     "tabular rounded-full px-1.5 py-0.5 text-caption font-semibold text-white",
@@ -83,6 +107,7 @@ export function SidebarItem({ item, collapsed = false }: { item: SidebarNavItem;
                   {item.badge}
                 </span>
               )}
+
             </>
           )}
         </>

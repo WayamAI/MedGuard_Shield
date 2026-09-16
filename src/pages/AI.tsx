@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Card, KPI, Badge, Btn, Modal, Gauge, SectionHeader } from "@/components/ui-bits";
+import { Card, KPI, Badge, Btn, Modal, Gauge, SectionHeader, SampleDataNotice } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { aiDecisions } from "@/data/mock";
 import { useStore } from "@/store/AppStore";
@@ -30,6 +30,7 @@ export default function AI() {
 
   return (
     <div className="space-y-4">
+      <SampleDataNotice module="AI Governance" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KPI icon="ai" label="Models Monitored" value="3" accent="info" />
         <KPI icon="activity" label="Decisions Today" value="1,576" accent="info" />

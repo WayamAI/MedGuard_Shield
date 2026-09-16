@@ -19,9 +19,9 @@ const NAV: SidebarNavItem[] = [
   { to: "/phi-flow", label: "PHI Flow Map", icon: "phiFlow" },
   { to: "/access", label: "Access & Identity", icon: "access" },
   { to: "/threats", label: "Threat Detection", icon: "threats", badge: "2", badgeTone: "danger" },
-  { to: "/policy", label: "Policy & Compliance", icon: "policy" },
-  { to: "/ai", label: "AI Governance", icon: "ai", badge: "1", badgeTone: "warning" },
-  { to: "/audit", label: "Audit & Reports", icon: "audit" },
+  { to: "/policy", label: "Policy & Compliance", icon: "policy", note: "Sample data" },
+  { to: "/ai", label: "AI Governance", icon: "ai", badge: "1", badgeTone: "warning", note: "Sample data" },
+  { to: "/audit", label: "Audit & Reports", icon: "audit", note: "Sample data" },
   { to: "/risks", label: "Risk Register", icon: "risks" },
   { to: "/vendors", label: "Vendor Risk", icon: "facility" },
 ];

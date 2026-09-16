@@ -39,6 +39,20 @@ describe("pages still backed by mock data", () => {
     expect(screen.getAllByText(/DiagnosticAI/).length).toBeGreaterThan(0);
   });
 
+  it("each one says on the page that its data is illustrative", () => {
+    // The three screens are finished UI on a dataset the API does not serve
+    // yet. Saying so on the page is what stops a viewer reading the figures
+    // as live, so it is behaviour worth pinning rather than styling.
+    for (const [node, module] of [[<Policy />, "Policy & Compliance"],
+                                  [<Audit />, "Audit & Reports"],
+                                  [<AI />, "AI Governance"]] as const) {
+      const { unmount } = render(wrap(node));
+      expect(screen.getByText(new RegExp(`Sample data\\. ${module.replace("&", "&")} is not connected`)))
+        .toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("the trimmed exports are really gone", async () => {
     const mock = await import("@/data/mock");
     expect("SEVERITY_COLORS" in mock).toBe(false);

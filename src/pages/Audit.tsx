@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Card, Badge, Btn, Modal, Input, Select, Textarea, SectionHeader } from "@/components/ui-bits";
+import { Card, Badge, Btn, Modal, Input, Select, Textarea, SectionHeader, SampleDataNotice } from "@/components/ui-bits";
 import { auditLog } from "@/data/mock";
 import { notify } from "@/lib/notify";
 
@@ -40,6 +40,7 @@ export default function Audit() {
 
   return (
     <div className="space-y-4">
+      <SampleDataNotice module="Audit & Reports" />
       <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4">
         <Card className="p-4">
           <SectionHeader title="Audit Trail" />
