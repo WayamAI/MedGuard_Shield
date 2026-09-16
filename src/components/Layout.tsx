@@ -12,13 +12,15 @@ import wayamMark from "@/assets/brand/wayam-favicon.svg";
 import { notify } from "@/lib/notify";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
+import { useThreats } from "@/hooks/useThreats";
 import { cn } from "@/lib/utils";
 
 const NAV: SidebarNavItem[] = [
   { to: "/", label: "Dashboard", icon: "dashboard", end: true },
   { to: "/phi-flow", label: "PHI Flow Map", icon: "phiFlow" },
   { to: "/access", label: "Access & Identity", icon: "access" },
-  { to: "/threats", label: "Threat Detection", icon: "threats", badge: "2", badgeTone: "danger" },
+  // No badge here: the count is live, so it is filled in at render.
+  { to: "/threats", label: "Threat Detection", icon: "threats", badgeTone: "danger" },
   { to: "/policy", label: "Policy & Compliance", icon: "policy", note: "Sample data" },
   { to: "/ai", label: "AI Governance", icon: "ai", badge: "1", badgeTone: "warning", note: "Sample data" },
   { to: "/audit", label: "Audit & Reports", icon: "audit", note: "Sample data" },
@@ -52,6 +54,18 @@ export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { user, logout } = useAuth();
+
+  /*
+   * The threat count is read off the same /api/threats query the Threats page
+   * uses — same key, so this shares its cache and its poll rather than adding
+   * a second request. It was previously the literal "2" written into NAV,
+   * which would have gone on saying 2 whatever the backend reported.
+   *
+   * Undefined while loading or while the backend is unreachable, which hides
+   * the badge: no number at all beats a stale or invented one.
+   */
+  const openThreats = useThreats().data?.summary.open;
+  const openThreatBadge = openThreats ? String(openThreats) : undefined;
   const { unreadCount, notifications, markNotifRead, markAllNotifRead } = useStore();
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -131,7 +145,13 @@ export default function Layout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className={cn("flex-1 overflow-y-auto overflow-x-hidden py-3", collapsed ? "px-2" : "px-2")}>
-          {NAV.map(item => <SidebarItem key={item.to} item={item} collapsed={collapsed} />)}
+          {NAV.map(item => (
+            <SidebarItem
+              key={item.to}
+              item={item.to === "/threats" ? { ...item, badge: openThreatBadge } : item}
+              collapsed={collapsed}
+            />
+          ))}
         </nav>
 
         <div className={cn("space-y-2.5 border-t border-muted", collapsed ? "p-2" : "p-3")}>
