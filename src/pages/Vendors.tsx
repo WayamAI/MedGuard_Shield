@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Card, KPI, Badge, Btn, SlideOver, Input, Select, SectionHeader } from "@/components/ui-bits";
+import { Card, KPI, Badge, Btn, SlideOver, Input, Select, SectionHeader, HeadlineSkeleton } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataState } from "@/components/DataState";
 import { useVendors } from "@/hooks/useVendors";
@@ -92,7 +92,7 @@ export default function Vendors() {
              accent="info" loading={vendors.isLoading} stale={vendors.isReconnecting} />
       </div>
 
-      {worstGap && (
+      {vendors.isLoading ? <HeadlineSkeleton /> : worstGap && (
         <div className="flex items-center gap-3 rounded-md border border-feedback-error-stroke bg-feedback-error-background p-3">
           <AppIcon name="threats" size="md" className="text-feedback-error" />
           <span className="text-body-md text-primary">
@@ -171,7 +171,12 @@ export default function Vendors() {
             return (
               <div key={band} className="flex items-center gap-2">
                 <Badge tone={BAND_TONE[band]}>{band}</Badge>
-                <span className="tabular text-body-sm text-secondary">{n}</span>
+                {/* A count derived from an empty array is not a loading state,
+                    it is a wrong answer: "0 vendors at EXTREME" is the most
+                    reassuring thing this page could say, and it would be a lie. */}
+                {vendors.data
+                  ? <span className="tabular text-body-sm text-secondary">{n}</span>
+                  : <span className="inline-block h-4 w-3 animate-pulse rounded bg-raised-2" />}
               </div>
             );
           })}

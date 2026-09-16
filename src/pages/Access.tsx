@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Card, KPI, Badge, Btn, SlideOver, Input, Select, SectionHeader } from "@/components/ui-bits";
+import { Card, KPI, Badge, Btn, SlideOver, Input, Select, SectionHeader, HeadlineSkeleton } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataState } from "@/components/DataState";
 import { useAccess } from "@/hooks/useAccess";
@@ -88,7 +88,7 @@ export default function Access() {
              loading={access.isLoading} stale={access.isReconnecting} />
       </div>
 
-      {worst && worst.riskFlagCount > 0 && (
+      {access.isLoading ? <HeadlineSkeleton /> : worst && worst.riskFlagCount > 0 && (
         <div className="flex items-center gap-3 rounded-md border border-feedback-error-stroke bg-feedback-error-background p-3">
           <AppIcon name="threats" size="md" className="text-feedback-error" />
           <span className="text-body-md text-primary">

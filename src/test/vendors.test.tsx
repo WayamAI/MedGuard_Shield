@@ -46,6 +46,38 @@ const wrap = (node: ReactNode) => (
   </QueryClientProvider>
 );
 
+describe("Vendor Risk page: first paint", () => {
+  /*
+   * Both of these are about the same half-second: what the page says before
+   * the fetch lands. A number rendered from an empty array is not a loading
+   * state, it is a wrong answer, and a banner that appears late shoves
+   * everything under it down the screen.
+   */
+
+  it("shows no band counts until the data is in", async () => {
+    render(wrap(<Vendors />));
+
+    // The summary card is last in the DOM; the table above also renders band
+    // badges once it has rows, so take the final one.
+    const extremeRow = () => screen.getAllByText("EXTREME").at(-1)!.parentElement!.textContent;
+
+    // Zero vendors at EXTREME is a claim, and at this moment we cannot make it.
+    expect(extremeRow()).not.toMatch(/0/);
+
+    await waitFor(() => expect(screen.getByText("Northwind Claims Processing")).toBeInTheDocument());
+    // ...and once it is in, the real count is there.
+    await waitFor(() => expect(extremeRow()).toMatch(/1/));
+  });
+
+  it("reserves the headline banner's space while loading so nothing jumps", async () => {
+    render(wrap(<Vendors />));
+    expect(screen.getByRole("status", { name: "Loading summary" })).toBeInTheDocument();
+
+    await waitFor(() => expect(screen.getByText(/BAA gap:/)).toBeInTheDocument());
+    expect(screen.queryByRole("status", { name: "Loading summary" })).not.toBeInTheDocument();
+  });
+});
+
 describe("Vendor Risk page", () => {
   it("lists every vendor worst-score first", async () => {
     render(wrap(<Vendors />));

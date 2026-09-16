@@ -127,6 +127,22 @@ describe("slow network", () => {
     expect(screen.queryByRole("status", { name: "Loading data" })).not.toBeInTheDocument();
   });
 
+  it("keeps the KPI's trend line reserved while loading, so the row does not grow", () => {
+    /*
+     * The trend line used to render only once data arrived. Every card in the
+     * row lost a line on first paint and the whole grid — and everything below
+     * it — shifted down when the fetch landed.
+     */
+    const { rerender, container } = render(
+      <KPI icon="database" label="PHI Records" loading />,
+    );
+    const loadingHeight = container.firstElementChild!.getBoundingClientRect().height;
+    expect(screen.getByRole("status", { name: "Loading PHI Records trend" })).toBeInTheDocument();
+
+    rerender(<KPI icon="database" label="PHI Records" value="402,200" trend="across all mapped flows" />);
+    expect(container.firstElementChild!.getBoundingClientRect().height).toBe(loadingHeight);
+  });
+
   it("shimmers the KPI figure rather than rendering 'undefined'", () => {
     const { rerender } = render(<KPI icon="database" label="PHI Records" loading />);
     expect(screen.getByRole("status", { name: "Loading PHI Records" })).toBeInTheDocument();

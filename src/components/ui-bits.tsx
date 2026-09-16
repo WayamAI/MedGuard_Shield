@@ -267,7 +267,21 @@ export const KPI = ({ icon, label, value, trend, accent = "info", onClick, loadi
           {value ?? "—"}
         </div>
       )}
-      {trend && !loading && <div className={cn("mt-1 text-caption tabular", TONE_TEXT[accent])}>{trend}</div>}
+      {/*
+        The trend line holds its place while loading. It used to render only
+        once data arrived, so every card in a KPI row lost a line on first
+        paint and the grid — plus everything below it — dropped when the fetch
+        landed. Reserved for every card, not only the ones that will end up
+        with a trend: the row is as tall as its tallest card either way, so
+        matching the one that has a trend is what keeps the row still.
+      */}
+      {loading ? (
+        <div role="status" aria-label={`Loading ${label} trend`} className="mt-1 text-caption">
+          <span className="inline-block h-3 w-24 animate-pulse rounded bg-raised-2 align-middle" />
+        </div>
+      ) : (
+        trend && <div className={cn("mt-1 text-caption tabular", TONE_TEXT[accent])}>{trend}</div>
+      )}
     </div>
   </Card>
 );
@@ -388,5 +402,42 @@ export const SampleDataNotice = ({ module }: { module: string }) => (
       Sample data. {module} is not connected to the API yet, so the figures
       below are illustrative rather than live.
     </span>
+  </div>
+);
+
+/**
+ * Holds a headline banner's footprint while the data behind it loads.
+ *
+ * These banners are conditional on their own content — no worst offender, no
+ * banner — so on first paint the cards underneath sat about ninety pixels too
+ * high and dropped the moment the fetch landed. The jump is small and very
+ * visible, because it happens under the viewer's eye mid-sentence.
+ *
+ * The height is matched by construction rather than by a hardcoded number:
+ * the same icon size, the same one-line text box, and a real Btn, all made
+ * invisible. A magic height here would drift the first time a banner's
+ * padding changed and nobody would notice until it jumped again.
+ *
+ * Trade-off worth naming: when the data arrives and there is nothing to
+ * report, the reserved strip disappears and the page moves up instead. That
+ * is the rarer case — a headline banner exists precisely because these
+ * screens usually have something wrong to lead with — and an empty bordered
+ * strip left permanently in its place would be worse.
+ */
+export const HeadlineSkeleton = ({ label = "Loading summary" }: { label?: string }) => (
+  <div
+    role="status"
+    aria-label={label}
+    className="flex animate-pulse items-center gap-3 rounded-md border border-default bg-raised p-3"
+  >
+    <AppIcon name="threats" size="md" className="invisible" />
+    <span className="text-body-md">
+      <span className="inline-block h-4 w-80 max-w-full rounded bg-raised-2 align-middle" />
+    </span>
+    <div className="flex-1" />
+    <Btn variant="outline" className="invisible" tabIndex={-1} aria-hidden>
+      View Details
+    </Btn>
+    <span className="sr-only">{label}</span>
   </div>
 );

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Card, KPI, Badge, Btn, SlideOver, Input, Select, SectionHeader, SeverityBadge } from "@/components/ui-bits";
+import { Card, KPI, Badge, Btn, SlideOver, Input, Select, SectionHeader, SeverityBadge, HeadlineSkeleton } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataState } from "@/components/DataState";
 import { useThreats } from "@/hooks/useThreats";
@@ -80,7 +80,7 @@ export default function Threats() {
              accent="success" loading={threats.isLoading} stale={threats.isReconnecting} />
       </div>
 
-      {headline && (
+      {threats.isLoading ? <HeadlineSkeleton /> : headline && (
         <div className="flex items-center gap-3 rounded-md border border-feedback-error-stroke bg-feedback-error-background p-3">
           <AppIcon name="threats" size="md" className="text-feedback-error" />
           <span className="text-body-md text-primary">
