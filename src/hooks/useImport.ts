@@ -10,7 +10,7 @@
 import { useCallback, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, ApiError } from "@/lib/apiClient";
-import { useApiQuery, type ApiQueryResult } from "@/hooks/useApiQuery";
+import { useApiQuery, type ApiQueryResult, type ApiQueryOptions } from "@/hooks/useApiQuery";
 import { assetsKey } from "@/hooks/useAssets";
 import { risksKey } from "@/hooks/useRisks";
 import { dataFlowsKey } from "@/hooks/useDataFlows";
@@ -22,12 +22,13 @@ import type { ImportEntity, ImportEntityContract, ImportReport } from "@/lib/api
 export const importEntitiesKey = ["import", "entities"] as const;
 
 /** GET /api/import — every entity's columns, types and allowed values. */
-export function useImportEntities(): ApiQueryResult<ImportEntityContract[]> {
+export function useImportEntities(options?: ApiQueryOptions): ApiQueryResult<ImportEntityContract[]> {
   return useApiQuery<ImportEntityContract[]>(importEntitiesKey, "/api/import", undefined, {
     // The column contract changes when the server is redeployed, not while
     // someone is filling in a form. No heartbeat needed.
     pollIntervalMs: 60 * 60_000,
     staleTime: 5 * 60_000,
+    ...options,
   });
 }
 
