@@ -157,3 +157,62 @@ export type ApiThreatsResponse = {
   };
   threats: ApiThreat[];
 };
+
+/* ---------------------------------------------------------------------------
+   CSV import.
+
+   Slugs are the server's, verified against GET /api/import — three of them
+   are hyphenated and will 404 if guessed from the model name.
+   -------------------------------------------------------------------------- */
+
+export const IMPORT_ENTITIES = [
+  "assets", "phi-types", "data-flows", "vendors", "access-grants", "threats", "risks",
+] as const;
+
+export type ImportEntity = (typeof IMPORT_ENTITIES)[number];
+
+export type ImportColumnSpec = {
+  column: string;
+  type: "string" | "int" | "boolean" | "date" | "enum";
+  required: boolean;
+  values?: readonly string[];
+  referencesModel?: string;
+  description?: string;
+};
+
+/** One entry of GET /api/import — the column contract the server publishes. */
+export type ImportEntityContract = {
+  entity: ImportEntity;
+  label: string;
+  model: string;
+  naturalKey: string[];
+  naturalKeyLabel: string;
+  columns: ImportColumnSpec[];
+};
+
+/**
+ * `row` is the line number in the uploaded file with the header counted, so
+ * the first data row reports 2. Shown as given — renumbering it would send
+ * someone to the wrong line of their own file.
+ */
+export type ImportRowError = {
+  row: number;
+  field: string;
+  message: string;
+};
+
+/**
+ * Returned by validate (always 200, even when invalid) and by import. On a
+ * failed import the same shape arrives nested under `error.report` in a 400.
+ *
+ * `preview` holds the rows that parsed, so it is populated even when
+ * `valid` is false.
+ */
+export type ImportReport = {
+  valid: boolean;
+  totalRows: number;
+  errors: ImportRowError[];
+  preview: Record<string, unknown>[];
+  /** Present on the import response; absent on a dry run. */
+  imported?: number;
+};

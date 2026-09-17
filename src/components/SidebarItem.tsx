@@ -26,6 +26,12 @@ export interface SidebarNavItem {
    * data is the one number nobody should be reading closely.
    */
   note?: string;
+  /**
+   * Roles allowed to see this destination. Absent means everyone signed in.
+   * Mirrors ProtectedRoute's own gate so the sidebar never offers a door the
+   * router will bounce them from.
+   */
+  requireRole?: readonly string[];
 }
 
 /**

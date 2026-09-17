@@ -26,6 +26,7 @@ const NAV: SidebarNavItem[] = [
   { to: "/audit", label: "Audit & Reports", icon: "audit", note: "Sample data" },
   { to: "/risks", label: "Risk Register", icon: "risks" },
   { to: "/vendors", label: "Vendor Risk", icon: "facility" },
+  { to: "/import", label: "Import Data", icon: "database", requireRole: ["ADMIN"] },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
@@ -64,6 +65,14 @@ export default function Layout({ children }: { children: ReactNode }) {
    * Undefined while loading or while the backend is unreachable, which hides
    * the badge: no number at all beats a stale or invented one.
    */
+  /*
+   * Hide what the router would bounce them from. The API is the real gate;
+   * this only keeps the sidebar honest about what this account can open.
+   */
+  const visibleNav = NAV.filter(
+    item => !item.requireRole || item.requireRole.includes(user?.role ?? ""),
+  );
+
   const openThreats = useThreats().data?.summary.open;
   const openThreatBadge = openThreats ? String(openThreats) : undefined;
   const { unreadCount, notifications, markNotifRead, markAllNotifRead } = useStore();
@@ -145,7 +154,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         </div>
 
         <nav className={cn("flex-1 overflow-y-auto overflow-x-hidden py-3", collapsed ? "px-2" : "px-2")}>
-          {NAV.map(item => (
+          {visibleNav.map(item => (
             <SidebarItem
               key={item.to}
               item={item.to === "/threats" ? { ...item, badge: openThreatBadge } : item}

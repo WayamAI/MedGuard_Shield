@@ -17,6 +17,7 @@ const AI = lazy(() => import("@/pages/AI"));
 const Audit = lazy(() => import("@/pages/Audit"));
 const Risks = lazy(() => import("@/pages/Risks"));
 const Vendors = lazy(() => import("@/pages/Vendors"));
+const ImportData = lazy(() => import("@/pages/ImportData"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -51,6 +52,17 @@ const App = () => (
                         <Route path="/audit" element={<Audit />} />
                         <Route path="/risks" element={<Risks />} />
                         <Route path="/vendors" element={<Vendors />} />
+                        {/* The API is ADMIN-only here; this keeps a non-admin
+                            who types the URL from reaching a page that would
+                            only 403 on every call. */}
+                        <Route
+                          path="/import"
+                          element={
+                            <ProtectedRoute requireRole={["ADMIN"]}>
+                              <ImportData />
+                            </ProtectedRoute>
+                          }
+                        />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                     </Suspense>

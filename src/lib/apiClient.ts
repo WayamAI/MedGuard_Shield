@@ -139,8 +139,102 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   return parsed as T;
 }
 
+/** Auth header for the non-JSON paths, which cannot go through apiFetch. */
+async function authHeaders(): Promise<Headers> {
+  const headers = new Headers();
+  if (authTokenGetter) {
+    const token = await authTokenGetter();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+  }
+  return headers;
+}
+
+/** Wraps a transport failure as status 0, matching apiFetch's contract. */
+function asNetworkError(cause: unknown, url: string): ApiError {
+  return new ApiError(
+    cause instanceof Error ? cause.message : "Network request failed",
+    0,
+    url,
+    null,
+  );
+}
+
+/**
+ * POST a single file as multipart/form-data under the field name the API
+ * expects.
+ *
+ * Deliberately not routed through apiFetch: that sets Content-Type to
+ * application/json and JSON.stringifies the body, either of which would
+ * destroy a multipart request. The Content-Type is left unset on purpose so
+ * the browser can generate the boundary — setting it by hand is the classic
+ * way to produce an upload the server cannot parse.
+ *
+ * Errors keep their parsed body, because the import endpoint returns its
+ * per-row report inside a 400 and the caller needs to read it.
+ */
+export async function apiUpload<T>(path: string, file: File, field = "file"): Promise<T> {
+  const url = `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+  const headers = await authHeaders();
+  headers.set("Accept", "application/json");
+
+  const form = new FormData();
+  form.append(field, file);
+
+  let res: Response;
+  try {
+    res = await fetch(url, { method: "POST", headers, credentials: "omit", body: form });
+  } catch (cause) {
+    throw asNetworkError(cause, url);
+  }
+
+  const parsed = await parseBody(res);
+  if (!res.ok) {
+    const detail =
+      parsed && typeof parsed === "object" && "error" in parsed
+        ? String((parsed as { error: { message?: unknown } }).error?.message ?? res.statusText)
+        : res.statusText;
+    throw new ApiError(`${res.status} ${detail}`.trim(), res.status, url, parsed);
+  }
+  if (parsed && typeof parsed === "object" && "data" in parsed) {
+    return (parsed as { data: T }).data;
+  }
+  return parsed as T;
+}
+
+/**
+ * GET a file and hand back its bytes plus the server's filename.
+ *
+ * A plain <a href> cannot be used for this: the template route is ADMIN-only
+ * and the session token lives in memory, so a browser-initiated navigation
+ * would arrive unauthenticated and bounce with a 401. Fetching it here and
+ * handing the blob to a synthetic anchor keeps the browser's own download
+ * behaviour while still sending the Authorization header.
+ */
+export async function apiDownload(path: string): Promise<{ blob: Blob; filename: string | null }> {
+  const url = `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+  const headers = await authHeaders();
+
+  let res: Response;
+  try {
+    res = await fetch(url, { method: "GET", headers, credentials: "omit" });
+  } catch (cause) {
+    throw asNetworkError(cause, url);
+  }
+
+  if (!res.ok) {
+    const parsed = await parseBody(res);
+    throw new ApiError(`${res.status} ${res.statusText}`.trim(), res.status, url, parsed);
+  }
+
+  const disposition = res.headers.get("content-disposition") ?? "";
+  const match = /filename="?([^";]+)"?/i.exec(disposition);
+  return { blob: await res.blob(), filename: match?.[1] ?? null };
+}
+
 export const api = {
   get: <T>(path: string, options?: RequestOptions) => apiFetch<T>(path, { ...options, method: "GET" }),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     apiFetch<T>(path, { ...options, method: "POST", body }),
+  upload: apiUpload,
+  download: apiDownload,
 };
