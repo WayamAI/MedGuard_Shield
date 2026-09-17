@@ -100,7 +100,8 @@ function RefreshableSankeyView() {
 
 function MatrixView() {
   const query = useApiQuery<ApiRisk[], ReturnType<typeof toMatrixRisks>>(
-    ["risks"], "/api/risks", toMatrixRisks, { retry: 0, staleTime: 0 },
+    ["risks"], "/api/risks", toMatrixRisks,
+    { retry: 0, staleTime: 0, pollIntervalMs: 25, reconnectIntervalMs: 25 },
   );
   return (
     <DataState query={query} emptyTitle="No risks in the register">
@@ -273,6 +274,22 @@ describe("backend killed mid-session", () => {
       { timeout: 3000 },
     );
     expect(screen.getByText("Epic EHR Core")).toBeInTheDocument();
+  });
+
+  it("says the session expired rather than blaming the connection", async () => {
+    /*
+     * A 401 on a view that already holds data used to render the reconnecting
+     * banner, which is wrong twice over: an expired session is not a
+     * connectivity problem, and the banner promises retrying when the hook
+     * deliberately stops polling on auth errors.
+     */
+    scenario = { kind: "ok", body: RISKS };
+    render(<MatrixView />, { wrapper });
+    await waitFor(() => expect(screen.getByText("001")).toBeInTheDocument());
+
+    scenario = { kind: "status", code: 401 };
+    await waitFor(() => expect(screen.getByText("Session expired")).toBeInTheDocument(), { timeout: 3000 });
+    expect(screen.queryByText(/Lost connection to the backend/)).not.toBeInTheDocument();
   });
 
   it("stops polling once the session is the problem", async () => {

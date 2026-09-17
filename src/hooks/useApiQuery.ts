@@ -120,8 +120,14 @@ export function useApiQuery<TWire, TData = TWire>(
      * Refresh button would fail silently. failureReason is set on any failed
      * attempt, which covers both the heartbeat and an explicit refetch.
      */
+    /*
+     * Auth failures are excluded: the poll stops on them, so nothing is
+     * reconnecting, and the view needs to say the session ended rather than
+     * imply the backend went away.
+     */
     isReconnecting:
       query.data !== undefined &&
+      !(query.error ?? query.failureReason ?? refreshError)?.isAuthError &&
       (query.isError || query.failureReason !== null || refreshError !== null),
     error: query.error ?? query.failureReason ?? refreshError,
     refetch: query.refetch,

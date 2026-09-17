@@ -65,6 +65,18 @@ export function DataState<T>({
     return <>{skeleton ?? <ChartSkeleton height={height} />}</>;
   }
 
+  /*
+   * An expired session outranks whatever is cached. Showing the last known
+   * rows under a reconnecting banner would be wrong twice: the problem is not
+   * the connection, and the banner promises retrying when useApiQuery
+   * deliberately stops polling on auth errors. Nothing here will refresh
+   * until the person signs in again, so say that instead.
+   */
+  if (error?.isAuthError) {
+    const { title, message } = describeApiError(error);
+    return <ErrorState title={title} message={message} height={height} />;
+  }
+
   // Failed with nothing cached to fall back on.
   if (isError && data === undefined) {
     const { title, message } = describeApiError(error);
