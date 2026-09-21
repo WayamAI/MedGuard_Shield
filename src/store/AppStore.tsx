@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, useState, ReactNode, useCallback } 
 import { alerts as initAlerts, approvals as initApprovals, initialNotifications } from "@/data/mock";
 
 type AlertItem = (typeof initAlerts)[number];
-type Approval = (typeof initApprovals)[number] & { status?: string };
+export type Approval = (typeof initApprovals)[number] & { status?: string };
 type Notif = (typeof initialNotifications)[number] & { read?: boolean };
 
 type Ctx = {
@@ -37,7 +37,8 @@ export const AppStoreProvider = ({ children }: { children: ReactNode }) => {
   const toggleSuspend = useCallback((id: number) => {
     setSuspended(prev => {
       const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
       return n;
     });
   }, []);

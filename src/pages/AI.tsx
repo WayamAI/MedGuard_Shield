@@ -21,9 +21,11 @@ const overrideHist = Array.from({ length: 8 }, (_, i) => ({
   ClaimsCodingAI: [0, 0, 1, 0, 0, 1, 0, 1][i],
 }));
 
+type AiDecision = (typeof aiDecisions)[number];
+
 export default function AI() {
   const { aiPaused, setAiPaused } = useStore();
-  const [decision, setDecision] = useState<any>(null);
+  const [decision, setDecision] = useState<AiDecision | null>(null);
   const [biasModalOpen, setBiasModalOpen] = useState(false);
   const [pauseConfirm, setPauseConfirm] = useState(false);
   const [addModelOpen, setAddModelOpen] = useState(false);
