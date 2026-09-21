@@ -65,7 +65,14 @@ export type ApiVendor = {
   baaCompliant: boolean;
   assetCount: number;
   assets: string[];
-  risk: { score: number; band: RiskBand; computedAt: string };
+  /**
+   * null when no risk record exists for the vendor — which is every vendor
+   * created by CSV import, since the import writes the vendor and nothing
+   * else. The server returns the field either way, so this must stay
+   * nullable: claiming otherwise is what let an unscored vendor crash the
+   * page while `tsc` reported no problem.
+   */
+  risk: { score: number; band: RiskBand; computedAt: string } | null;
 };
 
 /* ---------------------------------------------------------------------------

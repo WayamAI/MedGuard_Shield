@@ -54,8 +54,13 @@ export default function Vendors() {
 
   const rows = useMemo(() => vendors.data ?? [], [vendors.data]);
 
+  /*
+   * Unscored vendors sort last. Treating a missing score as 0 would file them
+   * under "nothing to worry about", which is the opposite of true: nobody has
+   * looked at them yet.
+   */
   const sorted = useMemo(
-    () => [...rows].sort((a, b) => b.risk.score - a.risk.score),
+    () => [...rows].sort((a, b) => (b.risk?.score ?? -1) - (a.risk?.score ?? -1)),
     [rows],
   );
 
@@ -143,7 +148,7 @@ export default function Vendors() {
                 <tbody>
                   {filtered.map(v => (
                     <tr key={v.id} className="border-b border-default hover:bg-raised-2">
-                      <td className="py-2 px-2 text-primary">{v.name}</td>
+                      <td className="py-2 px-2 text-primary" data-testid="vendor-row-name">{v.name}</td>
                       <td className="px-2"><Badge tone={BAA_TONE[v.baaStatus]}>{BAA_LABEL[v.baaStatus]}</Badge></td>
                       <td className="px-2 tabular">{v.assetCount}</td>
                       <td className="px-2 tabular">{v.phiVolume.toLocaleString()}</td>
@@ -151,8 +156,12 @@ export default function Vendors() {
                         {assessedLabel(v)}
                         {v.assessmentOverdue && " · overdue"}
                       </td>
-                      <td className="px-2 tabular">{v.risk.score}</td>
-                      <td className="px-2"><Badge tone={BAND_TONE[v.risk.band]}>{v.risk.band}</Badge></td>
+                      <td className="px-2 tabular">{v.risk ? v.risk.score : "—"}</td>
+                      <td className="px-2" data-testid={`vendor-row-band-${v.id}`}>
+                        {v.risk
+                          ? <Badge tone={BAND_TONE[v.risk.band]}>{v.risk.band}</Badge>
+                          : <Badge tone="muted">Not scored</Badge>}
+                      </td>
                       <td className="px-2"><Btn variant="outline" onClick={() => setView(v)}>View</Btn></td>
                     </tr>
                   ))}
@@ -167,7 +176,7 @@ export default function Vendors() {
         <SectionHeader title="Risk by Band" subtitle="How vendor exposure is distributed." />
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           {BAND_ORDER.map(band => {
-            const n = rows.filter(v => v.risk.band === band).length;
+            const n = rows.filter(v => v.risk?.band === band).length;
             return (
               <div key={band} className="flex items-center gap-2">
                 <Badge tone={BAND_TONE[band]}>{band}</Badge>
@@ -175,7 +184,7 @@ export default function Vendors() {
                     it is a wrong answer: "0 vendors at EXTREME" is the most
                     reassuring thing this page could say, and it would be a lie. */}
                 {vendors.data
-                  ? <span className="tabular text-body-sm text-secondary">{n}</span>
+                  ? <span className="tabular text-body-sm text-secondary" data-testid={`band-count-${band}`}>{n}</span>
                   : <span className="inline-block h-4 w-3 animate-pulse rounded bg-raised-2" />}
               </div>
             );
@@ -188,9 +197,11 @@ export default function Vendors() {
           <div className="space-y-3 text-body-md">
             <div className="flex gap-2">
               <Badge tone={BAA_TONE[view.baaStatus]}>BAA {BAA_LABEL[view.baaStatus]}</Badge>
-              <Badge tone={BAND_TONE[view.risk.band]}>{view.risk.band}</Badge>
+              {view.risk
+                ? <Badge tone={BAND_TONE[view.risk.band]}>{view.risk.band}</Badge>
+                : <Badge tone="muted">Not scored</Badge>}
             </div>
-            <Row label="Risk score" value={String(view.risk.score)} />
+            <Row label="Risk score" value={view.risk ? String(view.risk.score) : "Not scored yet"} />
             <Row label="PHI records" value={view.phiVolume.toLocaleString()} />
             <Row label="Systems reachable" value={String(view.assetCount)} />
             <Row label="Last assessed" value={assessedLabel(view)} />

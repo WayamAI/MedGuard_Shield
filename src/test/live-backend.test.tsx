@@ -321,7 +321,10 @@ describe("live backend: wired pages render real data", () => {
 
 describe("live backend: vendor risk", () => {
   live("Vendor page renders the seeded vendors and leads with the BAA gap", async () => {
-    const raw = await api.get<Array<{ name: string; baaStatus: string; risk: { band: string } }>>("/api/vendors");
+    // `risk` is null for any vendor the engine has not scored — every vendor
+    // created by CSV import is one. The page must survive them, so the live
+    // check has to allow for them too.
+    const raw = await api.get<Array<{ name: string; baaStatus: string; risk: { band: string } | null }>>("/api/vendors");
     expect(raw.length).toBeGreaterThan(0);
 
     render(
@@ -342,6 +345,6 @@ describe("live backend: vendor risk", () => {
     }
 
     console.info(`[live] vendors: ${raw.length}, without valid BAA: ${nonCompliant.length}, ` +
-      `bands: ${JSON.stringify([...new Set(raw.map(v => v.risk.band))])}`);
+      `bands: ${JSON.stringify([...new Set(raw.map(v => v.risk?.band ?? "UNSCORED"))])}`);
   }, 30_000);
 });

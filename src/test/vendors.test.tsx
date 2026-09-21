@@ -135,3 +135,56 @@ describe("Vendor Risk page", () => {
     expect(screen.getByText("The backend returned an error")).toBeInTheDocument();
   }, 30_000);
 });
+
+describe("Vendor Risk page: a vendor the engine has not scored", () => {
+  /*
+   * `GET /api/vendors` returns `risk: null` for any vendor with no risk
+   * record — which is every vendor created through the CSV import, since the
+   * import writes the vendor and nothing else. The frontend type claimed the
+   * field was always present, so `tsc` was happy while the page crashed on
+   * the first unscored vendor it met.
+   */
+
+  const UNSCORED = vendor({
+    id: 9, name: "Arcadia Care Logistics", baaStatus: "PENDING", baaCompliant: false,
+    phiVolume: 9400, assetCount: 0, assets: [], risk: null,
+  });
+
+  it("renders the table instead of crashing", async () => {
+    payload = [...SEED, UNSCORED];
+    render(wrap(<Vendors />));
+
+    await waitFor(() => expect(screen.getByText("Arcadia Care Logistics")).toBeInTheDocument());
+    // The scored vendors must still be there — a crash would take them too.
+    expect(screen.getByText("Northwind Claims Processing")).toBeInTheDocument();
+  });
+
+  it("sorts unscored vendors last rather than treating them as zero-risk", async () => {
+    payload = [UNSCORED, ...SEED];
+    render(wrap(<Vendors />));
+
+    await waitFor(() => expect(screen.getByText("Arcadia Care Logistics")).toBeInTheDocument());
+
+    const names = screen.getAllByTestId("vendor-row-name").map(n => n.textContent);
+    expect(names[0]).toBe("Northwind Claims Processing");
+    expect(names[names.length - 1]).toBe("Arcadia Care Logistics");
+  });
+
+  it("says it is unscored rather than showing a made-up band", async () => {
+    payload = [...SEED, UNSCORED];
+    render(wrap(<Vendors />));
+
+    await waitFor(() => expect(screen.getByText("Arcadia Care Logistics")).toBeInTheDocument());
+    expect(screen.getByTestId("vendor-row-band-9").textContent).toBe("Not scored");
+  });
+
+  it("leaves unscored vendors out of the band counts", async () => {
+    payload = [...SEED, UNSCORED];
+    render(wrap(<Vendors />));
+
+    await waitFor(() => expect(screen.getByText("Arcadia Care Logistics")).toBeInTheDocument());
+    // Five vendors, but only four carry a band.
+    expect(screen.getByTestId("band-count-MODERATE").textContent).toBe("1");
+    expect(screen.getByTestId("band-count-LOW").textContent).toBe("1");
+  });
+});
