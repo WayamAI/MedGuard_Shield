@@ -83,3 +83,62 @@ describe("Threat Detection nav badge", () => {
     await waitFor(() => expect(link).toHaveTextContent(/^\s*Threat Detection\s*$/));
   });
 });
+
+describe("page title in the header", () => {
+  /*
+   * The header title and breadcrumb both read from PAGE_TITLES. A route
+   * missing from that map silently falls back to "MedGuard", which is what
+   * /import did: the one page whose whole job is to be self-explanatory was
+   * the one page that did not say what it was.
+   */
+
+  const ROUTES: Array<[string, string]> = [
+    ["/", "Governance Overview"],
+    ["/phi-flow", "PHI Data Flow Map"],
+    ["/access", "Access & Identity Management"],
+    ["/threats", "Threat & Anomaly Detection"],
+    ["/policy", "Policy & Compliance Engine"],
+    ["/ai", "AI Governance Monitor"],
+    ["/audit", "Audit Trail & Reports"],
+    ["/vendors", "Vendor Risk Management"],
+    ["/risks", "Risk Register"],
+    ["/import", "Import Data"],
+  ];
+
+  it.each(ROUTES)("%s is titled %s", async (path, title) => {
+    threatsOk = true;
+    threatsBody = { summary: SUMMARY, threats: [] };
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}>
+        <MemoryRouter initialEntries={[path]}>
+          <ThemeProvider>
+            <AuthProvider>
+              <AppStoreProvider><Layout><div /></Layout></AppStoreProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("heading", { level: 1, name: title })).toBeInTheDocument();
+  });
+
+  it("never falls back to the bare product name on a routed page", async () => {
+    threatsOk = true;
+    threatsBody = { summary: SUMMARY, threats: [] };
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}>
+        <MemoryRouter initialEntries={["/import"]}>
+          <ThemeProvider>
+            <AuthProvider>
+              <AppStoreProvider><Layout><div /></Layout></AppStoreProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const h1 = await screen.findByRole("heading", { level: 1 });
+    expect(h1).not.toHaveTextContent(/^MedGuard$/);
+  });
+});

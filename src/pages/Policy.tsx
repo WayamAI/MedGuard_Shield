@@ -3,24 +3,30 @@ import { Card, Badge, Btn, Modal, SlideOver, Input, Select, Textarea, SectionHea
 import { toneVar } from "@/lib/tone";
 import { policies, controls, frameworks, approvals as initApprovals } from "@/data/mock";
 import { notify } from "@/lib/notify";
-import { useStore } from "@/store/AppStore";
+import { useStore, type Approval } from "@/store/AppStore";
 import { useLocation } from "react-router-dom";
 
+type PolicyRow = (typeof policies)[number];
+type ControlRow = (typeof controls)[number];
+type FrameworkRow = (typeof frameworks)[number];
+type PolicyTab = "policies" | "controls" | "frameworks" | "approvals";
+
 export default function Policy() {
-  const loc = useLocation() as any;
-  const [tab, setTab] = useState<"policies" | "controls" | "frameworks" | "approvals">(loc.state?.tab === "approvals" ? "approvals" : "policies");
+  const loc = useLocation();
+  const navTab = (loc.state as { tab?: string } | null)?.tab;
+  const [tab, setTab] = useState<PolicyTab>(navTab === "approvals" ? "approvals" : "policies");
   const { approvals, setApprovalStatus } = useStore();
-  const [viewPolicy, setViewPolicy] = useState<any>(null);
-  const [editPolicy, setEditPolicy] = useState<any>(null);
+  const [viewPolicy, setViewPolicy] = useState<PolicyRow | null>(null);
+  const [editPolicy, setEditPolicy] = useState<PolicyRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [addControlOpen, setAddControlOpen] = useState(false);
-  const [testCtrl, setTestCtrl] = useState<any>(null);
+  const [testCtrl, setTestCtrl] = useState<ControlRow | null>(null);
   const [testPhase, setTestPhase] = useState<"running" | "done">("running");
-  const [actionApproval, setActionApproval] = useState<{ a: any; act: string } | null>(null);
+  const [actionApproval, setActionApproval] = useState<{ a: Approval; act: string } | null>(null);
   const [reason, setReason] = useState("");
-  const [auditModal, setAuditModal] = useState<any>(null);
+  const [auditModal, setAuditModal] = useState<FrameworkRow | null>(null);
 
-  const runTest = (c: any) => {
+  const runTest = (c: ControlRow) => {
     setTestCtrl(c); setTestPhase("running");
     setTimeout(() => setTestPhase("done"), 3000);
   };
@@ -30,7 +36,7 @@ export default function Policy() {
       <SampleDataNotice module="Policy & Compliance" />
       <div className="flex gap-1 border-b border-default">
         {([["policies", "Policies"], ["controls", "Controls"], ["frameworks", "Frameworks"], ["approvals", `Pending Approvals (${approvals.filter(a => !a.status).length})`]] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k as any)} className={`px-4 py-2 text-body-md border-b-2 ${tab === k ? "border-brand text-primary" : "border-transparent text-tertiary hover:text-primary"}`}>{l}</button>
+          <button key={k} onClick={() => setTab(k)} className={`px-4 py-2 text-body-md border-b-2 ${tab === k ? "border-brand text-primary" : "border-transparent text-tertiary hover:text-primary"}`}>{l}</button>
         ))}
       </div>
 

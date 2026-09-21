@@ -10,13 +10,15 @@ const scheduledInit = [
   { name: "AI Governance", freq: "Daily (6 AM)", last: "Today", next: "Tomorrow", to: "cmo@meridian.org", paused: false },
 ];
 
+type AuditEvent = (typeof auditLog)[number];
+
 export default function Audit() {
   const [search, setSearch] = useState("");
   const [user, setUser] = useState("All");
   const [action, setAction] = useState("All");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
-  const [event, setEvent] = useState<any>(null);
+  const [event, setEvent] = useState<AuditEvent | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [genPhase, setGenPhase] = useState<"idle" | "running" | "done">("idle");
   const [progress, setProgress] = useState(0);

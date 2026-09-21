@@ -27,6 +27,8 @@ const HEALTH_SEGMENTS: { label: string; value: number; tone: Tone }[] = [
 const sevTone = (sev: string): Tone =>
   sev === "CRITICAL" ? "danger" : sev === "HIGH" ? "warning" : "info";
 
+type Framework = (typeof frameworks)[number];
+
 type QuickAction = "report" | "risk" | "approvals" | "export";
 const QUICK_ACTIONS: { icon: IconName; label: string; action: QuickAction }[] = [
   { icon: "audit", label: "Generate Compliance Report", action: "report" },
@@ -35,7 +37,7 @@ const QUICK_ACTIONS: { icon: IconName; label: string; action: QuickAction }[] = 
   { icon: "download", label: "Export Audit Trail", action: "export" },
 ];
 
-function FrameworkReportModal({ fw, onClose }: { fw: any; onClose: () => void }) {
+function FrameworkReportModal({ fw, onClose }: { fw: Framework | null; onClose: () => void }) {
   const [tab, setTab] = useState<"summary" | "controls" | "evidence">("summary");
   return (
     <Modal open={!!fw} onClose={onClose} title={fw && `${fw.name} Compliance Report`} size="lg">
@@ -194,7 +196,7 @@ export default function Dashboard() {
       flowCount: links.length,
     };
   }, [assets.data, risks.data, flows.data]);
-  const [reportFw, setReportFw] = useState<any>(null);
+  const [reportFw, setReportFw] = useState<Framework | null>(null);
   const [resolveId, setResolveId] = useState<string | null>(null);
   const [runRiskOpen, setRunRiskOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
