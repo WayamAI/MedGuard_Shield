@@ -39,6 +39,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/audit": "Audit Trail & Reports",
   "/vendors": "Vendor Risk Management",
   "/risks": "Risk Register",
+  "/import": "Import Data",
 };
 
 const SEV_STROKE: Record<string, string> = {
