@@ -105,11 +105,23 @@ is why it survived.
 
 ## 6. Known limitations
 
-1. **An imported asset does not appear in the Risk Register.** The API itself
-   returns 10 assets and 8 risks: scoring is a separate recompute the import
-   does not trigger. Frontend behaviour is correct — it renders what the API
-   says. Backend-side gap, worth knowing before demoing import followed by
-   the matrix.
+1. **An imported asset does not appear in the Risk Register — and that is
+   correct behaviour, not a gap.** An asset has no risk score until a risk
+   assessment exists for it. The Risk Register and the matrix are built from
+   `Risk` rows, and a newly created asset has none, so it shows in the
+   Dashboard and the asset list with no score and is absent from the matrix.
+
+   Importing an asset does exactly what creating one by hand does:
+   `createAsset` in the backend is a bare insert, and the CSV importer takes
+   the same path. Neither invents an assessment. A score exists only because
+   someone — or a Risk CSV — put one there.
+
+   An earlier revision of this report called it a backend scoring gap and
+   pointed at the recompute endpoint. That was wrong: recompute rescores an
+   assessment that already exists, it does not create the first one, so
+   nothing about the import path is missing a step. `DEMO_RUNBOOK.md` carries
+   the same framing plus a line to say out loud if it comes up live, and the
+   one-row Risks CSV that fills it in.
 2. **Policy, Audit and AI Governance are sample data.** Declared on each page.
 3. **A reload signs you out**, by design — the token is memory-only and the
    API has no refresh endpoint.
