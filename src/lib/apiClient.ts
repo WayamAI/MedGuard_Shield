@@ -48,6 +48,37 @@ export function setAuthTokenGetter(getter: TokenGetter | null) {
   authTokenGetter = getter;
 }
 
+/**
+ * Single-flight session refresh.
+ *
+ * The access token now lives one hour, so an idle tab will meet a 401 during
+ * normal use. AuthProvider registers a handler here; on a 401 the client
+ * calls it once, and replays the request with whatever token comes back.
+ *
+ * `inFlight` collapses concurrent refreshes: six list queries hitting 401 at
+ * the same moment must produce one refresh, not six. Six would be worse than
+ * wasteful — refresh tokens rotate on use, so the five losers would each
+ * present an already-rotated token, which the API treats as theft and
+ * responds to by revoking every session for the account.
+ */
+type RefreshHandler = () => Promise<string | null>;
+let authRefreshHandler: RefreshHandler | null = null;
+let inFlightRefresh: Promise<string | null> | null = null;
+
+export function setAuthRefreshHandler(handler: RefreshHandler | null) {
+  authRefreshHandler = handler;
+  inFlightRefresh = null;
+}
+
+async function attemptRefresh(): Promise<string | null> {
+  if (!authRefreshHandler) return null;
+  inFlightRefresh ??= authRefreshHandler().finally(() => { inFlightRefresh = null; });
+  return inFlightRefresh;
+}
+
+/** Auth routes must never trigger a refresh — that is how you build a loop. */
+const isAuthPath = (path: string) => path.startsWith("/api/auth/");
+
 /** Base URL without a trailing slash, so path joining stays predictable. */
 export function getApiBaseUrl(): string {
   const raw = import.meta.env.VITE_API_BASE_URL;
@@ -105,7 +136,18 @@ export const singlePageMeta = (total: number): PageMeta => ({
   page: 1, pageSize: total, total, totalPages: 1,
 });
 
-export type RequestOptions = Omit<RequestInit, "body"> & { body?: unknown };
+export type RequestOptions = Omit<RequestInit, "body"> & {
+  body?: unknown;
+  /**
+   * Send and accept cookies. Used only by /api/auth/*, where the refresh
+   * token lives in an httpOnly cookie the JS is deliberately unable to read.
+   * Data routes stay bearer-only so the Authorization header is the single
+   * thing that grants access to PHI.
+   */
+  withCredentials?: boolean;
+  /** Internal: set on the replay so one failure cannot loop. */
+  _isRetry?: boolean;
+};
 
 /**
  * Perform a JSON request. Resolves with the parsed body on 2xx, throws
@@ -114,7 +156,7 @@ export type RequestOptions = Omit<RequestInit, "body"> & { body?: unknown };
  */
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
-  const { body, headers, ...rest } = options;
+  const { body, headers, withCredentials, _isRetry, ...rest } = options;
 
   const finalHeaders = new Headers(headers);
   finalHeaders.set("Accept", "application/json");
@@ -141,7 +183,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
        * storing that cookie at all, so the Authorization header is the only
        * thing that can grant access.
        */
-      credentials: "omit",
+      credentials: withCredentials ? "include" : "omit",
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (cause) {
@@ -153,12 +195,26 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     );
   }
 
+  /*
+   * One refresh, then one replay. If the replay also 401s the session is
+   * genuinely gone and the error surfaces — DataState renders "session
+   * expired" and ProtectedRoute sends them to /login.
+   */
+  if (res.status === 401 && !_isRetry && !isAuthPath(path)) {
+    const token = await attemptRefresh();
+    if (token) {
+      return apiFetch<T>(path, { ...options, _isRetry: true });
+    }
+  }
+
   if (!res.ok) {
     const parsed = await parseBody(res);
     const detail =
-      parsed && typeof parsed === "object" && "message" in parsed
-        ? String((parsed as { message: unknown }).message)
-        : res.statusText;
+      parsed && typeof parsed === "object" && "error" in parsed
+        ? String((parsed as { error?: { message?: unknown } }).error?.message ?? res.statusText)
+        : parsed && typeof parsed === "object" && "message" in parsed
+          ? String((parsed as { message: unknown }).message)
+          : res.statusText;
     throw new ApiError(`${res.status} ${detail}`.trim(), res.status, url, parsed);
   }
 
@@ -311,6 +367,11 @@ export async function apiList<T>(
     throw new ApiError(
       cause instanceof Error ? cause.message : "Network request failed", 0, url, null,
     );
+  }
+
+  if (res.status === 401 && !options._isRetry && !isAuthPath(path)) {
+    const token = await attemptRefresh();
+    if (token) return apiList<T>(path, params, { ...options, _isRetry: true });
   }
 
   const parsed = await parseBody(res);
