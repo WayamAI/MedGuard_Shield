@@ -354,3 +354,145 @@ export type ImportReport = {
   /** Present on the import response; absent on a dry run. */
   imported?: number;
 };
+
+/* ---------------------------------------------------------------------------
+   Controls, policies, remediation, audit, identities and the organisation.
+
+   All added to the API after the Drishti frontend pass. Every one is
+   paginated and organisation-scoped; none takes an organizationId parameter,
+   because the server reads it from the signed token.
+   -------------------------------------------------------------------------- */
+
+export type ControlStatus = "IMPLEMENTED" | "PARTIAL" | "PLANNED" | "NOT_IMPLEMENTED";
+export type ControlEffectiveness = "EFFECTIVE" | "PARTIALLY_EFFECTIVE" | "INEFFECTIVE" | "NOT_ASSESSED";
+
+export type ApiControl = {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+  status: ControlStatus;
+  effectiveness: ControlEffectiveness;
+  owner: string | null;
+  /**
+   * Free text the customer typed, e.g. "HIPAA 164.312(a)(1)".
+   *
+   * Drishti stores it as a citation and asserts no conformance with any
+   * framework on the strength of it. Render it as a reference, never as a
+   * compliance claim.
+   */
+  frameworkRef: string | null;
+  lastReviewedAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  appliedAssetCount: number;
+  policyCount: number;
+  openRemediations: number;
+};
+
+export type PolicyStatus = "ACTIVE" | "DRAFT" | "UNDER_REVIEW" | "ARCHIVED";
+
+export type ApiPolicy = {
+  id: number;
+  name: string;
+  description: string;
+  status: PolicyStatus;
+  owner: string | null;
+  /** Customer-supplied pointer; its contents are never inspected. */
+  evidenceRef: string | null;
+  reviewDueAt: string | null;
+  reviewOverdue: boolean;
+  archivedAt: string | null;
+  createdAt: string;
+  controlCount: number;
+};
+
+export type RemediationStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "ACCEPTED" | "REOPENED";
+export type RemediationSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+export type RemediationSource = "RISK" | "THREAT" | "ACCESS" | "VENDOR" | "CONTROL" | "MANUAL";
+
+export type ApiRemediation = {
+  id: number;
+  title: string;
+  description: string;
+  recommendation: string;
+  severity: RemediationSeverity;
+  status: RemediationStatus;
+  source: RemediationSource;
+  owner: { id: number; email: string } | null;
+  /** Whichever entity the finding points at. */
+  subject: { type: string; id: number; label: string } | null;
+  dueAt: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  open: boolean;
+  overdue: boolean;
+};
+
+export type ApiRemediationDetail = ApiRemediation & {
+  /** The transitions the server will accept from the current status. */
+  allowedTransitions?: RemediationStatus[];
+};
+
+export type ApiRemediationSummary = {
+  total: number;
+  open: number;
+  inProgress: number;
+  resolved: number;
+  accepted: number;
+  overdue: number;
+};
+
+/** GET /api/audit — read-only. ADMIN only. */
+export type ApiAuditEntry = {
+  id: number;
+  action: string;
+  /** null for system-originated entries. */
+  actor: { id: number; email: string } | null;
+  entityType: string | null;
+  entityId: number | null;
+  result: string;
+  /** Credentials and patient identifiers are stripped before storage. */
+  metadata: Record<string, unknown> | null;
+  ip: string | null;
+  createdAt: string;
+};
+
+export type ApiIdentity = {
+  id: number;
+  displayName: string;
+  email: string | null;
+  kind: IdentityKind;
+  department: string | null;
+  role: string | null;
+  active: boolean;
+  mfaEnabled: boolean;
+  createdAt: string;
+  archivedAt: string | null;
+  activeGrants: number;
+};
+
+export type ApiOrganization = {
+  id: number;
+  name: string;
+  slug: string;
+  createdAt: string;
+  counts: Record<string, number>;
+  yourRole: string;
+};
+
+/** GET /api/search — server-side, across every entity. */
+export type ApiSearchResult = {
+  type: "asset" | "vendor" | "risk" | "threat" | "identity" | "remediation" | "control" | "policy";
+  id: number;
+  title: string;
+  context: string;
+  status: string | null;
+};
+
+export type ApiSearchResponse = {
+  query: string;
+  results: ApiSearchResult[];
+  /** True when the server capped the result set. */
+  truncated: boolean;
+};

@@ -7,7 +7,6 @@ import { IconButton } from "@/components/IconButton";
 import { SidebarItem, type SidebarNavItem } from "@/components/SidebarItem";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DomainIcon } from "@/components/DomainIcon";
-import { RiskBadge } from "@/components/ui-patterns";
 import drishtiLogoLight from "@/assets/brand/drishti-logo-light.svg";
 import drishtiLogoDark from "@/assets/brand/drishti-logo-dark.svg";
 import drishtiMark from "@/assets/brand/drishti-mark.svg";
@@ -326,6 +325,10 @@ export default function Layout({ children }: { children: ReactNode }) {
                   </p>
                 ) : search.isLoading ? (
                   <p className="px-3 py-3 text-body-sm text-tertiary">Searching…</p>
+                ) : search.isError ? (
+                  <p className="px-3 py-3 text-body-sm text-feedback-error">
+                    Search is unavailable right now.
+                  </p>
                 ) : search.flat.length === 0 ? (
                   <p className="px-3 py-3 text-body-sm text-tertiary">No matches for “{search.query}”.</p>
                 ) : (
@@ -354,7 +357,6 @@ export default function Layout({ children }: { children: ReactNode }) {
                               <span className="block truncate text-body-md text-primary">{r.title}</span>
                               <span className="block truncate text-caption text-tertiary">{r.context}</span>
                             </span>
-                            {r.band !== undefined && <RiskBadge band={r.band ?? null} />}
                             {r.status && <Badge tone="muted">{r.status}</Badge>}
                           </button>
                         );
