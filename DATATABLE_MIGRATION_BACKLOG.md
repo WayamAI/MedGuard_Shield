@@ -49,6 +49,6 @@ Revisit only if the import preview grows a requirement for sorting or paging.
 
 | Item | Why | Priority |
 |---|---|---|
-| Column sorting in server mode still sorts the current page | The header is clickable and reorders 25 rows, which can read as sorting the dataset. Either send `sort`/`order` to the API (assets and risks already accept them) or disable header sorting when `server` is set | **P1** |
+| ~~Column sorting in server mode sorts only the current page~~ | **Fixed.** The affordance is withdrawn when the server reports more than one page, rather than left to imply it sorted the dataset. Restoring it properly means sending `sort`/`order` to the API — assets and risks already accept them | ~~P1~~ → **P2** (restore as server-side sort) |
 | Row selection is declared in the props but unused | No screen needs bulk actions yet. Remove or use | P3 |
 | No virtualisation | Page size caps at 200 and the default is 25, so no screen renders enough rows to need it | P3 |

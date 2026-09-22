@@ -238,6 +238,17 @@ function DataTableInner<T>({
   // 2-page result is an empty screen that looks like a bug.
   useEffect(() => { setPage(0); }, [search, sort]);
 
+  /*
+   * Sorting is client-side, so in server mode it can only reorder the page
+   * in front of you. A header that looks like it sorts the dataset but sorts
+   * 25 of 500 rows is the same lie as a count that describes the page — so
+   * the affordance is withdrawn rather than left to mislead. Server-side
+   * sorting is available on some endpoints (assets, risks) and is the right
+   * way to restore it; see DATATABLE_MIGRATION_BACKLOG.md.
+   */
+  const sortable = (col: Column<T>) =>
+    Boolean(col.sortValue) && (!server || (server.meta?.totalPages ?? 1) <= 1);
+
   const toggleSort = useCallback((col: Column<T>) => {
     if (!col.sortValue) return;
     setSort(prev =>
@@ -368,7 +379,7 @@ function DataTableInner<T>({
                       <th
                         key={c.id}
                         scope="col"
-                        aria-sort={c.sortValue ? (ariaSort as "ascending" | "descending" | "none") : undefined}
+                        aria-sort={sortable(c) ? (ariaSort as "ascending" | "descending" | "none") : undefined}
                         className={cn(
                           "px-3 py-2.5 text-label-sm font-semibold uppercase tracking-wide text-tertiary",
                           c.align === "right" ? "text-right" : "text-left",
@@ -376,7 +387,7 @@ function DataTableInner<T>({
                           c.hideBelow && HIDE_BELOW[c.hideBelow],
                         )}
                       >
-                        {c.sortValue ? (
+                        {sortable(c) ? (
                           <button
                             type="button"
                             onClick={() => toggleSort(c)}
