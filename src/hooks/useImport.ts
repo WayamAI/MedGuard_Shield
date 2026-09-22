@@ -155,7 +155,10 @@ export function useTemplateDownload() {
       const href = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = href;
-      anchor.download = filename ?? `medguard-${entity}-template.csv`;
+      // Server-provided Content-Disposition wins; this is only the fallback.
+      // The API still sends `medguard-*-template.csv` — renaming that is a
+      // backend change, tracked in FRONTEND_API_CONTRACT.md.
+      anchor.download = filename ?? `drishti-${entity}-template.csv`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();

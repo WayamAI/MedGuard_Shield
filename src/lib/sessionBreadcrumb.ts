@@ -7,7 +7,7 @@
  * while the token deliberately cannot. Cleared on an explicit logout, since
  * choosing to leave is not a lost session.
  */
-const KEY = "medguard-had-session";
+const KEY = "drishti-had-session";
 
 export function hadSession(): boolean {
   try {

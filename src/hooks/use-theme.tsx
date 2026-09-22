@@ -8,7 +8,12 @@ type ThemeContextValue = {
   toggleTheme: () => void;
 };
 
-const THEME_STORAGE_KEY = "medguard-theme";
+const THEME_STORAGE_KEY = "drishti-theme";
+/**
+ * Pre-Drishti key. Read once on first load so the rename does not silently
+ * flip an existing user back to light mode; never written to again.
+ */
+const LEGACY_THEME_STORAGE_KEY = "medguard-theme";
 
 const ThemeContext = React.createContext<ThemeContextValue | undefined>(undefined);
 
@@ -17,7 +22,9 @@ function getInitialTheme(): Theme {
     return "light";
   }
 
-  const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+  const storedTheme =
+    window.localStorage.getItem(THEME_STORAGE_KEY) ??
+    window.localStorage.getItem(LEGACY_THEME_STORAGE_KEY);
   return storedTheme === "dark" ? "dark" : "light";
 }
 

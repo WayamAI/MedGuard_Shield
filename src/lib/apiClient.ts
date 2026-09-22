@@ -1,5 +1,5 @@
 /**
- * Base fetch wrapper for the MedGuard backend.
+ * Base fetch wrapper for the Drishti backend.
  *
  * Auth stays behind an indirection on purpose: nothing here imports the auth
  * layer, so this module has no cycle with it and is trivial to test. The
@@ -235,6 +235,9 @@ export const api = {
   get: <T>(path: string, options?: RequestOptions) => apiFetch<T>(path, { ...options, method: "GET" }),
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     apiFetch<T>(path, { ...options, method: "POST", body }),
+  /** Partial update. The API treats absent fields as "leave alone", not "null". */
+  patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    apiFetch<T>(path, { ...options, method: "PATCH", body }),
   upload: apiUpload,
   download: apiDownload,
 };

@@ -1,5 +1,5 @@
 /**
- * Wire types for the MedGuard backend.
+ * Wire types for the Drishti backend.
  *
  * These mirror the API contract exactly as the backend declares it. They are
  * deliberately separate from the component prop types: components keep their
@@ -39,14 +39,120 @@ export type ApiRisk = {
   computedAt: string;
 };
 
-/** GET /api/assets — a monitored system, service or data store. */
+/** The asset categories the API accepts, mirroring the Prisma AssetType enum. */
+export const ASSET_TYPES = [
+  "EHR", "DATABASE", "API", "CLOUD_STORAGE", "ANALYTICS", "OTHER",
+] as const;
+export type AssetType = (typeof ASSET_TYPES)[number];
+
+/** PHI sensitivity, as classified by the API. */
+export type Sensitivity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+/**
+ * GET /api/assets — a monitored system, service or data store.
+ *
+ * Verified field-by-field against the live response and
+ * `medguard-backend/src/services/assetService.ts#listAssets`. The previous
+ * declaration here was fiction (`id: string`, `department`, `phiRecords`,
+ * `riskBand`) and survived only because the sole consumer read `.length`.
+ *
+ * `risk` is null for an asset that has never been scored — the same shape the
+ * vendor endpoint uses, and the same trap: with strictNullChecks off the
+ * compiler will not enforce this, so read sites must guard by hand.
+ */
 export type ApiAsset = {
-  id: string;
+  id: number;
   name: string;
-  type: string;
-  department?: string;
-  phiRecords?: number;
-  riskBand?: "low" | "moderate" | "high" | "critical";
+  type: AssetType;
+  phiVolume: number;
+  encrypted: boolean;
+  mfaEnabled: boolean;
+  /** null when the asset has never been assessed. */
+  lastAssessedAt: string | null;
+  createdAt: string;
+  risk: { score: number; band: RiskBand; computedAt: string } | null;
+};
+
+/** GET /api/assets/:id — the list record plus everything it connects to. */
+export type ApiAssetDetail = Omit<ApiAsset, "risk"> & {
+  phiTypes: Array<{
+    id: number;
+    name: string;
+    sensitivity: Sensitivity;
+    recordsPerDay: number;
+  }>;
+  risk:
+    | {
+        id: number;
+        likelihood: number;
+        impact: number;
+        exposure: number;
+        controlGap: number;
+        score: number;
+        band: RiskBand;
+        computedAt: string;
+      }
+    | null;
+  flows: {
+    outbound: Array<{ to: string; recordsPerDay: number; encrypted: boolean }>;
+    inbound: Array<{ from: string; recordsPerDay: number; encrypted: boolean }>;
+  };
+};
+
+/** POST /api/assets and PATCH /api/assets/:id request body. */
+export type AssetWriteInput = {
+  name: string;
+  type: AssetType;
+  phiVolume?: number;
+  encrypted?: boolean;
+  mfaEnabled?: boolean;
+  lastAssessedAt?: string | null;
+};
+
+/**
+ * GET /api/vendors/:id — the vendor plus the assets it can reach.
+ *
+ * Note `assets` here is a list of objects, while the list endpoint returns
+ * `assets: string[]` plus `assetCount`. Two different shapes under one field
+ * name, so the detail view must not be derived from a list row.
+ */
+export type ApiVendorDetail = {
+  id: number;
+  name: string;
+  baaStatus: BaaStatus;
+  phiVolume: number;
+  lastAssessedAt: string | null;
+  daysSinceAssessment: number | null;
+  assessmentOverdue: boolean;
+  baaCompliant: boolean;
+  createdAt: string;
+  assets: Array<{
+    id: number;
+    name: string;
+    type: AssetType;
+    encrypted: boolean;
+    grantedAt: string;
+  }>;
+  risk:
+    | {
+        id: number;
+        likelihood: number;
+        impact: number;
+        exposure: number;
+        controlGap: number;
+        score: number;
+        band: RiskBand;
+        computedAt: string;
+      }
+    | null;
+};
+
+/** POST /api/vendors and PATCH /api/vendors/:id request body. */
+export type VendorWriteInput = {
+  name: string;
+  baaStatus?: BaaStatus;
+  phiVolume?: number;
+  lastAssessedAt?: string | null;
 };
 
 /** GET /api/vendors — third parties with access to PHI. */

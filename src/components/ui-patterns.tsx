@@ -1,0 +1,380 @@
+import { useId, useState, type ReactNode } from "react";
+import { cn } from "@/lib/utils";
+import { AppIcon } from "@/components/AppIcon";
+import { DomainIcon, type DomainIconName } from "@/components/DomainIcon";
+import { Badge } from "@/components/ui-bits";
+import type { IconName } from "@/lib/icons";
+import type { Tone } from "@/lib/tone";
+import type { RiskBand, BaaStatus, Sensitivity } from "@/lib/apiTypes";
+
+/**
+ * Composite patterns built from ui-bits primitives.
+ *
+ * ui-bits owns the atoms (Btn, Badge, Card, Input). This file owns the
+ * recurring *arrangements* — the page header every screen starts with, the
+ * metric tile the dashboard repeats, the risk vocabulary shared by four
+ * pages. Split so ui-bits stays a primitives file rather than growing into a
+ * dumping ground.
+ */
+
+/* ------------------------------------------------------- risk vocabulary */
+
+/**
+ * One band→tone map for the whole app.
+ *
+ * This existed twice (Risks.tsx and Vendors.tsx) with the same values. Two
+ * copies of a colour vocabulary is one rename away from a Vendor EXTREME and
+ * a Risk EXTREME being different colours, which would quietly teach the
+ * viewer that the bands mean different things on different pages.
+ */
+export const BAND_TONE: Record<RiskBand, Tone> = {
+  EXTREME: "danger",
+  CRITICAL: "danger",
+  HIGH: "warning",
+  MODERATE: "info",
+  LOW: "success",
+};
+
+/** Worst first — the order every band summary and sort uses. */
+export const BAND_ORDER: RiskBand[] = ["EXTREME", "CRITICAL", "HIGH", "MODERATE", "LOW"];
+
+/** Rank for sorting. Higher is worse; unscored returns null so it sinks. */
+export const bandRank = (band: RiskBand | null | undefined): number | null =>
+  band == null ? null : BAND_ORDER.length - BAND_ORDER.indexOf(band);
+
+export const BAA_TONE: Record<BaaStatus, Tone> = {
+  SIGNED: "success",
+  PENDING: "warning",
+  EXPIRED: "danger",
+  MISSING: "danger",
+};
+
+export const BAA_LABEL: Record<BaaStatus, string> = {
+  SIGNED: "Signed",
+  PENDING: "Pending",
+  EXPIRED: "Expired",
+  MISSING: "Missing",
+};
+
+export const SENSITIVITY_TONE: Record<Sensitivity, Tone> = {
+  CRITICAL: "danger",
+  HIGH: "warning",
+  MEDIUM: "info",
+  LOW: "muted",
+};
+
+/**
+ * A risk band as rendered anywhere in Drishti.
+ *
+ * `null` means the scoring engine has not run for this record. It renders as
+ * "Not scored" rather than borrowing a band, because an unassessed thing is
+ * not a safe thing — it is an unknown one.
+ */
+export const RiskBadge = ({ band, className }: { band: RiskBand | null; className?: string }) =>
+  band ? (
+    <Badge tone={BAND_TONE[band]} className={className}>{band}</Badge>
+  ) : (
+    <Badge tone="muted" className={className}>Not scored</Badge>
+  );
+
+/** Numeric score with its band, for table cells. Em dash when unscored. */
+export const RiskScore = ({ score }: { score: number | null | undefined }) => (
+  <span className="tabular">{score == null ? "—" : score}</span>
+);
+
+/* ------------------------------------------------------------ page header */
+
+export type Breadcrumb = { label: string; to?: string };
+
+/**
+ * The top of every page: what this is, what it is for, and the actions that
+ * apply to the whole screen. One component so the vertical rhythm above the
+ * first card is identical everywhere.
+ */
+export const PageHeader = ({
+  title, description, actions, meta, icon,
+}: {
+  title: string;
+  description?: string;
+  /** Right-aligned controls — refresh, create, export. */
+  actions?: ReactNode;
+  /** A row of small facts under the description (counts, last-updated). */
+  meta?: ReactNode;
+  icon?: DomainIconName;
+}) => (
+  <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+    <div className="min-w-0 flex-1">
+      <div className="flex items-center gap-2">
+        {icon && <DomainIcon name={icon} size={20} className="text-brand" />}
+        <h2 className="truncate font-display text-heading-lg text-primary">{title}</h2>
+      </div>
+      {description && (
+        <p className="mt-1 max-w-2xl text-body-sm text-tertiary">{description}</p>
+      )}
+      {meta && <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">{meta}</div>}
+    </div>
+    {actions && <div className="flex flex-shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+  </div>
+);
+
+/* ------------------------------------------------------------ metric card */
+
+/**
+ * A single headline number.
+ *
+ * `value` is deliberately typed to accept undefined: a metric whose query has
+ * not resolved renders a pulse, never a zero. "0 critical risks" is the most
+ * reassuring thing this product can say and it must never be said by accident.
+ */
+export const MetricCard = ({
+  label, value, sub, icon, tone = "muted", onClick, loading, emphasis,
+}: {
+  label: string;
+  value: number | string | undefined;
+  sub?: ReactNode;
+  icon?: IconName;
+  domainIcon?: DomainIconName;
+  tone?: Tone;
+  onClick?: () => void;
+  loading?: boolean;
+  /** Draws the accent rule in the tone colour — for the metrics that matter. */
+  emphasis?: boolean;
+}) => {
+  const Wrapper = onClick ? "button" : "div";
+  return (
+    <Wrapper
+      onClick={onClick}
+      type={onClick ? "button" : undefined}
+      className={cn(
+        "relative flex w-full flex-col gap-1 overflow-hidden rounded-lg border border-default bg-container p-4 text-left",
+        "transition-colors duration-200",
+        onClick && "hover:border-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+      )}
+    >
+      {emphasis && (
+        <span
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-0.5"
+          style={{ background: `var(--sem-feedback-${tone === "danger" ? "error" : tone === "muted" ? "neutral" : tone}-icon)` }}
+        />
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-label-sm uppercase tracking-wide text-tertiary">{label}</span>
+        {icon && <AppIcon name={icon} size="md" className="text-icon-quaternary" />}
+      </div>
+      {loading || value === undefined ? (
+        <span className="mt-1 inline-block h-8 w-16 animate-pulse rounded bg-raised-2" />
+      ) : (
+        <span className="font-display text-display-metric tabular text-primary">{value}</span>
+      )}
+      {sub && <span className="text-caption text-tertiary">{sub}</span>}
+    </Wrapper>
+  );
+};
+
+/* ------------------------------------------------------------------ tabs */
+
+export type TabItem = { id: string; label: string; count?: number };
+
+/**
+ * Section tabs for detail views. Roving-tabindex keyboard handling, so arrow
+ * keys move between tabs the way a native tablist does.
+ */
+export const Tabs = ({
+  tabs, active, onChange, className,
+}: {
+  tabs: TabItem[];
+  active: string;
+  onChange: (id: string) => void;
+  className?: string;
+}) => {
+  const base = useId();
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    const i = tabs.findIndex(t => t.id === active);
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault(); onChange(tabs[(i + 1) % tabs.length].id);
+    } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault(); onChange(tabs[(i - 1 + tabs.length) % tabs.length].id);
+    } else if (e.key === "Home") { e.preventDefault(); onChange(tabs[0].id); }
+    else if (e.key === "End") { e.preventDefault(); onChange(tabs[tabs.length - 1].id); }
+  };
+
+  return (
+    <div role="tablist" aria-label="Sections" onKeyDown={onKeyDown}
+         className={cn("flex gap-0.5 overflow-x-auto border-b border-default", className)}>
+      {tabs.map(t => {
+        const selected = t.id === active;
+        return (
+          <button
+            key={t.id}
+            id={`${base}-tab-${t.id}`}
+            role="tab"
+            type="button"
+            aria-selected={selected}
+            aria-controls={`${base}-panel-${t.id}`}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(t.id)}
+            className={cn(
+              "relative whitespace-nowrap px-3 py-2 text-label-md transition-colors duration-200",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand",
+              selected ? "text-primary" : "text-tertiary hover:text-primary",
+            )}
+          >
+            {t.label}
+            {t.count !== undefined && (
+              <span className={cn("ml-1.5 tabular text-caption", selected ? "text-secondary" : "text-quaternary")}>
+                {t.count}
+              </span>
+            )}
+            {selected && <span aria-hidden className="absolute inset-x-0 -bottom-px h-0.5 bg-brand" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+export const TabPanel = ({ children, className }: { children: ReactNode; className?: string }) => (
+  <div role="tabpanel" className={cn("pt-4", className)}>{children}</div>
+);
+
+/* ------------------------------------------------------------- field rows */
+
+/** Label/value pair, the unit that detail panels are built from. */
+export const Field = ({ label, value, className }: { label: string; value: ReactNode; className?: string }) => (
+  <div className={cn("flex items-baseline justify-between gap-4 border-b border-muted py-2 last:border-0", className)}>
+    <span className="flex-shrink-0 text-body-sm text-tertiary">{label}</span>
+    <span className="min-w-0 text-right text-body-sm text-primary">{value}</span>
+  </div>
+);
+
+/** A titled group of fields. */
+export const FieldGroup = ({ title, children }: { title?: string; children: ReactNode }) => (
+  <div>
+    {title && <div className="mb-1 text-label-sm uppercase tracking-wide text-quaternary">{title}</div>}
+    <div>{children}</div>
+  </div>
+);
+
+/* -------------------------------------------------------------- filter bar */
+
+export type FilterOption = { value: string; label: string; count?: number };
+
+/**
+ * A labelled row of mutually-exclusive chips. Rendered as a radiogroup so a
+ * screen reader announces it as one choice rather than N unrelated buttons.
+ */
+export const FilterBar = ({
+  label, options, value, onChange, className,
+}: {
+  label: string;
+  options: FilterOption[];
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) => (
+  <div role="radiogroup" aria-label={label} className={cn("flex flex-wrap items-center gap-1.5", className)}>
+    {options.map(o => {
+      const selected = o.value === value;
+      return (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={selected}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-label-sm transition-colors duration-200",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+            selected
+              ? "border-transparent bg-action-primary text-on-color"
+              : "border-default bg-action text-secondary hover:bg-action-secondary-hover hover:text-primary",
+          )}
+        >
+          {o.label}
+          {o.count !== undefined && (
+            <span className={cn("tabular text-caption", selected ? "text-on-color/70" : "text-quaternary")}>
+              {o.count}
+            </span>
+          )}
+        </button>
+      );
+    })}
+  </div>
+);
+
+/* ----------------------------------------------------------- entity avatar */
+
+/**
+ * A domain mark in a tinted well. Gives tables and drawers a consistent
+ * leading glyph so an asset row is visually an *asset* before it is read.
+ */
+export const EntityAvatar = ({
+  icon, tone = "muted", size = "md",
+}: { icon: DomainIconName; tone?: Tone; size?: "sm" | "md" | "lg" }) => {
+  const box = { sm: "h-7 w-7", md: "h-9 w-9", lg: "h-11 w-11" }[size];
+  const glyph = { sm: 14, md: 18, lg: 22 }[size];
+  const family = tone === "danger" ? "error" : tone === "muted" ? "neutral" : tone;
+  return (
+    <span
+      aria-hidden
+      className={cn("inline-flex items-center justify-center rounded-lg border", box)}
+      style={{
+        background: `var(--sem-feedback-${family}-background)`,
+        borderColor: `var(--sem-feedback-${family}-stroke)`,
+        color: `var(--sem-feedback-${family}-icon)`,
+      }}
+    >
+      <DomainIcon name={icon} size={glyph} />
+    </span>
+  );
+};
+
+/* ------------------------------------------------------------------ misc */
+
+/** Inline "n of m" bar, for composition breakdowns. */
+export const MiniBar = ({ segments }: { segments: Array<{ value: number; tone: Tone; label: string }> }) => {
+  const total = segments.reduce((s, x) => s + x.value, 0) || 1;
+  return (
+    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-raised-2" role="img"
+         aria-label={segments.map(s => `${s.label}: ${s.value}`).join(", ")}>
+      {segments.filter(s => s.value > 0).map(s => (
+        <span
+          key={s.label}
+          style={{
+            width: `${(s.value / total) * 100}%`,
+            background: `var(--sem-feedback-${s.tone === "danger" ? "error" : s.tone === "muted" ? "neutral" : s.tone}-icon)`,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+/**
+ * Copy-to-clipboard affordance for identifiers. Confirms in place rather than
+ * firing a toast — a toast for a copy is noise.
+ */
+export const CopyValue = ({ value, className }: { value: string; className?: string }) => {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigator.clipboard?.writeText(value).then(() => {
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1400);
+        });
+      }}
+      className={cn("group inline-flex items-center gap-1.5 font-mono text-body-sm text-secondary hover:text-primary", className)}
+      aria-label={`Copy ${value}`}
+    >
+      {value}
+      <AppIcon
+        name={copied ? "check" : "export"}
+        size="xs"
+        className={cn("transition-opacity", copied ? "text-feedback-success-icon" : "opacity-0 group-hover:opacity-60")}
+      />
+    </button>
+  );
+};

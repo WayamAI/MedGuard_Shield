@@ -39,6 +39,11 @@ export type ApiQueryOptions = {
   staleTime?: number;
   /** Attempts before a fetch is declared failed. Lowered in tests. */
   retry?: number;
+  /**
+   * Hold the query. Detail views mount before anything is selected, and a
+   * request to /api/assets/null is a 400 waiting to happen.
+   */
+  enabled?: boolean;
 };
 
 export function useApiQuery<TWire, TData = TWire>(
@@ -52,6 +57,7 @@ export function useApiQuery<TWire, TData = TWire>(
     reconnectIntervalMs = 5_000,
     staleTime = 30_000,
     retry: maxRetries = 3,
+    enabled = true,
   } = options;
 
   const queryClient = useQueryClient();
@@ -74,6 +80,7 @@ export function useApiQuery<TWire, TData = TWire>(
     queryKey: key,
     queryFn: () => api.get<TWire>(path),
     select,
+    enabled,
     staleTime,
     // Auth failures will not fix themselves by asking again.
     retry: (attempt, error) => !error.isAuthError && attempt < maxRetries,
@@ -111,7 +118,7 @@ export function useApiQuery<TWire, TData = TWire>(
   return {
     refresh,
     data: query.data,
-    isLoading: query.isLoading,
+    isLoading: enabled && query.isLoading,
     isFetching: query.isFetching,
     isError: query.isError,
     /*

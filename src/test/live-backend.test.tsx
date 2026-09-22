@@ -11,7 +11,6 @@ import { useAssets } from "@/hooks/useAssets";
 import { useRisks } from "@/hooks/useRisks";
 import { toMatrixRisks } from "@/lib/mappers";
 import { DataState } from "@/components/DataState";
-import { AppStoreProvider } from "@/store/AppStore";
 import PhiFlow from "@/pages/PhiFlow";
 import Risks from "@/pages/Risks";
 import Dashboard from "@/pages/Dashboard";
@@ -270,7 +269,7 @@ describe("live backend: risk bands", () => {
 describe("live backend: wired pages render real data", () => {
   const page = (node: ReactNode) => (
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { gcTime: 0 } } })}>
-      <MemoryRouter><AppStoreProvider>{node}</AppStoreProvider></MemoryRouter>
+      <MemoryRouter>{node}</MemoryRouter>
     </QueryClientProvider>
   );
 

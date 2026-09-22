@@ -3,7 +3,7 @@ import { api, ApiError, setAuthTokenGetter } from "@/lib/apiClient";
 import { setHadSession } from "@/lib/sessionBreadcrumb";
 
 /**
- * Session management against the MedGuard API, bearer-token flow.
+ * Session management against the Drishti API, bearer-token flow.
  *
  * The token is held in memory only — a ref inside this provider. It is never
  * written to localStorage or sessionStorage, so an XSS payload that can read
