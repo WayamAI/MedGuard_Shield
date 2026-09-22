@@ -19,7 +19,9 @@ const asset = (over: Partial<ApiAsset>): ApiAsset => ({
   encrypted: true, mfaEnabled: true,
   lastAssessedAt: "2026-09-18T00:00:00.000Z",
   createdAt: "2026-01-01T00:00:00.000Z",
+  archivedAt: null,
   risk: { score: 48, band: "HIGH", computedAt: "2026-09-18T00:00:00.000Z" },
+  counts: { phiTypes: 1, flows: 2, accessGrants: 2, openThreats: 0, controls: 0 },
   ...over,
 });
 
@@ -38,9 +40,15 @@ let status = 200;
 beforeEach(() => {
   payload = SEED; status = 200;
   vi.stubEnv("VITE_API_BASE_URL", "http://api.test");
-  vi.stubGlobal("fetch", vi.fn(async () =>
-    new Response(JSON.stringify(status === 200 ? { data: payload } : { message: "down" }),
-      { status, headers: { "content-type": "application/json" } })));
+  vi.stubGlobal("fetch", vi.fn(async () => {
+    const rows = Array.isArray(payload) ? payload : [];
+    const body = status === 200
+      ? { data: payload, meta: { page: 1, pageSize: 25, total: rows.length, totalPages: 1 } }
+      : { error: { code: "SERVER_ERROR", message: "down" } };
+    return new Response(JSON.stringify(body), {
+      status, headers: { "content-type": "application/json" },
+    });
+  }));
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
@@ -89,22 +97,30 @@ describe("Asset inventory", () => {
     expect(screen.getByText(/not yet scored/)).toBeInTheDocument();
   });
 
-  it("filters to a single band", async () => {
+  it("sends the band filter to the server rather than filtering the page", async () => {
     render(wrap(<Assets />));
     await waitFor(() => expect(screen.getByText("Billing Engine DB")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("radio", { name: /Extreme/ }));
-    expect(screen.getByText("Billing Engine DB")).toBeInTheDocument();
-    expect(screen.queryByText("Patient Portal")).not.toBeInTheDocument();
+
+    // The whole point: narrowing is a new request, not a client-side filter
+    // over the 25 rows that happen to be on screen.
+    await waitFor(() => {
+      const urls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.map(c => String(c[0]));
+      expect(urls.some(u => u.includes("band=EXTREME"))).toBe(true);
+    });
   });
 
-  it("filters to the unscored assets", async () => {
+  it("sends the search term to the server", async () => {
     render(wrap(<Assets />));
-    await waitFor(() => expect(screen.getByText("Telehealth Gateway")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Billing Engine DB")).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole("radio", { name: /Not scored/ }));
-    expect(screen.getByText("Telehealth Gateway")).toBeInTheDocument();
-    expect(screen.queryByText("Billing Engine DB")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/Search assets/), { target: { value: "epic" } });
+
+    await waitFor(() => {
+      const urls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.map(c => String(c[0]));
+      expect(urls.some(u => u.includes("search=epic"))).toBe(true);
+    }, { timeout: 3000 });
   });
 
   it("explains an unreachable backend instead of rendering an empty table", async () => {

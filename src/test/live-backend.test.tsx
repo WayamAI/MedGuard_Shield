@@ -11,6 +11,7 @@ import { useAssets } from "@/hooks/useAssets";
 import { useRisks } from "@/hooks/useRisks";
 import { toMatrixRisks } from "@/lib/mappers";
 import { DataState } from "@/components/DataState";
+import { listAsQuery } from "@/components/DataTable";
 import PhiFlow from "@/pages/PhiFlow";
 import Risks from "@/pages/Risks";
 import Dashboard from "@/pages/Dashboard";
@@ -113,9 +114,9 @@ describe("live backend: killed mid-session", () => {
 
     function Probe() {
       // Fast heartbeat so the outage is observed in test time, not demo time.
-      const query = useAssets({ pollIntervalMs: 1000, reconnectIntervalMs: 1000, retry: 0 });
+      const query = useAssets({}, { pollIntervalMs: 1000, reconnectIntervalMs: 1000, retry: 0 });
       return (
-        <DataState query={query} height={200}>
+        <DataState query={listAsQuery(query)} height={200}>
           {assets => <div data-testid="count">{(assets as unknown[]).length} assets</div>}
         </DataState>
       );

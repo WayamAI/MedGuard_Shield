@@ -28,7 +28,12 @@ beforeEach(() => {
     const url = String(input);
     if (url.includes("/api/threats")) {
       if (!threatsOk) throw new TypeError("Failed to fetch");
-      return new Response(JSON.stringify({ data: threatsBody }), {
+      // The badge reads the summary route, not a page of threats — counting
+      // open rows on page one would report the page, not the estate.
+      const body = url.includes("/summary")
+        ? { data: (threatsBody as { summary?: unknown })?.summary ?? threatsBody }
+        : { data: [], meta: { page: 1, pageSize: 25, total: 0, totalPages: 1 } };
+      return new Response(JSON.stringify(body), {
         status: 200, headers: { "content-type": "application/json" },
       });
     }

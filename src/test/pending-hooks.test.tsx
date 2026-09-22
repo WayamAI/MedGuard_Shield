@@ -36,7 +36,7 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe("hooks awaiting their endpoints", () => {
   it("useAccess calls GET /api/access and unwraps the data envelope", async () => {
     body = { data: [{ id: 1 }, { id: 2 }] };
-    const { result } = renderHook(() => useAccess({ retry: 0 }), { wrapper });
+    const { result } = renderHook(() => useAccess({}, { retry: 0 }), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(lastUrl).toBe("http://api.test/api/access");
@@ -46,7 +46,7 @@ describe("hooks awaiting their endpoints", () => {
 
   it("useThreats calls GET /api/threats and unwraps the data envelope", async () => {
     body = { data: [{ id: 9 }] };
-    const { result } = renderHook(() => useThreats({ retry: 0 }), { wrapper });
+    const { result } = renderHook(() => useThreats({}, { retry: 0 }), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(lastUrl).toBe("http://api.test/api/threats");
@@ -55,11 +55,11 @@ describe("hooks awaiting their endpoints", () => {
 
   it("both surface a 404 rather than resolving empty, so a missing endpoint is loud", async () => {
     status = 404;
-    const access = renderHook(() => useAccess({ retry: 0 }), { wrapper });
+    const access = renderHook(() => useAccess({}, { retry: 0 }), { wrapper });
     await waitFor(() => expect(access.result.current.isError).toBe(true));
     expect(access.result.current.error?.status).toBe(404);
 
-    const threats = renderHook(() => useThreats({ retry: 0 }), { wrapper });
+    const threats = renderHook(() => useThreats({}, { retry: 0 }), { wrapper });
     await waitFor(() => expect(threats.result.current.isError).toBe(true));
     expect(threats.result.current.error?.status).toBe(404);
   });
