@@ -7,7 +7,7 @@
  */
 import { useCallback, useState } from "react";
 import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
-import { api, ApiError } from "@/lib/apiClient";
+import { api, ApiError, type PageMeta, type Paginated } from "@/lib/apiClient";
 
 export type ApiQueryResult<T> = {
   data: T | undefined;
@@ -138,5 +138,105 @@ export function useApiQuery<TWire, TData = TWire>(
       (query.isError || query.failureReason !== null || refreshError !== null),
     error: query.error ?? query.failureReason ?? refreshError,
     refetch: query.refetch,
+  };
+}
+
+/* ------------------------------------------------------------------------ */
+
+/**
+ * A paginated collection, with the server's own `meta` preserved.
+ *
+ * Separate from useApiQuery because the failure mode is different: a list
+ * hook that loses `meta` does not error, it just quietly understates the
+ * dataset. Keeping the two apart makes "did this list keep its meta?"
+ * answerable by looking at which hook it calls.
+ */
+export type ApiListResult<T> = Omit<ApiQueryResult<T[]>, "data" | "refetch"> & {
+  /** Rows for the requested page. Undefined until the first response. */
+  data: T[] | undefined;
+  /** Page/total information from the server. Undefined until first response. */
+  meta: PageMeta | undefined;
+  /** True while a *different* page is being fetched over an existing one. */
+  isPaging: boolean;
+};
+
+export function useApiList<T>(
+  key: readonly unknown[],
+  path: string,
+  params?: Record<string, unknown>,
+  options: ApiQueryOptions = {},
+): ApiListResult<T> {
+  const {
+    pollIntervalMs = 30_000,
+    reconnectIntervalMs = 5_000,
+    staleTime = 30_000,
+    retry: maxRetries = 3,
+    enabled = true,
+  } = options;
+
+  const queryClient = useQueryClient();
+  const [refreshFailure, setRefreshFailure] =
+    useState<{ error: ApiError | null; at: number } | null>(null);
+
+  /*
+   * Params are part of the key: page 2 is a different resource from page 1,
+   * not a mutation of it. Serialised so an inline object literal does not
+   * produce a new key on every render.
+   */
+  const paramKey = JSON.stringify(params ?? {});
+  const queryKey = [...key, paramKey] as const;
+
+  const query = useQuery<Paginated<T>, ApiError>({
+    queryKey,
+    queryFn: () => api.list<T>(path, params),
+    enabled,
+    staleTime,
+    /*
+     * Hold the previous page on screen while the next one loads. Without
+     * this the table empties to a skeleton on every page click, which reads
+     * as "the data went away" rather than "the next page is coming".
+     */
+    placeholderData: previous => previous,
+    retry: (attempt, error) => !error.isAuthError && attempt < maxRetries,
+    retryDelay: attempt => Math.min(1000 * 2 ** attempt, 8000),
+    refetchInterval: q => {
+      if (q.state.status === "error") {
+        return q.state.error?.isAuthError ? false : reconnectIntervalMs;
+      }
+      return pollIntervalMs;
+    },
+    refetchIntervalInBackground: false,
+  });
+
+  const refresh = useCallback(async () => {
+    try {
+      await queryClient.fetchQuery<Paginated<T>>({
+        queryKey,
+        queryFn: () => api.list<T>(path, params),
+      });
+      setRefreshFailure(null);
+    } catch (err) {
+      setRefreshFailure({ error: err instanceof ApiError ? err : null, at: Date.now() });
+    }
+  }, [queryClient, path, paramKey]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const refreshError =
+    refreshFailure !== null && query.dataUpdatedAt <= refreshFailure.at
+      ? refreshFailure.error
+      : null;
+
+  return {
+    refresh,
+    data: query.data?.items,
+    meta: query.data?.meta,
+    isLoading: enabled && query.isLoading,
+    isFetching: query.isFetching,
+    isPaging: query.isPlaceholderData,
+    isError: query.isError,
+    isReconnecting:
+      query.data !== undefined &&
+      !(query.error ?? query.failureReason ?? refreshError)?.isAuthError &&
+      (query.isError || query.failureReason !== null || refreshError !== null),
+    error: query.error ?? query.failureReason ?? refreshError,
   };
 }
