@@ -4,7 +4,8 @@ import { AppIcon } from "@/components/AppIcon";
 import { IconButton } from "@/components/IconButton";
 import { Btn, Input, EmptyState } from "@/components/ui-bits";
 import { DataState } from "@/components/DataState";
-import type { ApiQueryResult } from "@/hooks/useApiQuery";
+import type { ApiQueryResult, ApiListResult } from "@/hooks/useApiQuery";
+import type { PageMeta } from "@/lib/apiClient";
 
 /**
  * The one table in Drishti.
@@ -54,6 +55,43 @@ export function withRows<T>(query: ApiQueryResult<T[]>, rows: T[]): ApiQueryResu
   return { ...query, data: query.data === undefined ? undefined : rows };
 }
 
+/**
+ * Adapt a paginated list result to the shape DataState expects.
+ *
+ * DataState owns the loading/auth/error/empty vocabulary and is keyed off
+ * ApiQueryResult; ApiListResult is the same thing plus `meta` and minus
+ * `refetch`. Rather than fork DataState, adapt here.
+ */
+export function listAsQuery<T>(list: ApiListResult<T>): ApiQueryResult<T[]> {
+  return { ...list, refetch: (() => Promise.resolve(undefined)) as never };
+}
+
+/**
+ * Server-side pagination.
+ *
+ * When present, the table stops slicing rows itself and renders the server's
+ * own page controls. Critically it also disables the client search box: a
+ * text filter applied to the 25 rows the server happened to send is not a
+ * search of the dataset, and presenting it as one is the "only the first 25
+ * records" failure wearing a different hat. Pages that want real search pass
+ * `onSearch`, which sends the term to the API.
+ */
+export type ServerPagination = {
+  meta: PageMeta | undefined;
+  page: number;
+  onPageChange: (page: number) => void;
+  pageSize: number;
+  onPageSizeChange?: (pageSize: number) => void;
+  /** Receives the debounced term; the page forwards it to the API. */
+  onSearch?: (term: string) => void;
+  /** Controlled value for the search box, when the page owns it. */
+  searchValue?: string;
+  /** True while a different page is in flight, for a subtle busy state. */
+  isPaging?: boolean;
+};
+
+const PAGE_SIZES = [25, 50, 100];
+
 export type DataTableProps<T> = {
   columns: Column<T>[];
   getRowId: (row: T) => string | number;
@@ -86,6 +124,8 @@ export type DataTableProps<T> = {
   /** Skeleton height so first paint does not shift the page. */
   height?: number;
   className?: string;
+  /** Present when the API paginates this collection. */
+  server?: ServerPagination;
 };
 
 const HIDE_BELOW: Record<NonNullable<Column<unknown>["hideBelow"]>, string> = {
@@ -127,6 +167,7 @@ function DataTableInner<T>({
   noMatchTitle = "No matches",
   label,
   className,
+  server,
 }: Omit<DataTableProps<T>, "query" | "rows"> & { rows: T[] }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState(initialSort ?? null);
@@ -155,11 +196,17 @@ function DataTableInner<T>({
   const visible = useMemo(() => columns.filter(c => !hidden.has(c.id)), [columns, hidden]);
   const searchable = useMemo(() => columns.filter(c => c.searchValue), [columns]);
 
+  /*
+   * Client filtering is skipped entirely in server mode. Filtering the page
+   * the server sent would silently answer "no matches" for a record that
+   * exists on page 3.
+   */
   const filtered = useMemo(() => {
+    if (server) return rows;
     const q = search.trim().toLowerCase();
     if (!q || searchable.length === 0) return rows;
     return rows.filter(r => searchable.some(c => c.searchValue!(r).toLowerCase().includes(q)));
-  }, [rows, search, searchable]);
+  }, [rows, search, searchable, server]);
 
   const sorted = useMemo(() => {
     if (!sort) return filtered;
@@ -181,9 +228,10 @@ function DataTableInner<T>({
 
   const pageCount = Math.max(1, Math.ceil(sorted.length / pageSize));
   const safePage = Math.min(page, pageCount - 1);
+  /* In server mode the rows ARE the page; slicing again would drop records. */
   const paged = useMemo(
-    () => sorted.slice(safePage * pageSize, safePage * pageSize + pageSize),
-    [sorted, safePage, pageSize],
+    () => (server ? sorted : sorted.slice(safePage * pageSize, safePage * pageSize + pageSize)),
+    [sorted, safePage, pageSize, server],
   );
 
   // Any narrowing of the result set returns to the first page; page 4 of a
@@ -207,13 +255,14 @@ function DataTableInner<T>({
     }
   };
 
-  const showToolbar = searchable.length > 0 || toolbar || toolbarEnd || columns.some(c => c.defaultHidden !== undefined);
+  const hasSearchBox = server ? Boolean(server.onSearch) : searchable.length > 0;
+  const showToolbar = hasSearchBox || toolbar || toolbarEnd || columns.some(c => c.defaultHidden !== undefined);
 
   return (
     <div className={cn("flex flex-col gap-3", className)}>
       {showToolbar && (
         <div className="flex flex-wrap items-center gap-2">
-          {searchable.length > 0 && (
+          {(server ? Boolean(server.onSearch) : searchable.length > 0) && (
             <div className="relative min-w-[200px] flex-1 sm:max-w-xs">
               <AppIcon
                 name="search"
@@ -221,16 +270,16 @@ function DataTableInner<T>({
                 className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-icon-quaternary"
               />
               <Input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+                value={server ? (server.searchValue ?? "") : search}
+                onChange={e => (server?.onSearch ? server.onSearch(e.target.value) : setSearch(e.target.value))}
                 placeholder={searchPlaceholder}
                 aria-label={searchPlaceholder}
                 className="w-full pl-8"
               />
-              {search && (
+              {(server ? server.searchValue : search) && (
                 <button
                   type="button"
-                  onClick={() => setSearch("")}
+                  onClick={() => (server?.onSearch ? server.onSearch("") : setSearch(""))}
                   aria-label="Clear search"
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-tertiary hover:text-primary"
                 >
@@ -393,33 +442,82 @@ function DataTableInner<T>({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2 text-caption text-tertiary">
-            <span aria-live="polite" id={`${tableId}-count`}>
-              {sorted.length === rows.length
-                ? `${sorted.length} ${sorted.length === 1 ? "row" : "rows"}`
-                : `${sorted.length} of ${rows.length} rows`}
-            </span>
-            {pageCount > 1 && (
-              <div className="flex items-center gap-1.5">
-                <Btn
-                  variant="outline"
-                  onClick={() => setPage(p => Math.max(0, p - 1))}
-                  disabled={safePage === 0}
-                  aria-label="Previous page"
-                >
-                  <AppIcon name="chevronLeft" size="sm" />
-                </Btn>
-                <span className="tabular px-1">
-                  Page {safePage + 1} of {pageCount}
-                </span>
-                <Btn
-                  variant="outline"
-                  onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
-                  disabled={safePage >= pageCount - 1}
-                  aria-label="Next page"
-                >
-                  <AppIcon name="chevronRight" size="sm" />
-                </Btn>
+            {server ? (
+              /*
+               * States the whole dataset, not the page. "1–25 of 512" is the
+               * difference between an honest table and one that implies 25
+               * is all there is.
+               */
+              <span aria-live="polite" id={`${tableId}-count`}>
+                {server.meta
+                  ? server.meta.total === 0
+                    ? "No rows"
+                    : `${(server.meta.page - 1) * server.meta.pageSize + 1}–` +
+                      `${Math.min(server.meta.page * server.meta.pageSize, server.meta.total)}` +
+                      ` of ${server.meta.total.toLocaleString()}`
+                  : "…"}
+              </span>
+            ) : (
+              <span aria-live="polite" id={`${tableId}-count`}>
+                {sorted.length === rows.length
+                  ? `${sorted.length} ${sorted.length === 1 ? "row" : "rows"}`
+                  : `${sorted.length} of ${rows.length} rows`}
+              </span>
+            )}
+
+            {server ? (
+              <div className="flex items-center gap-2">
+                {server.onPageSizeChange && (
+                  <label className="flex items-center gap-1.5">
+                    <span className="sr-only">Rows per page</span>
+                    <select
+                      value={server.pageSize}
+                      onChange={e => server.onPageSizeChange!(Number(e.target.value))}
+                      className="rounded border border-default bg-action px-1.5 py-0.5 text-caption text-secondary"
+                      aria-label="Rows per page"
+                    >
+                      {PAGE_SIZES.map(n => <option key={n} value={n}>{n} / page</option>)}
+                    </select>
+                  </label>
+                )}
+                {(server.meta?.totalPages ?? 1) > 1 && (
+                  <div className="flex items-center gap-1.5">
+                    <Btn
+                      variant="outline"
+                      onClick={() => server.onPageChange(Math.max(1, server.page - 1))}
+                      disabled={server.page <= 1 || server.isPaging}
+                      aria-label="Previous page"
+                    >
+                      <AppIcon name="chevronLeft" size="sm" />
+                    </Btn>
+                    <span className="tabular px-1">
+                      Page {server.meta?.page ?? server.page} of {server.meta?.totalPages ?? 1}
+                    </span>
+                    <Btn
+                      variant="outline"
+                      onClick={() => server.onPageChange(server.page + 1)}
+                      disabled={server.page >= (server.meta?.totalPages ?? 1) || server.isPaging}
+                      aria-label="Next page"
+                    >
+                      <AppIcon name="chevronRight" size="sm" />
+                    </Btn>
+                  </div>
+                )}
               </div>
+            ) : (
+              pageCount > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <Btn variant="outline" onClick={() => setPage(p => Math.max(0, p - 1))}
+                       disabled={safePage === 0} aria-label="Previous page">
+                    <AppIcon name="chevronLeft" size="sm" />
+                  </Btn>
+                  <span className="tabular px-1">Page {safePage + 1} of {pageCount}</span>
+                  <Btn variant="outline" onClick={() => setPage(p => Math.min(pageCount - 1, p + 1))}
+                       disabled={safePage >= pageCount - 1} aria-label="Next page">
+                    <AppIcon name="chevronRight" size="sm" />
+                  </Btn>
+                </div>
+              )
             )}
           </div>
         </>
