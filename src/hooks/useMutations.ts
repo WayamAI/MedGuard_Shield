@@ -19,8 +19,8 @@ import { dataFlowsKey } from "@/hooks/useDataFlows";
 import { accessKey } from "@/hooks/useAccess";
 import { threatsKey } from "@/hooks/useThreats";
 import type {
-  ApiAsset, ApiAssetDetail, ApiVendor, ApiRisk,
-  AssetWriteInput, VendorWriteInput,
+  ApiAsset, ApiAssetDetail, ApiVendor, ApiRisk, ApiThreat, ApiAccessGrant,
+  AssetWriteInput, VendorWriteInput, ThreatStatus, AccessLevel,
 } from "@/lib/apiTypes";
 
 /** Query key for a single asset — GET /api/assets/:id. */
@@ -43,6 +43,10 @@ function useInvalidateRiskGraph() {
       qc.invalidateQueries({ queryKey: threatsKey }),
       qc.invalidateQueries({ queryKey: ["asset"] }),
       qc.invalidateQueries({ queryKey: ["vendor"] }),
+      qc.invalidateQueries({ queryKey: ["threat"] }),
+      qc.invalidateQueries({ queryKey: ["remediations"] }),
+      // The audit trail records every one of these, so it is stale too.
+      qc.invalidateQueries({ queryKey: ["audit"] }),
     ]);
 }
 
@@ -113,3 +117,56 @@ export function useRecomputeVendorRisk() {
 }
 
 export type { ApiAssetDetail };
+
+/* ------------------------------------------------------------- threats */
+
+/**
+ * POST /api/threats/:id/status — a lifecycle transition.
+ *
+ * The server enforces the legal transition table and answers an illegal move
+ * with 409 naming the legal set. The UI does not duplicate that table; it
+ * renders the `allowedTransitions[]` the detail response carries, so the two
+ * can never disagree.
+ */
+export function useSetThreatStatus() {
+  const invalidate = useInvalidateRiskGraph();
+  return useMutation<ApiThreat, ApiError, { id: number; status: ThreatStatus }>({
+    mutationFn: ({ id, status }) => api.post<ApiThreat>(`/api/threats/${id}/status`, { status }),
+    onSuccess: invalidate,
+  });
+}
+
+/* -------------------------------------------------------------- access */
+
+/**
+ * POST /api/access/:id/revoke — withdraw a grant.
+ *
+ * There is no DELETE: revoking stamps `revokedAt` and records who did it, so
+ * the grant's history stays attached. Re-granting the same identity/asset
+ * pair later reactivates this row rather than creating a second one.
+ */
+export function useRevokeAccess() {
+  const invalidate = useInvalidateRiskGraph();
+  return useMutation<ApiAccessGrant, ApiError, number>({
+    mutationFn: id => api.post<ApiAccessGrant>(`/api/access/${id}/revoke`),
+    onSuccess: invalidate,
+  });
+}
+
+/** POST /api/access/:id/review — attest that a grant is still appropriate. */
+export function useReviewAccess() {
+  const invalidate = useInvalidateRiskGraph();
+  return useMutation<ApiAccessGrant, ApiError, number>({
+    mutationFn: id => api.post<ApiAccessGrant>(`/api/access/${id}/review`),
+    onSuccess: invalidate,
+  });
+}
+
+/** PATCH /api/access/:id — downgrade a level rather than revoking outright. */
+export function useUpdateAccess() {
+  const invalidate = useInvalidateRiskGraph();
+  return useMutation<ApiAccessGrant, ApiError, { id: number; level: AccessLevel }>({
+    mutationFn: ({ id, level }) => api.patch<ApiAccessGrant>(`/api/access/${id}`, { level }),
+    onSuccess: invalidate,
+  });
+}
