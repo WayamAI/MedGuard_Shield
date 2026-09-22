@@ -9,9 +9,14 @@
 
 /** GET /api/dataflows — one record per PHI flow between two systems. */
 export type ApiDataFlow = {
+  id?: number;
   source: string;
+  sourceAssetId?: number;
   target: string;
+  targetAssetId?: number;
   phiType: string;
+  phiTypeId?: number;
+  sensitivity?: Sensitivity;
   recordsPerDay: number;
   encrypted: boolean;
   /**
@@ -29,6 +34,8 @@ export type ApiRisk = {
   id: number;
   assetId: number;
   assetName: string;
+  assetType?: AssetType;
+  assetArchived?: boolean;
   likelihood: number;
   impact: number;
   exposure: number;
@@ -70,7 +77,17 @@ export type ApiAsset = {
   /** null when the asset has never been assessed. */
   lastAssessedAt: string | null;
   createdAt: string;
+  /** Non-null once archived. Archived assets are excluded unless asked for. */
+  archivedAt: string | null;
   risk: { score: number; band: RiskBand; computedAt: string } | null;
+  /** Server-computed fan-out, so a row can show its connections without N+1. */
+  counts: {
+    phiTypes: number;
+    flows: number;
+    accessGrants: number;
+    openThreats: number;
+    controls: number;
+  };
 };
 
 /** GET /api/assets/:id — the list record plus everything it connects to. */
@@ -216,25 +233,29 @@ export type ApiAccessGrant = {
   grantedAt: string;
   /** null when the grant has never been used. */
   lastUsedAt: string | null;
+  /** null when nobody has attested to this grant yet. */
+  lastReviewedAt: string | null;
+  /** Non-null once revoked; revoked grants are excluded unless asked for. */
+  revokedAt: string | null;
   daysSinceUse: number | null;
   daysSinceGrant: number;
   flags: AccessFlag[];
   riskFlagCount: number;
 };
 
-export type ApiAccessResponse = {
-  summary: {
-    total: number;
-    flagged: number;
-    stale: number;
-    neverUsed: number;
-    withoutMfa: number;
-    inactiveIdentities: number;
-    excessiveLevel: number;
-    /** The threshold the server used to decide STALE. */
-    staleAfterDays: number;
-  };
-  grants: ApiAccessGrant[];
+/** GET /api/access/summary — organisation-wide, never derived from a page. */
+export type ApiAccessSummary = {
+  total: number;
+  flagged: number;
+  stale: number;
+  neverUsed: number;
+  withoutMfa: number;
+  inactiveIdentities: number;
+  excessiveLevel: number;
+  /** Deliberately not a flag: it would fire on every row of a fresh estate. */
+  neverReviewed: number;
+  /** The threshold the server used to decide STALE. */
+  staleAfterDays: number;
 };
 
 /* ---------------------------------------------------------------------------
@@ -260,15 +281,19 @@ export type ApiThreat = {
   open: boolean;
 };
 
-export type ApiThreatsResponse = {
-  summary: {
-    total: number;
-    open: number;
-    bySeverity: Partial<Record<ThreatSeverity, number>>;
-    byStatus: Partial<Record<ThreatStatus, number>>;
-    openCritical: number;
-  };
-  threats: ApiThreat[];
+/** GET /api/threats/summary — organisation-wide. */
+export type ApiThreatSummary = {
+  total: number;
+  open: number;
+  bySeverity: Partial<Record<ThreatSeverity, number>>;
+  byStatus: Partial<Record<ThreatStatus, number>>;
+  openCritical: number;
+};
+
+/** GET /api/threats/:id — adds the transitions the server will actually accept. */
+export type ApiThreatDetail = ApiThreat & {
+  /** Render exactly these buttons; anything else is a guaranteed 409. */
+  allowedTransitions: ThreatStatus[];
 };
 
 /* ---------------------------------------------------------------------------
