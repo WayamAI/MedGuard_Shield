@@ -14,7 +14,7 @@ import drishtiMark from "@/assets/brand/drishti-mark.svg";
 import { notify } from "@/lib/notify";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
-import { useThreats } from "@/hooks/useThreats";
+import { useThreatSummary } from "@/hooks/useThreats";
 import { useGlobalSearch, ENTITY_LABEL } from "@/hooks/useGlobalSearch";
 import { cn } from "@/lib/utils";
 
@@ -77,12 +77,15 @@ export default function Layout({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   /*
-   * The threat count is read off the same /api/threats query the Threats page
-   * uses — same key, so this shares its cache and its poll rather than adding
-   * a second request. Undefined while loading or unreachable, which hides the
-   * badge: no number at all beats a stale or invented one.
+   * Read from /api/threats/summary, not from a page of threats. The list is
+   * paginated now, so counting open rows client-side would report "3 open"
+   * when it means "3 open on page one of four". The summary is
+   * organisation-wide by construction.
+   *
+   * Undefined while loading or unreachable, which hides the badge: no number
+   * at all beats a stale or invented one.
    */
-  const openThreats = useThreats().data?.summary.open;
+  const openThreats = useThreatSummary().data?.open;
   const openThreatBadge = openThreats ? String(openThreats) : undefined;
 
   /* Hide what the router would bounce them from. The API is the real gate. */

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, Badge, Btn, SectionHeader, ChartSkeleton } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataState } from "@/components/DataState";
+import { listAsQuery } from "@/components/DataTable";
 import { RiskMatrix } from "@/components/RiskMatrix";
 import { DomainIcon, type DomainIconName } from "@/components/DomainIcon";
 import {
@@ -10,11 +11,11 @@ import {
   BAND_TONE, BAND_ORDER,
 } from "@/components/ui-patterns";
 import { useAssets } from "@/hooks/useAssets";
-import { useRisks, useRawRisks } from "@/hooks/useRisks";
+import { useRisks, useRiskMatrix } from "@/hooks/useRisks";
 import { useRawDataFlows } from "@/hooks/useDataFlows";
 import { useVendors } from "@/hooks/useVendors";
-import { useAccess } from "@/hooks/useAccess";
-import { useThreats } from "@/hooks/useThreats";
+import { useAccessSummary } from "@/hooks/useAccess";
+import { useThreatSummary } from "@/hooks/useThreats";
 import type { Tone } from "@/lib/tone";
 import type { RiskBand } from "@/lib/apiTypes";
 
@@ -46,43 +47,54 @@ type Finding = {
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  const assets = useAssets();
-  const matrixRisks = useRisks();
-  const risks = useRawRisks();
+  /*
+   * Organisation-level figures.
+   *
+   * Access and threats have dedicated /summary routes — use them. The rest
+   * are counted from `meta.total`, which the API computes across the whole
+   * collection, so a `pageSize: 1` request is enough to learn "how many
+   * assets exist" without pulling the inventory.
+   *
+   * The one exception is the risk matrix, which needs actual rows to plot and
+   * therefore asks for the server's maximum page. It reports truncation
+   * rather than silently drawing a partial estate.
+   */
+  const assetCount = useAssets({ pageSize: 1 });
+  const vendorList = useVendors({ pageSize: 200 });
+  const riskList = useRisks({ pageSize: 200 });
+  const matrixRisks = useRiskMatrix();
   const flows = useRawDataFlows();
-  const vendors = useVendors();
-  const access = useAccess();
-  const threats = useThreats();
+  const accessSummary = useAccessSummary();
+  const threatSummary = useThreatSummary();
 
   /* ------------------------------------------------- headline metrics */
 
   const metrics = useMemo(() => {
-    const a = assets.data;
     const f = flows.data;
-    const r = risks.data;
+    const r = riskList.data;
     return {
-      assets: a?.length,
+      assets: assetCount.meta?.total,
       phiRecordsPerDay: f ? f.reduce((s, x) => s + x.recordsPerDay, 0) : undefined,
       unencryptedFlows: f ? f.filter(x => !x.encrypted).length : undefined,
       totalFlows: f?.length,
       criticalOrExtreme: r ? r.filter(x => x.band === "CRITICAL" || x.band === "EXTREME").length : undefined,
-      openThreats: threats.data?.summary.open,
-      openCritical: threats.data?.summary.openCritical,
-      vendors: vendors.data?.length,
-      vendorsNoBaa: vendors.data ? vendors.data.filter(v => !v.baaCompliant).length : undefined,
-      flaggedGrants: access.data?.summary.flagged,
-      totalGrants: access.data?.summary.total,
+      openThreats: threatSummary.data?.open,
+      openCritical: threatSummary.data?.openCritical,
+      vendors: vendorList.meta?.total,
+      vendorsNoBaa: vendorList.data ? vendorList.data.filter(v => !v.baaCompliant).length : undefined,
+      flaggedGrants: accessSummary.data?.flagged,
+      totalGrants: accessSummary.data?.total,
     };
-  }, [assets.data, flows.data, risks.data, threats.data, vendors.data, access.data]);
+  }, [assetCount.meta, flows.data, riskList.data, threatSummary.data, vendorList.data, vendorList.meta, accessSummary.data]);
 
   /* --------------------------------------------- risk band distribution */
 
   const bandCounts = useMemo(() => {
-    if (!risks.data) return null;
+    if (!riskList.data) return null;
     const counts = Object.fromEntries(BAND_ORDER.map(b => [b, 0])) as Record<RiskBand, number>;
-    for (const r of risks.data) counts[r.band] += 1;
+    for (const r of riskList.data) counts[r.band] += 1;
     return counts;
-  }, [risks.data]);
+  }, [riskList.data]);
 
   /* ------------------------------------------------------ action centre */
 
@@ -93,7 +105,7 @@ export default function Dashboard() {
   const findings = useMemo<Finding[]>(() => {
     const out: Finding[] = [];
 
-    const openCritical = threats.data?.summary.openCritical ?? 0;
+    const openCritical = threatSummary.data?.openCritical ?? 0;
     if (openCritical > 0) {
       out.push({
         id: "open-critical-threats",
@@ -105,7 +117,7 @@ export default function Dashboard() {
       });
     }
 
-    const extreme = risks.data?.filter(r => r.band === "EXTREME").length ?? 0;
+    const extreme = riskList.data?.filter(r => r.band === "EXTREME").length ?? 0;
     if (extreme > 0) {
       out.push({
         id: "extreme-risks",
@@ -117,7 +129,7 @@ export default function Dashboard() {
       });
     }
 
-    const noBaa = vendors.data?.filter(v => !v.baaCompliant).length ?? 0;
+    const noBaa = vendorList.data?.filter(v => !v.baaCompliant).length ?? 0;
     if (noBaa > 0) {
       out.push({
         id: "vendors-no-baa",
@@ -141,7 +153,7 @@ export default function Dashboard() {
       });
     }
 
-    const flagged = access.data?.summary.flagged ?? 0;
+    const flagged = accessSummary.data?.flagged ?? 0;
     if (flagged > 0) {
       out.push({
         id: "flagged-grants",
@@ -153,7 +165,7 @@ export default function Dashboard() {
       });
     }
 
-    const unscored = assets.data?.filter(a => a.risk === null).length ?? 0;
+    const unscored = Math.max(0, (assetCount.meta?.total ?? 0) - (riskList.meta?.total ?? 0));
     if (unscored > 0) {
       out.push({
         id: "unscored-assets",
@@ -166,11 +178,11 @@ export default function Dashboard() {
     }
 
     return out;
-  }, [threats.data, risks.data, vendors.data, flows.data, access.data, assets.data]);
+  }, [threatSummary.data, riskList.data, riskList.meta, vendorList.data, flows.data, accessSummary.data, assetCount.meta]);
 
   const anyLoading =
-    assets.isLoading || risks.isLoading || flows.isLoading ||
-    vendors.isLoading || access.isLoading || threats.isLoading;
+    assetCount.isLoading || riskList.isLoading || flows.isLoading ||
+    vendorList.isLoading || accessSummary.isLoading || threatSummary.isLoading;
 
   return (
     <div className="space-y-5">
@@ -241,7 +253,7 @@ export default function Dashboard() {
             }
           />
           <DataState
-            query={matrixRisks}
+            query={listAsQuery(matrixRisks)}
             height={360}
             emptyTitle="No scored assets"
             emptyMessage="Import assets and run a risk assessment to populate the matrix."

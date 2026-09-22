@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAssets } from "@/hooks/useAssets";
 import { useVendors } from "@/hooks/useVendors";
-import { useRawRisks } from "@/hooks/useRisks";
+import { useRisks } from "@/hooks/useRisks";
 import { useThreats } from "@/hooks/useThreats";
 import { useAccess } from "@/hooks/useAccess";
 import type { RiskBand } from "@/lib/apiTypes";
@@ -57,6 +57,9 @@ export const ENTITY_LABEL: Record<SearchEntity, string> = {
 
 const MAX_PER_GROUP = 5;
 
+/** The server caps pageSize at 200. Scanning more than this needs /api/search. */
+const SEARCH_SCAN_LIMIT = 200;
+
 /** Case-insensitive substring match. */
 const hit = (haystack: string, q: string) => haystack.toLowerCase().includes(q);
 
@@ -69,13 +72,20 @@ export function useGlobalSearch(rawQuery: string, enabled: boolean) {
     return () => window.clearTimeout(t);
   }, [rawQuery, enabled]);
 
-  // Slower poll than the pages use: this is a lookup surface, not a monitor.
+  /*
+   * Slower poll than the pages use: this is a lookup surface, not a monitor.
+   *
+   * pageSize is raised to the server's cap because this searches what it has
+   * fetched. That is a real limit, not a hidden one — see the note on
+   * `truncated` below, and the GET /api/search contract that replaces it.
+   */
   const opts = { enabled, pollIntervalMs: 120_000 } as const;
-  const assets = useAssets(opts);
-  const vendors = useVendors(opts);
-  const risks = useRawRisks(opts);
-  const threats = useThreats(opts);
-  const access = useAccess(opts);
+  const page = { pageSize: SEARCH_SCAN_LIMIT } as const;
+  const assets = useAssets(page, opts);
+  const vendors = useVendors(page, opts);
+  const risks = useRisks(page, opts);
+  const threats = useThreats(page, opts);
+  const access = useAccess(page, opts);
 
   const isLoading =
     enabled && (assets.isLoading || vendors.isLoading || threats.isLoading || access.isLoading);
@@ -121,7 +131,7 @@ export function useGlobalSearch(rawQuery: string, enabled: boolean) {
       }
     }
 
-    for (const t of threats.data?.threats ?? []) {
+    for (const t of threats.data ?? []) {
       if (hit(t.title, q) || hit(t.assetName, q)) {
         out.push({
           id: `threat-${t.id}`, entity: "threat", icon: "threat",
@@ -133,7 +143,7 @@ export function useGlobalSearch(rawQuery: string, enabled: boolean) {
       }
     }
 
-    for (const g of access.data?.grants ?? []) {
+    for (const g of access.data ?? []) {
       if (hit(g.identityName, q) || hit(g.assetName, q)) {
         out.push({
           id: `identity-${g.id}`, entity: "identity", icon: "identity",
@@ -159,7 +169,16 @@ export function useGlobalSearch(rawQuery: string, enabled: boolean) {
   /** Flat, in group order — what arrow-key navigation walks. */
   const flat = useMemo(() => grouped.flatMap(g => g.items), [grouped]);
 
+  /*
+   * True when any entity has more rows than this hook can see. The UI says
+   * so, because "no matches" and "no matches in the first 200" are different
+   * statements and only one of them is honest.
+   */
+  const truncated = [assets, vendors, risks, threats, access]
+    .some(q => (q.meta?.total ?? 0) > SEARCH_SCAN_LIMIT);
+
   return {
+    truncated,
     query: debounced,
     /** True once the user has typed enough for a search to run. */
     active: debounced.length >= 2,
