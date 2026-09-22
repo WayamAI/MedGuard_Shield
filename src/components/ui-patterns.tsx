@@ -145,6 +145,7 @@ export const MetricCard = ({
     <Wrapper
       onClick={onClick}
       type={onClick ? "button" : undefined}
+      data-testid={`metric-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
       className={cn(
         "relative flex w-full flex-col gap-1 overflow-hidden rounded-lg border border-default bg-container p-4 text-left",
         "transition-colors duration-200",

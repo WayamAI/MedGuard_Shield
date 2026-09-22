@@ -73,7 +73,7 @@ export function useGlobalSearch(rawQuery: string, enabled: boolean) {
   const opts = { enabled, pollIntervalMs: 120_000 } as const;
   const assets = useAssets(opts);
   const vendors = useVendors(opts);
-  const risks = useRawRisks();
+  const risks = useRawRisks(opts);
   const threats = useThreats(opts);
   const access = useAccess(opts);
 

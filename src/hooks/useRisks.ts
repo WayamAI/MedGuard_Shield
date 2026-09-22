@@ -11,6 +11,6 @@ export function useRisks(options?: ApiQueryOptions): ApiQueryResult<MatrixRisk[]
 }
 
 /** The unmapped wire records, for the register table's owner/due columns. */
-export function useRawRisks(): ApiQueryResult<ApiRisk[]> {
-  return useApiQuery<ApiRisk[]>(risksKey, "/api/risks");
+export function useRawRisks(options?: ApiQueryOptions): ApiQueryResult<ApiRisk[]> {
+  return useApiQuery<ApiRisk[]>(risksKey, "/api/risks", undefined, options);
 }

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, Badge, Btn, Input, Select, Modal, SlideOver, ChartSkeleton, ErrorState } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
-import { DataTable, type Column } from "@/components/DataTable";
+import { DataTable, withRows, type Column } from "@/components/DataTable";
 import {
   PageHeader, MetricCard, RiskBadge, Tabs, TabPanel, Field, FieldGroup,
   FilterBar, EntityAvatar, BAND_TONE, bandRank, SENSITIVITY_TONE,
@@ -205,7 +205,7 @@ export default function Assets() {
       <Card className="p-4">
         <DataTable
           label="Asset inventory"
-          query={{ ...assets, data: filtered }}
+          query={withRows(assets, filtered)}
           columns={columns}
           getRowId={a => a.id}
           onRowClick={a => openAsset(a.id)}
