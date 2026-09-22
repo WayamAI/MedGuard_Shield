@@ -330,7 +330,7 @@ describe("useTemplateDownload", () => {
       status: 200,
       headers: {
         "content-type": "text/csv; charset=utf-8",
-        "content-disposition": 'attachment; filename="medguard-assets-template.csv"',
+        "content-disposition": 'attachment; filename="drishti-assets-template.csv"',
       },
     });
     const { result } = renderHook(() => useTemplateDownload(), { wrapper: wrapper() });
@@ -357,13 +357,13 @@ describe("useTemplateDownload", () => {
       status: 200,
       headers: {
         "content-type": "text/csv",
-        "content-disposition": 'attachment; filename="medguard-phi-types-template.csv"',
+        "content-disposition": 'attachment; filename="drishti-phi-types-template.csv"',
       },
     });
     const { result } = renderHook(() => useTemplateDownload(), { wrapper: wrapper() });
     await act(async () => { await result.current.download("phi-types"); });
 
-    expect(downloaded).toBe("medguard-phi-types-template.csv");
+    expect(downloaded).toBe("drishti-phi-types-template.csv");
     vi.restoreAllMocks();
   });
 
