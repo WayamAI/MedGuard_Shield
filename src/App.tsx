@@ -10,11 +10,14 @@ import Login from "@/pages/Login";
 /**
  * Routes are one per backed capability, and nothing else.
  *
- * Removed in the Drishti rebrand: /ai, /policy and /audit. All three were
- * rendered entirely from a bundled fixture file with no endpoint behind them.
- * Keeping them would have meant shipping three screens of invented numbers to
- * customers. Their replacements are specified in FRONTEND_API_CONTRACT.md and
- * return when there is real data to draw.
+ * /ai remains absent: it was rendered entirely from a bundled fixture and the
+ * API still has no AI surface, so there is nothing honest to draw.
+ *
+ * /audit and /policies are back, and /controls, /remediation, /users and
+ * /settings are new — all six against endpoints the API now provides. Where a
+ * collection is empty (controls, policies and remediation are unseeded today)
+ * the page renders its empty state rather than being hidden: the capability is
+ * real, the estate simply has no rows yet.
  */
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Assets = lazy(() => import("@/pages/Assets"));
@@ -24,6 +27,12 @@ const Threats = lazy(() => import("@/pages/Threats"));
 const Risks = lazy(() => import("@/pages/Risks"));
 const Vendors = lazy(() => import("@/pages/Vendors"));
 const ImportData = lazy(() => import("@/pages/ImportData"));
+const Remediation = lazy(() => import("@/pages/Remediation"));
+const Controls = lazy(() => import("@/pages/Controls"));
+const Policies = lazy(() => import("@/pages/Policies"));
+const AuditTrail = lazy(() => import("@/pages/Audit"));
+const Users = lazy(() => import("@/pages/Users"));
+const Settings = lazy(() => import("@/pages/Settings"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -55,6 +64,21 @@ const App = () => (
                       <Route path="/threats" element={<Threats />} />
                       <Route path="/risks" element={<Risks />} />
                       <Route path="/vendors" element={<Vendors />} />
+                      <Route path="/remediation" element={<Remediation />} />
+                      <Route path="/controls" element={<Controls />} />
+                      <Route path="/policies" element={<Policies />} />
+                      <Route path="/users" element={<Users />} />
+                      <Route path="/settings" element={<Settings />} />
+                      {/* Audit is ADMIN-only server-side; gate it here too so
+                          a typed URL does not reach a page that only 403s. */}
+                      <Route
+                        path="/audit"
+                        element={
+                          <ProtectedRoute requireRole={["ADMIN"]}>
+                            <AuditTrail />
+                          </ProtectedRoute>
+                        }
+                      />
                       {/* The API is ADMIN-only here; this keeps a non-admin
                           who types the URL from reaching a page that would
                           only 403 on every call. */}

@@ -200,3 +200,17 @@ export function useServerSearch(query: string, enabled: boolean): ApiQueryResult
     { enabled: enabled && query.length >= 2, staleTime: 15_000, pollIntervalMs: 0, retry: 1 },
   );
 }
+
+/** GET /api/organization/members — the list a remediation owner picker needs. */
+export type ApiMember = {
+  userId: number;
+  email: string;
+  role: string;
+  memberSince: string;
+};
+
+export function useOrgMembers(options?: ApiQueryOptions): ApiQueryResult<ApiMember[]> {
+  return useApiQuery<ApiMember[]>(
+    ["organization", "members"] as const, "/api/organization/members", undefined, options,
+  );
+}

@@ -1,12 +1,22 @@
 import { NavLink } from "react-router-dom";
 import { AppIcon } from "@/components/AppIcon";
+import { DomainIcon, type DomainIconName } from "@/components/DomainIcon";
 import type { IconName } from "@/lib/icons";
 import { cn } from "@/lib/utils";
 
 export interface SidebarNavItem {
   to: string;
   label: string;
-  icon: IconName;
+  /** Interface glyph, for destinations with no domain noun of their own. */
+  icon?: IconName;
+  /**
+   * The domain mark for this concept.
+   *
+   * Preferred over `icon`: the sidebar used to draw Assets with Lucide's
+   * Database while the table beneath it drew the custom asset mark. Two
+   * glyphs for one concept reads as sloppiness rather than as a system.
+   */
+  domainIcon?: DomainIconName;
   end?: boolean;
   badge?: string;
   badgeTone?: "danger" | "warning";
@@ -78,7 +88,11 @@ export function SidebarItem({ item, collapsed = false }: { item: SidebarNavItem;
                 : "bg-action text-icon-tertiary group-hover:bg-action-secondary-focused group-hover:text-icon-secondary",
             )}
           >
-            <AppIcon name={item.icon} size="lg" />
+            {item.domainIcon
+              ? <DomainIcon name={item.domainIcon} size={18} />
+              : item.icon
+                ? <AppIcon name={item.icon} size="lg" />
+                : null}
 
             {/* Collapsed: the count has nowhere to sit, so it becomes a dot. */}
             {collapsed && showBadge && (

@@ -105,6 +105,12 @@ describe("page title in the header", () => {
     ["/vendors", "Vendor Risk"],
     ["/risks", "Risk Register"],
     ["/import", "Data Import"],
+    ["/remediation", "Remediation"],
+    ["/controls", "Controls"],
+    ["/policies", "Policies"],
+    ["/audit", "Audit Trail"],
+    ["/users", "Identities & Members"],
+    ["/settings", "Settings"],
   ];
 
   it.each(ROUTES)("%s is titled %s", async (path, title) => {

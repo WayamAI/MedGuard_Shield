@@ -32,26 +32,46 @@ type NavGroup = { label: string; items: SidebarNavItem[] };
 const NAV: NavGroup[] = [
   {
     label: "Overview",
-    items: [{ to: "/", label: "Dashboard", icon: "dashboard", end: true }],
+    items: [{ to: "/", label: "Dashboard", domainIcon: "dashboard", end: true }],
   },
   {
     label: "Discover",
     items: [
-      { to: "/assets", label: "Assets", icon: "database" },
-      { to: "/phi-flow", label: "PHI Flow", icon: "phiFlow" },
-      { to: "/access", label: "Access & Identity", icon: "access" },
-      { to: "/vendors", label: "Vendors", icon: "facility" },
-      // Badge is filled in at render from the live threat count.
-      { to: "/threats", label: "Threats", icon: "threats", badgeTone: "danger" },
+      { to: "/assets", label: "Assets", domainIcon: "asset" },
+      { to: "/phi-flow", label: "PHI Flow", domainIcon: "dataFlow" },
+      { to: "/access", label: "Access & Identity", domainIcon: "identity" },
+      { to: "/vendors", label: "Vendors", domainIcon: "vendor" },
+      // Badge is filled in at render from the live threat summary.
+      { to: "/threats", label: "Threats", domainIcon: "threat", badgeTone: "danger" },
     ],
   },
   {
     label: "Risk",
-    items: [{ to: "/risks", label: "Risk Register", icon: "risks" }],
+    items: [
+      { to: "/risks", label: "Risk Register", domainIcon: "risk" },
+      { to: "/remediation", label: "Remediation", domainIcon: "remediation" },
+    ],
+  },
+  {
+    label: "Governance",
+    items: [
+      { to: "/controls", label: "Controls", domainIcon: "control" },
+      { to: "/policies", label: "Policies", domainIcon: "audit" },
+      // The audit trail is ADMIN-only server-side; mirror that here so we
+      // never offer a door the API will close.
+      { to: "/audit", label: "Audit Trail", domainIcon: "audit", requireRole: ["ADMIN"] },
+    ],
   },
   {
     label: "Operations",
-    items: [{ to: "/import", label: "Data Import", icon: "upload", requireRole: ["ADMIN"] }],
+    items: [{ to: "/import", label: "Data Import", domainIcon: "import", requireRole: ["ADMIN"] }],
+  },
+  {
+    label: "Admin",
+    items: [
+      { to: "/users", label: "Identities & Members", domainIcon: "identity" },
+      { to: "/settings", label: "Settings", icon: "settings" },
+    ],
   },
 ];
 
@@ -64,6 +84,12 @@ const PAGE_TITLES: Record<string, string> = {
   "/threats": "Threat & Anomaly Detection",
   "/risks": "Risk Register",
   "/import": "Data Import",
+  "/remediation": "Remediation",
+  "/controls": "Controls",
+  "/policies": "Policies",
+  "/audit": "Audit Trail",
+  "/users": "Identities & Members",
+  "/settings": "Settings",
 };
 
 const COLLAPSE_KEY = "drishti-sidebar-collapsed";
