@@ -2,18 +2,19 @@ import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, Badge, Btn, Input, Select, Modal, SlideOver, ChartSkeleton, ErrorState } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
-import { DataTable, withRows, type Column } from "@/components/DataTable";
+import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
   PageHeader, MetricCard, RiskBadge, Tabs, TabPanel, Field, FieldGroup,
   FilterBar, EntityAvatar, BAND_TONE, bandRank, SENSITIVITY_TONE,
 } from "@/components/ui-patterns";
 import { DomainIcon } from "@/components/DomainIcon";
 import { useAssets, useAsset } from "@/hooks/useAssets";
+import { useListControls } from "@/hooks/useListControls";
 import { useCreateAsset, useUpdateAsset, useRecomputeAssetRisk } from "@/hooks/useMutations";
-import { useAuth } from "@/hooks/use-auth";
+import { useCanWrite } from "@/hooks/use-auth";
 import { describeApiError, toApiError } from "@/lib/apiErrors";
 import { notify } from "@/lib/notify";
-import { ASSET_TYPES, type ApiAsset, type AssetType } from "@/lib/apiTypes";
+import { ASSET_TYPES, type ApiAsset, type AssetType, type RiskBand } from "@/lib/apiTypes";
 
 /**
  * Asset inventory — the first step of the Drishti model.
@@ -40,45 +41,49 @@ const daysSince = (iso: string | null) =>
   iso === null ? null : Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 
 export default function Assets() {
-  const assets = useAssets();
-  const { user } = useAuth();
-  const canWrite = user?.role === "ADMIN" || user?.role === "ANALYST";
+  const canWrite = useCanWrite();
 
   const [params, setParams] = useSearchParams();
   const openId = params.get("open") ? Number(params.get("open")) : null;
-  const [bandFilter, setBandFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
 
+  /*
+   * Band filtering and search are server-side. Doing either over the current
+   * page would answer "no EXTREME assets" for an estate whose extreme assets
+   * happen to sit on page two.
+   */
+  const controls = useListControls<{ band?: RiskBand }>({ band: undefined });
+  const assets = useAssets(controls.params);
   const rows = useMemo(() => assets.data ?? [], [assets.data]);
 
-  const filtered = useMemo(() => {
-    if (bandFilter === "all") return rows;
-    if (bandFilter === "unscored") return rows.filter(a => a.risk === null);
-    return rows.filter(a => a.risk?.band === bandFilter);
-  }, [rows, bandFilter]);
+  /*
+   * Estate-wide figures, from a second query that asks for the whole
+   * inventory rather than the page on screen. Counting the 25 rows in front
+   * of the user and calling it "Assets" is the failure this avoids.
+   */
+  const all = useAssets({ pageSize: 200 });
+  const allRows = useMemo(() => all.data ?? [], [all.data]);
 
-  /** Headline numbers, all derived from the same response the table renders. */
   const stats = useMemo(() => {
-    if (!assets.data) return null;
+    if (!all.data) return null;
     return {
-      total: rows.length,
-      phiRecords: rows.reduce((s, a) => s + a.phiVolume, 0),
-      unencrypted: rows.filter(a => !a.encrypted).length,
-      criticalOrExtreme: rows.filter(a => a.risk?.band === "CRITICAL" || a.risk?.band === "EXTREME").length,
-      unscored: rows.filter(a => a.risk === null).length,
-      noMfa: rows.filter(a => !a.mfaEnabled).length,
+      total: all.meta?.total ?? allRows.length,
+      phiRecords: allRows.reduce((s, a) => s + a.phiVolume, 0),
+      unencrypted: allRows.filter(a => !a.encrypted).length,
+      criticalOrExtreme: allRows.filter(a => a.risk?.band === "CRITICAL" || a.risk?.band === "EXTREME").length,
+      unscored: allRows.filter(a => a.risk === null).length,
+      noMfa: allRows.filter(a => !a.mfaEnabled).length,
     };
-  }, [rows, assets.data]);
+  }, [allRows, all.data, all.meta]);
 
   const bandCounts = useMemo(() => ({
-    all: rows.length,
-    EXTREME: rows.filter(a => a.risk?.band === "EXTREME").length,
-    CRITICAL: rows.filter(a => a.risk?.band === "CRITICAL").length,
-    HIGH: rows.filter(a => a.risk?.band === "HIGH").length,
-    MODERATE: rows.filter(a => a.risk?.band === "MODERATE").length,
-    LOW: rows.filter(a => a.risk?.band === "LOW").length,
-    unscored: rows.filter(a => a.risk === null).length,
-  }), [rows]);
+    all: all.meta?.total ?? allRows.length,
+    EXTREME: allRows.filter(a => a.risk?.band === "EXTREME").length,
+    CRITICAL: allRows.filter(a => a.risk?.band === "CRITICAL").length,
+    HIGH: allRows.filter(a => a.risk?.band === "HIGH").length,
+    MODERATE: allRows.filter(a => a.risk?.band === "MODERATE").length,
+    LOW: allRows.filter(a => a.risk?.band === "LOW").length,
+  }), [allRows, all.meta]);
 
   const openAsset = (id: number | null) => {
     const next = new URLSearchParams(params);
@@ -205,7 +210,17 @@ export default function Assets() {
       <Card className="p-4">
         <DataTable
           label="Asset inventory"
-          query={withRows(assets, filtered)}
+          query={listAsQuery(assets)}
+          server={{
+            meta: assets.meta,
+            page: controls.page,
+            onPageChange: controls.setPage,
+            pageSize: controls.pageSize,
+            onPageSizeChange: controls.setPageSize,
+            onSearch: controls.setSearch,
+            searchValue: controls.search,
+            isPaging: assets.isPaging,
+          }}
           columns={columns}
           getRowId={a => a.id}
           onRowClick={a => openAsset(a.id)}
@@ -217,8 +232,8 @@ export default function Assets() {
           toolbar={
             <FilterBar
               label="Filter by risk band"
-              value={bandFilter}
-              onChange={setBandFilter}
+              value={controls.filters.band ?? "all"}
+              onChange={v => controls.setFilter("band", v === "all" ? undefined : (v as RiskBand))}
               options={[
                 { value: "all", label: "All", count: bandCounts.all },
                 { value: "EXTREME", label: "Extreme", count: bandCounts.EXTREME },
@@ -226,7 +241,6 @@ export default function Assets() {
                 { value: "HIGH", label: "High", count: bandCounts.HIGH },
                 { value: "MODERATE", label: "Moderate", count: bandCounts.MODERATE },
                 { value: "LOW", label: "Low", count: bandCounts.LOW },
-                { value: "unscored", label: "Not scored", count: bandCounts.unscored },
               ]}
             />
           }

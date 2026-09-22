@@ -4,18 +4,18 @@ import { Card, Badge, Btn, SectionHeader, SlideOver } from "@/components/ui-bits
 import { AppIcon } from "@/components/AppIcon";
 import { RiskMatrix } from "@/components/RiskMatrix";
 import { DataState } from "@/components/DataState";
-import { DataTable, withRows, type Column } from "@/components/DataTable";
+import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
   PageHeader, MetricCard, RiskBadge, Field, FieldGroup, FilterBar,
   EntityAvatar, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
 } from "@/components/ui-patterns";
-import { useRawRisks } from "@/hooks/useRisks";
+import { useRisks, useRiskMatrix } from "@/hooks/useRisks";
+import { useListControls } from "@/hooks/useListControls";
 import { useRecomputeAssetRisk } from "@/hooks/useMutations";
-import { useAuth } from "@/hooks/use-auth";
-import { toMatrixRisks } from "@/lib/mappers";
+import { useCanWrite } from "@/hooks/use-auth";
 import { describeApiError, toApiError } from "@/lib/apiErrors";
 import { notify } from "@/lib/notify";
-import type { ApiRisk } from "@/lib/apiTypes";
+import type { ApiRisk, RiskBand } from "@/lib/apiTypes";
 
 /**
  * Risk register, backed by /api/risks.
@@ -38,33 +38,34 @@ const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 
 export default function Risks() {
-  const risks = useRawRisks();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const canWrite = user?.role === "ADMIN" || user?.role === "ANALYST";
+  const canWrite = useCanWrite();
 
   const [params, setParams] = useSearchParams();
   const openId = params.get("open") ? Number(params.get("open")) : null;
-  const [band, setBand] = useState("all");
 
+  const controls = useListControls<{ band?: RiskBand }>({ band: undefined });
+  const risks = useRisks(controls.params);
   const rows = useMemo(() => risks.data ?? [], [risks.data]);
-  const matrixRisks = useMemo(() => toMatrixRisks(rows), [rows]);
 
-  const filtered = useMemo(
-    () => (band === "all" ? rows : rows.filter(r => r.band === band)),
-    [rows, band],
-  );
+  /* The matrix plots the whole register, not the page under it. */
+  const matrix = useRiskMatrix();
+  const matrixRisks = matrix.matrix ?? [];
+  const allRows = useMemo(() => matrix.data ?? [], [matrix.data]);
+
+  const raw = useRisks({ pageSize: 200 });
+  const rawRows = useMemo(() => raw.data ?? [], [raw.data]);
 
   const counts = useMemo(() => ({
-    total: rows.length,
-    severe: rows.filter(r => r.band === "CRITICAL" || r.band === "EXTREME").length,
-    high: rows.filter(r => r.band === "HIGH").length,
-    peak: rows.length ? Math.max(...rows.map(r => r.score)) : 0,
-  }), [rows]);
+    total: raw.meta?.total ?? rawRows.length,
+    severe: rawRows.filter(r => r.band === "CRITICAL" || r.band === "EXTREME").length,
+    high: rawRows.filter(r => r.band === "HIGH").length,
+    peak: rawRows.length ? Math.max(...rawRows.map(r => r.score)) : 0,
+  }), [rawRows, raw.meta]);
 
   const bandCounts = useMemo(
-    () => Object.fromEntries(BAND_ORDER.map(b => [b, rows.filter(r => r.band === b).length])),
-    [rows],
+    () => Object.fromEntries(BAND_ORDER.map(b => [b, rawRows.filter(r => r.band === b).length])),
+    [rawRows],
   );
 
   const openRisk = (id: number | null) => {
@@ -74,7 +75,10 @@ export default function Risks() {
     setParams(next, { replace: true });
   };
 
-  const selected = useMemo(() => rows.find(r => r.id === openId) ?? null, [rows, openId]);
+  const selected = useMemo(
+    () => rawRows.find(r => r.id === openId) ?? rows.find(r => r.id === openId) ?? null,
+    [rawRows, rows, openId],
+  );
 
   const columns: Column<ApiRisk>[] = [
     {
@@ -123,7 +127,7 @@ export default function Risks() {
         title="Risk Register"
         description="Every scored asset, ranked by the score the API derived. Drishti visualises backend truth and never recomputes a band client-side."
         actions={
-          <Btn variant="outline" onClick={() => void risks.refresh()} disabled={risks.isFetching}>
+          <Btn variant="outline" onClick={() => { void risks.refresh(); void matrix.refresh(); }} disabled={risks.isFetching}>
             <AppIcon name="refresh" size="sm" spin={risks.isFetching} />
             Refresh
           </Btn>
@@ -149,7 +153,7 @@ export default function Risks() {
           subtitle="Every scored asset plotted by likelihood and impact. Colour is the band the API derived — select a chip to open its record."
         />
         <DataState
-          query={risks}
+          query={listAsQuery(matrix)}
           height={420}
           emptyTitle="No scored assets"
           emptyMessage="No risk rows were returned. Import assets and recompute their risk to populate this."
@@ -169,7 +173,17 @@ export default function Risks() {
       <Card className="p-4">
         <DataTable
           label="Risk register"
-          query={withRows(risks, filtered)}
+          query={listAsQuery(risks)}
+          server={{
+            meta: risks.meta,
+            page: controls.page,
+            onPageChange: controls.setPage,
+            pageSize: controls.pageSize,
+            onPageSizeChange: controls.setPageSize,
+            onSearch: controls.setSearch,
+            searchValue: controls.search,
+            isPaging: risks.isPaging,
+          }}
           columns={columns}
           getRowId={r => r.id}
           onRowClick={r => openRisk(r.id)}
@@ -181,10 +195,10 @@ export default function Risks() {
           toolbar={
             <FilterBar
               label="Filter by band"
-              value={band}
-              onChange={setBand}
+              value={controls.filters.band ?? "all"}
+              onChange={v => controls.setFilter("band", v === "all" ? undefined : (v as RiskBand))}
               options={[
-                { value: "all", label: "All", count: rows.length },
+                { value: "all", label: "All", count: raw.meta?.total ?? rawRows.length },
                 ...BAND_ORDER.map(b => ({ value: b, label: b[0] + b.slice(1).toLowerCase(), count: bandCounts[b] ?? 0 })),
               ]}
             />

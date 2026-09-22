@@ -2,15 +2,16 @@ import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, Badge, Btn, Input, Select, Modal, SlideOver, ChartSkeleton, ErrorState, HeadlineSkeleton } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
-import { DataTable, withRows, type Column } from "@/components/DataTable";
+import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
   PageHeader, MetricCard, RiskBadge, Tabs, TabPanel, Field, FieldGroup,
   FilterBar, EntityAvatar, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
   BAA_TONE, BAA_LABEL,
 } from "@/components/ui-patterns";
 import { useVendors, useVendor } from "@/hooks/useVendors";
+import { useListControls } from "@/hooks/useListControls";
 import { useCreateVendor, useUpdateVendor, useRecomputeVendorRisk } from "@/hooks/useMutations";
-import { useAuth } from "@/hooks/use-auth";
+import { useCanWrite } from "@/hooks/use-auth";
 import { describeApiError, toApiError } from "@/lib/apiErrors";
 import { notify } from "@/lib/notify";
 import type { ApiVendor, BaaStatus } from "@/lib/apiTypes";
@@ -33,43 +34,41 @@ const assessedLabel = (v: ApiVendor) =>
   v.lastAssessedAt === null ? "Never assessed" : `${v.daysSinceAssessment} days ago`;
 
 export default function Vendors() {
-  const vendors = useVendors();
-  const { user } = useAuth();
-  const canWrite = user?.role === "ADMIN" || user?.role === "ANALYST";
+  const canWrite = useCanWrite();
 
   const [params, setParams] = useSearchParams();
   const openId = params.get("open") ? Number(params.get("open")) : null;
-  const [baaFilter, setBaaFilter] = useState("all");
   const [createOpen, setCreateOpen] = useState(false);
 
+  const controls = useListControls<{ baaStatus?: BaaStatus }>({ baaStatus: undefined });
+  const vendors = useVendors(controls.params);
   const rows = useMemo(() => vendors.data ?? [], [vendors.data]);
 
-  const filtered = useMemo(
-    () => (baaFilter === "all" ? rows : rows.filter(v => v.baaStatus === baaFilter)),
-    [rows, baaFilter],
-  );
+  /* Whole-register figures, not page figures. */
+  const all = useVendors({ pageSize: 200 });
+  const allRows = useMemo(() => all.data ?? [], [all.data]);
 
   const stats = useMemo(() => {
-    if (!vendors.data) return null;
+    if (!all.data) return null;
     return {
-      total: rows.length,
-      noBaa: rows.filter(v => !v.baaCompliant).length,
-      overdue: rows.filter(v => v.assessmentOverdue).length,
-      phiVolume: rows.reduce((s, v) => s + v.phiVolume, 0),
+      total: all.meta?.total ?? allRows.length,
+      noBaa: allRows.filter(v => !v.baaCompliant).length,
+      overdue: allRows.filter(v => v.assessmentOverdue).length,
+      phiVolume: allRows.reduce((s, v) => s + v.phiVolume, 0),
     };
-  }, [rows, vendors.data]);
+  }, [allRows, all.data, all.meta]);
 
   const bandCounts = useMemo(
-    () => Object.fromEntries(BAND_ORDER.map(b => [b, rows.filter(v => v.risk?.band === b).length])),
-    [rows],
+    () => Object.fromEntries(BAND_ORDER.map(b => [b, allRows.filter(v => v.risk?.band === b).length])),
+    [allRows],
   );
 
   /** The headline exposure: no valid BAA *and* the highest score. */
   const worstGap = useMemo(
-    () => [...rows]
+    () => [...allRows]
       .filter(v => !v.baaCompliant)
       .sort((a, b) => (b.risk?.score ?? -1) - (a.risk?.score ?? -1))[0] ?? null,
-    [rows],
+    [allRows],
   );
 
   const openVendor = (id: number | null) => {
@@ -190,7 +189,7 @@ export default function Vendors() {
 
       {/* Reserve the banner's space while loading: a headline that appears
           late shoves the whole table down the screen. */}
-      {!vendors.data && <HeadlineSkeleton label="Loading summary" />}
+      {!all.data && <HeadlineSkeleton label="Loading summary" />}
 
       {worstGap && (
         <div className="flex flex-wrap items-center gap-3 rounded-md border border-feedback-error-stroke bg-feedback-error-background p-3">
@@ -210,7 +209,17 @@ export default function Vendors() {
       <Card className="p-4">
         <DataTable
           label="Vendor risk register"
-          query={withRows(vendors, filtered)}
+          query={listAsQuery(vendors)}
+          server={{
+            meta: vendors.meta,
+            page: controls.page,
+            onPageChange: controls.setPage,
+            pageSize: controls.pageSize,
+            onPageSizeChange: controls.setPageSize,
+            onSearch: controls.setSearch,
+            searchValue: controls.search,
+            isPaging: vendors.isPaging,
+          }}
           columns={columns}
           getRowId={v => v.id}
           onRowClick={v => openVendor(v.id)}
@@ -222,14 +231,14 @@ export default function Vendors() {
           toolbar={
             <FilterBar
               label="Filter by BAA status"
-              value={baaFilter}
-              onChange={setBaaFilter}
+              value={controls.filters.baaStatus ?? "all"}
+              onChange={v => controls.setFilter("baaStatus", v === "all" ? undefined : (v as BaaStatus))}
               options={[
-                { value: "all", label: "All", count: rows.length },
-                ...BAA_STATUSES.map(s => ({
-                  value: s,
-                  label: BAA_LABEL[s],
-                  count: rows.filter(v => v.baaStatus === s).length,
+                { value: "all", label: "All", count: all.meta?.total ?? allRows.length },
+                ...BAA_STATUSES.map(st => ({
+                  value: st,
+                  label: BAA_LABEL[st],
+                  count: allRows.filter(v => v.baaStatus === st).length,
                 })),
               ]}
             />
@@ -257,11 +266,11 @@ export default function Vendors() {
                 : <span className="inline-block h-4 w-3 animate-pulse rounded bg-raised-2" />}
             </span>
           ))}
-          {rows.some(v => v.risk === null) && (
+          {allRows.some(v => v.risk === null) && (
             <span className="flex items-center gap-1.5">
               <RiskBadge band={null} />
               <span className="tabular text-caption text-tertiary">
-                {rows.filter(v => v.risk === null).length}
+                {allRows.filter(v => v.risk === null).length}
               </span>
             </span>
           )}

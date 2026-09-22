@@ -4,6 +4,7 @@ import { Card, Badge, Btn, SectionHeader, SlideOver, Select } from "@/components
 import { AppIcon } from "@/components/AppIcon";
 import { PhiSankey, type FlowNode, type FlowLink } from "@/components/PhiSankey";
 import { DataState } from "@/components/DataState";
+import { listAsQuery } from "@/components/DataTable";
 import { PageHeader, Field, FieldGroup, EntityAvatar } from "@/components/ui-patterns";
 import { useDataFlows, useRawDataFlows } from "@/hooks/useDataFlows";
 import { notify } from "@/lib/notify";
@@ -34,8 +35,8 @@ export default function PhiFlow() {
   const [filter, setFilter] = useState("all");
   const [phiType, setPhiType] = useState("all");
 
-  const nodes = useMemo(() => flows.data?.nodes ?? [], [flows.data]);
-  const links = useMemo(() => flows.data?.links ?? [], [flows.data]);
+  const nodes = useMemo(() => flows.graph?.nodes ?? [], [flows.graph]);
+  const links = useMemo(() => flows.graph?.links ?? [], [flows.graph]);
 
   const onScan = () => {
     void Promise.all([flows.refresh(), rawFlows.refresh()]).then(() =>
@@ -193,7 +194,7 @@ export default function PhiFlow() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
         <Card className="p-4">
           <DataState
-            query={flows}
+            query={listAsQuery(flows)}
             height={496}
             emptyTitle="No PHI flows recorded"
             emptyMessage="The API returned no data flows. If the backend was just set up, run the seed script."
