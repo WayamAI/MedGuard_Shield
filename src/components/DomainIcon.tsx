@@ -1,99 +1,169 @@
 import { cn } from "@/lib/utils";
 
 /**
- * The ten Drishti domain marks.
+ * The twelve Drishti domain marks.
  *
- * Lucide covers the interface verbs — search, close, chevrons — and is used
- * everywhere for those via <AppIcon>. These ten are the *nouns* of the risk
- * model, the things the product is actually about, and they earn a custom set
- * because they carry brand meaning that a generic icon library cannot:
+ * Lucide covers the interface verbs — search, close, chevrons — everywhere via
+ * <AppIcon>. These twelve are the *nouns* of the risk model, the things the
+ * product is actually about, and they earn a custom set because they carry
+ * brand meaning a generic library cannot:
  *
  *   Asset → PHI → Identity/Access → Vendor → Control → Risk
+ *                                        ↘ Threat ↗
+ *           Data Flow ─ Remediation ─ Audit ─ Dashboard ─ Import
  *
- * Rules, so they read as one family:
- *   24×24 viewBox, 1.5 stroke, round caps/joins, no fills, currentColor only.
- * Monochrome by construction, so they inherit any token colour including the
- * brand orange, and stay legible at 16px.
+ * Traced from the commissioned artwork in `design/icons-source/`, which
+ * arrived as 2K JPEGs. Raster could not ship: icons render at 16–24px and
+ * must inherit `currentColor` so the same mark reads as tertiary grey in a
+ * table, brand orange in a page header, and semantic red inside a critical
+ * badge. A JPEG is one fixed colour on an opaque background, and ~500 KB
+ * against roughly 400 bytes here.
+ *
+ * Three were simplified in the trace, because detail that reads at 2048px
+ * turns to a grey smudge at 16:
+ *   risk    — sixteen gauge ticks reduced to three
+ *   control — rivets, side plates and the shackle highlight dropped
+ *   dashboard — four mini-charts dropped for a composed panel layout
+ *
+ * House rules, so they read as one family:
+ *   24×24 viewBox, artwork inside the central 20×20, 1.5 stroke, round caps
+ *   and joins, no fills, currentColor only, nothing finer than 2px.
  */
 
 export type DomainIconName =
   | "asset" | "phi" | "dataFlow" | "risk" | "vendor"
-  | "identity" | "threat" | "control" | "remediation" | "audit";
+  | "identity" | "threat" | "control" | "remediation" | "audit"
+  | "dashboard" | "import";
 
 const PATHS: Record<DomainIconName, JSX.Element> = {
-  /** Asset — a stacked data store. */
+  /** Asset — two stacked drums. Stored data at rest. */
   asset: (
     <>
-      <ellipse cx="12" cy="5.5" rx="7" ry="2.75" />
-      <path d="M5 5.5v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6" />
-      <path d="M5 11.5v6c0 1.52 3.13 2.75 7 2.75s7-1.23 7-2.75v-6" />
+      <ellipse cx="12" cy="5.6" rx="7" ry="2.6" />
+      <path d="M5 5.6v4.6c0 1.44 3.13 2.6 7 2.6s7-1.16 7-2.6V5.6" />
+      <path d="M5 11.8v4.6c0 1.44 3.13 2.6 7 2.6s7-1.16 7-2.6v-4.6" />
     </>
   ),
-  /** PHI — a record under protection. */
+
+  /**
+   * PHI — a record card carrying a medical cross.
+   *
+   * Deliberately not a shield: PHI is the thing being protected, not the
+   * protection. The shield belongs to `control`, and only one icon in the
+   * set may use that silhouette or the two stop being tellable apart.
+   */
   phi: (
     <>
-      <path d="M12 3 5 6v5.5c0 4 2.9 7.6 7 8.5 4.1-.9 7-4.5 7-8.5V6l-7-3Z" />
-      <path d="M9.5 11.5h5M12 9v5" />
+      <rect x="5" y="3" width="14" height="18" rx="2.5" />
+      <path d="M12 9v6M9 12h6" />
     </>
   ),
-  /** Data flow — movement between two systems. */
+
+  /** Data flow — two nodes, one routed elbow, direction at the far end. */
   dataFlow: (
     <>
-      <rect x="3" y="4" width="6" height="5" rx="1.25" />
-      <rect x="15" y="15" width="6" height="5" rx="1.25" />
-      <path d="M9 6.5h4.5a2.5 2.5 0 0 1 2.5 2.5v6" />
-      <path d="m13.75 12.75 2.25 2.25 2.25-2.25" />
+      <circle cx="5.5" cy="17.75" r="2.4" />
+      <circle cx="18.5" cy="6.25" r="2.4" />
+      <path d="M7.9 17.75h3.6a1.6 1.6 0 0 0 1.6-1.6V7.85a1.6 1.6 0 0 1 1.6-1.6h1.4" />
+      <path d="m14.6 4.6 1.65 1.65-1.65 1.65" />
     </>
   ),
-  /** Risk — graded exposure. */
+
+  /**
+   * Risk — a scored gauge.
+   *
+   * A needle on a dial says "measured", where a bare warning triangle says
+   * "something happened". Risk in Drishti is a calculated band, not an
+   * event, and the register is the product's analytical centrepiece.
+   */
   risk: (
     <>
-      <path d="M12 3.5 3 19h18L12 3.5Z" />
-      <path d="M12 10v4M12 16.5v.5" />
+      <path d="M3.6 18a8.4 8.4 0 1 1 16.8 0" />
+      <path d="M6.1 11.9l1.35.95M12 9.4v1.65M17.9 11.9l-1.35.95" />
+      <path d="M12 18l4.6-5.3" />
+      <circle cx="12" cy="18" r="1.5" />
     </>
   ),
-  /** Vendor — an external party. */
+
+  /** Vendor — a flat-roofed external premises. Never a clinic. */
   vendor: (
     <>
-      <path d="M4 9.5 12 4l8 5.5" />
-      <path d="M5.5 9.5V19h13V9.5" />
-      <path d="M9.5 19v-4.5h5V19" />
+      <path d="M2.75 4.75h18.5v3.5H2.75z" />
+      <path d="M4.75 8.25V20h14.5V8.25" />
+      <path d="M10 20v-5.75h4V20" />
+      <path d="M6.75 11.25h2.25M15 11.25h2.25" />
     </>
   ),
-  /** Identity — a person holding access. */
+
+  /** Identity — one person. A group would mean "team", not "identity". */
   identity: (
     <>
-      <circle cx="12" cy="8" r="3.25" />
-      <path d="M5 19.5a7 7 0 0 1 14 0" />
+      <circle cx="12" cy="8" r="3.75" />
+      <path d="M5 19.75a7 7 0 0 1 14 0" />
     </>
   ),
-  /** Threat — a detected anomaly. */
+
+  /**
+   * Threat — a radar scope with a contact.
+   *
+   * On-brand for दृष्टि (sight), and unlike anything else in the set at
+   * 16px. Replaces a shield-with-a-checkmark, which read as verified/safe —
+   * the exact opposite of a detected threat.
+   */
   threat: (
     <>
-      <path d="M12 3.5 4.5 7v5c0 4 3.1 7.6 7.5 8.5 4.4-.9 7.5-4.5 7.5-8.5V7L12 3.5Z" />
-      <path d="m9.75 11.5 1.75 1.75 3-3.5" />
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="6.6" />
+      <path d="m13.3 10.7 3.4-3.4" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="15.9" cy="15.9" r="1.15" />
     </>
   ),
-  /** Control — a safeguard in place. */
+
+  /** Control — a closed padlock. The one safeguard glyph in the set. */
   control: (
     <>
-      <rect x="4.5" y="10.5" width="15" height="9" rx="1.75" />
-      <path d="M8.5 10.5V7.75a3.5 3.5 0 0 1 7 0v2.75" />
-      <path d="M12 14v2.5" />
+      <rect x="4.5" y="10.5" width="15" height="9.5" rx="2.25" />
+      <path d="M8 10.5V7.6a4 4 0 0 1 8 0v2.9" />
+      <circle cx="12" cy="14.4" r="1.4" />
+      <path d="M12 15.8v1.7" />
     </>
   ),
-  /** Remediation — a fix applied to a finding. */
+
+  /** Remediation — one open-end wrench. Fixing, not building. */
   remediation: (
-    <>
-      <path d="M14.5 4.5a4 4 0 0 0-5.2 5.2L4 15v4.5h4.5l5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-2.4 2.5-2.7Z" />
-    </>
+    <path d="M15.9 3.35a5 5 0 0 0-5.65 6.6L3.95 16.25a2 2 0 1 0 2.8 2.8l6.3-6.3a5 5 0 0 0 6.6-5.65l-2.9 2.9-2.4-.6-.6-2.4 2.9-2.9Z" />
   ),
-  /** Audit — the event record. */
+
+  /** Audit — a page of entries. Ruled lines of differing length. */
   audit: (
     <>
-      <path d="M6 3.5h8.5L19 8v12.5H6V3.5Z" />
-      <path d="M14 3.5V8h4.5" />
-      <path d="M9 12.5h6M9 16h4" />
+      <path d="M6.5 3.5h7L18 8v12.5H6.5z" />
+      <path d="M13.5 3.5V8H18" />
+      <path d="M9.25 12.25h5.5M9.25 15.25h5.5M9.25 18.25h3.25" />
+    </>
+  ),
+
+  /**
+   * Dashboard — a composed panel layout.
+   *
+   * Deliberately not four identical squares, which is every dashboard icon
+   * ever drawn. The uneven split reads as an arranged overview.
+   */
+  dashboard: (
+    <>
+      <rect x="3.5" y="3.5" width="17" height="17" rx="2.25" />
+      <path d="M10 3.5v17" />
+      <path d="M10 12h10.5" />
+    </>
+  ),
+
+  /** Import — records arriving in bulk, into a tray. Never a cloud. */
+  import: (
+    <>
+      <path d="M4.5 14.75v3.5a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3.5" />
+      <path d="M12 3.5v11.25" />
+      <path d="m8 7.5 4-4 4 4" />
     </>
   ),
 };

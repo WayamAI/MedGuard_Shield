@@ -11,3 +11,6 @@ Logos
 coverage
 .DS_Store
 *.log
+
+# Commissioned icon source art (2K JPEGs) — reference only, never shipped.
+design
