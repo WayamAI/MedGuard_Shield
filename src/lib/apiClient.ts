@@ -71,6 +71,40 @@ async function parseBody(res: Response): Promise<unknown> {
   }
 }
 
+/**
+ * Collection envelope. The API returns `meta` as a SIBLING of `data`, not
+ * nested inside it:
+ *
+ *   { "data": [ ... ], "meta": { page, pageSize, total, totalPages } }
+ *
+ * `apiFetch` unwraps `data` and throws `meta` away, which is correct for a
+ * single record and silently wrong for a list — the caller gets 25 rows and
+ * no way to know there are 500. `apiList` is the paginated counterpart and
+ * every list endpoint must go through it.
+ */
+export type PageMeta = {
+  page: number;
+  pageSize: number;
+  total: number;
+  /** Never below 1, even when total is 0. */
+  totalPages: number;
+};
+
+export type Paginated<T> = { items: T[]; meta: PageMeta };
+
+/** Query parameters every paginated endpoint accepts. */
+export type PageParams = {
+  page?: number;
+  /** Server caps at 200 rather than rejecting. */
+  pageSize?: number;
+};
+
+/** A meta object for data that is not actually paginated, so callers can
+ *  treat every list uniformly. */
+export const singlePageMeta = (total: number): PageMeta => ({
+  page: 1, pageSize: total, total, totalPages: 1,
+});
+
 export type RequestOptions = Omit<RequestInit, "body"> & { body?: unknown };
 
 /**
@@ -231,8 +265,79 @@ export async function apiDownload(path: string): Promise<{ blob: Blob; filename:
   return { blob: await res.blob(), filename: match?.[1] ?? null };
 }
 
+/** Serialise query parameters, dropping undefined/null/empty rather than
+ *  sending `?page=undefined`. Arrays repeat the key. */
+export function toQuery(params: Record<string, unknown> | undefined): string {
+  if (!params) return "";
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === "") continue;
+    if (Array.isArray(v)) {
+      for (const item of v) if (item !== undefined && item !== null && item !== "") q.append(k, String(item));
+    } else {
+      q.set(k, String(v));
+    }
+  }
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
+/**
+ * GET a paginated collection, keeping the `meta` the API sent.
+ *
+ * Falls back to a synthesised single-page meta when an endpoint returns a
+ * bare array, so a not-yet-paginated route cannot make a caller crash.
+ */
+export async function apiList<T>(
+  path: string,
+  params?: Record<string, unknown>,
+  options: RequestOptions = {},
+): Promise<Paginated<T>> {
+  const url = `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}${toQuery(params)}`;
+  // `body` is dropped deliberately: this is always a GET.
+  const { headers, body: _body, ...rest } = options;
+
+  const finalHeaders = new Headers(headers);
+  finalHeaders.set("Accept", "application/json");
+  if (authTokenGetter) {
+    const token = await authTokenGetter();
+    if (token) finalHeaders.set("Authorization", `Bearer ${token}`);
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, { ...rest, method: "GET", headers: finalHeaders, credentials: "omit" });
+  } catch (cause) {
+    throw new ApiError(
+      cause instanceof Error ? cause.message : "Network request failed", 0, url, null,
+    );
+  }
+
+  const parsed = await parseBody(res);
+
+  if (!res.ok) {
+    const detail =
+      parsed && typeof parsed === "object" && "error" in parsed
+        ? String((parsed as { error?: { message?: unknown } }).error?.message ?? res.statusText)
+        : res.statusText;
+    throw new ApiError(`${res.status} ${detail}`.trim(), res.status, url, parsed);
+  }
+
+  if (Array.isArray(parsed)) return { items: parsed as T[], meta: singlePageMeta(parsed.length) };
+
+  if (parsed && typeof parsed === "object" && "data" in parsed) {
+    const body = parsed as { data: unknown; meta?: PageMeta };
+    const items = Array.isArray(body.data) ? (body.data as T[]) : [];
+    return { items, meta: body.meta ?? singlePageMeta(items.length) };
+  }
+
+  return { items: [], meta: singlePageMeta(0) };
+}
+
 export const api = {
   get: <T>(path: string, options?: RequestOptions) => apiFetch<T>(path, { ...options, method: "GET" }),
+  /** Paginated collection — keeps `meta`. Use for every list endpoint. */
+  list: apiList,
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     apiFetch<T>(path, { ...options, method: "POST", body }),
   /** Partial update. The API treats absent fields as "leave alone", not "null". */
