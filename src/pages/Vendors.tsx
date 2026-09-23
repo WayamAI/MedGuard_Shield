@@ -4,7 +4,7 @@ import { Card, Badge, Btn, Input, Select, Modal, SlideOver, ChartSkeleton, Error
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
-  PageHeader, MetricCard, RiskBadge, Tabs, TabPanel, Field, FieldGroup,
+  PageHeader, MetricCard, RiskBadge, RiskScore, formatScore, Tabs, TabPanel, Field, FieldGroup,
   FilterBar, EntityAvatar, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
   BAA_TONE, BAA_LABEL,
 } from "@/components/ui-patterns";
@@ -126,7 +126,7 @@ export default function Vendors() {
       header: "Score",
       align: "right",
       sortValue: v => v.risk?.score ?? null,
-      cell: v => <span className="tabular">{v.risk ? v.risk.score : "—"}</span>,
+      cell: v => <RiskScore score={v.risk?.score} />,
     },
     {
       id: "band",
@@ -299,7 +299,7 @@ function VendorDrawer({ id, onClose, canWrite }: { id: number | null; onClose: (
     try {
       const next = await recompute.mutateAsync(v.id);
       notify.success(
-        next.risk ? `Risk rescored: ${next.risk.score} (${next.risk.band})` : "Vendor rescored",
+        next.risk ? `Risk rescored: ${formatScore(next.risk.score)} (${next.risk.band})` : "Vendor rescored",
       );
     } catch (err) {
       notify.error(describeApiError(toApiError(err)).message);
@@ -392,7 +392,7 @@ function VendorDrawer({ id, onClose, canWrite }: { id: number | null; onClose: (
               {v.risk ? (
                 <div className="space-y-3">
                   <div className="flex items-baseline gap-3">
-                    <span className="font-display text-display-metric tabular text-primary">{v.risk.score}</span>
+                    <RiskScore score={v.risk.score} className="font-display text-display-metric tabular text-primary" />
                     <RiskBadge band={v.risk.band} />
                   </div>
                   <FieldGroup title="Factors">

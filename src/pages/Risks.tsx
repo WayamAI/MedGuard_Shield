@@ -6,7 +6,7 @@ import { RiskMatrix } from "@/components/RiskMatrix";
 import { DataState } from "@/components/DataState";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
-  PageHeader, MetricCard, RiskBadge, Field, FieldGroup, FilterBar,
+  PageHeader, MetricCard, RiskBadge, RiskScore, formatScore, Field, FieldGroup, FilterBar,
   EntityAvatar, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
 } from "@/components/ui-patterns";
 import { useRisks, useRiskMatrix } from "@/hooks/useRisks";
@@ -110,7 +110,7 @@ export default function Risks() {
       header: "Score",
       align: "right",
       sortValue: r => r.score,
-      cell: r => <span className="tabular font-medium text-primary">{r.score}</span>,
+      cell: r => <RiskScore score={r.score} className="tabular font-medium text-primary" />,
     },
     {
       id: "band",
@@ -228,7 +228,7 @@ function RiskDrawer({
     if (!risk) return;
     try {
       const next = await recompute.mutateAsync(risk.assetId);
-      notify.success(`Risk rescored: ${next.score} (${next.band})`);
+      notify.success(`Risk rescored: ${formatScore(next.score)} (${next.band})`);
     } catch (err) {
       notify.error(describeApiError(toApiError(err)).message);
     }
@@ -260,7 +260,7 @@ function RiskDrawer({
             <EntityAvatar icon="risk" tone={BAND_TONE[risk.band]} size="lg" />
             <div>
               <div className="flex items-baseline gap-3">
-                <span className="font-display text-display-metric tabular text-primary">{risk.score}</span>
+                <RiskScore score={risk.score} className="font-display text-display-metric tabular text-primary" />
                 <RiskBadge band={risk.band} />
               </div>
               <p className="mt-1 text-body-sm text-tertiary">

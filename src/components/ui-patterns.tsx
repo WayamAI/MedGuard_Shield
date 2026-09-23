@@ -77,10 +77,35 @@ export const RiskBadge = ({ band, className }: { band: RiskBand | null; classNam
     <Badge tone="muted" className={className}>Not scored</Badge>
   );
 
-/** Numeric score with its band, for table cells. Em dash when unscored. */
-export const RiskScore = ({ score }: { score: number | null | undefined }) => (
-  <span className="tabular">{score == null ? "—" : score}</span>
-);
+/**
+ * A risk score, formatted for display.
+ *
+ * The API derives a score as a product of its factors, so it returns a whole
+ * number for some rows (64, 80, 100) and a two-decimal float for others
+ * (38.4, 11.52). Printed raw, one column reads 100 / 80 / 38.4 / 11.52 —
+ * ragged precision that implies the engine is more certain about some rows
+ * than others. One decimal at most, trailing zero dropped.
+ *
+ * Nothing is hidden: the exact value stays on the element as a tooltip. And
+ * the band badge beside it always comes from the server, so display rounding
+ * can never move a row into a band the API did not put it in.
+ */
+export const formatScore = (score: number): string => {
+  const rounded = Math.round(score * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+};
+
+/** Numeric score, consistently formatted. Em dash when unscored. */
+export const RiskScore = ({
+  score,
+  className = "tabular",
+}: {
+  score: number | null | undefined;
+  className?: string;
+}) =>
+  score == null
+    ? <span className={className}>—</span>
+    : <span className={className} title={String(score)}>{formatScore(score)}</span>;
 
 /* ------------------------------------------------------------ page header */
 

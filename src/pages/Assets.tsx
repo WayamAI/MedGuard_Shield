@@ -4,7 +4,7 @@ import { Card, Badge, Btn, Input, Select, Modal, SlideOver, ChartSkeleton, Error
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
-  PageHeader, MetricCard, RiskBadge, Tabs, TabPanel, Field, FieldGroup,
+  PageHeader, MetricCard, RiskBadge, RiskScore, formatScore, Tabs, TabPanel, Field, FieldGroup,
   FilterBar, EntityAvatar, BAND_TONE, bandRank, SENSITIVITY_TONE,
 } from "@/components/ui-patterns";
 import { DomainIcon } from "@/components/DomainIcon";
@@ -149,7 +149,7 @@ export default function Assets() {
       header: "Score",
       align: "right",
       sortValue: a => a.risk?.score ?? null,
-      cell: a => <span className="tabular">{a.risk ? a.risk.score : "—"}</span>,
+      cell: a => <RiskScore score={a.risk?.score} />,
     },
     {
       id: "band",
@@ -268,7 +268,7 @@ function AssetDrawer({ id, onClose, canWrite }: { id: number | null; onClose: ()
     if (!a) return;
     try {
       const next = await recompute.mutateAsync(a.id);
-      notify.success(`Risk rescored: ${next.score} (${next.band})`);
+      notify.success(`Risk rescored: ${formatScore(next.score)} (${next.band})`);
     } catch (err) {
       notify.error(describeApiError(toApiError(err)).message);
     }
@@ -358,7 +358,7 @@ function AssetDrawer({ id, onClose, canWrite }: { id: number | null; onClose: ()
               {a.risk ? (
                 <div className="space-y-3">
                   <div className="flex items-baseline gap-3">
-                    <span className="font-display text-display-metric tabular text-primary">{a.risk.score}</span>
+                    <RiskScore score={a.risk.score} className="font-display text-display-metric tabular text-primary" />
                     <RiskBadge band={a.risk.band} />
                   </div>
                   <p className="text-body-sm text-tertiary">
