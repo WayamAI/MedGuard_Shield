@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { Card, Badge, Btn, Select, SectionHeader, ChartSkeleton } from "@/components/ui-bits";
+import { PageHeader } from "@/components/ui-patterns";
 import { AppIcon } from "@/components/AppIcon";
 import { DataState } from "@/components/DataState";
 import { ImportPreviewTable, ImportErrorTable } from "@/components/ImportTables";
@@ -87,10 +88,16 @@ export default function ImportData() {
 
   return (
     <div className="space-y-4">
+      <PageHeader
+        icon="import"
+        title="Data Import"
+        description="Upload a CSV to add records. Every file is checked before anything is written."
+      />
+
       <Card className="p-4">
         <SectionHeader
-          title="Import Data"
-          subtitle="Upload a CSV to add records. Every file is checked before anything is written."
+          title="What are you importing?"
+          subtitle="Pick the record type first — changing it clears any file you have chosen."
         />
 
         <DataState query={entities} height={120} emptyTitle="No importable entities">
@@ -98,7 +105,7 @@ export default function ImportData() {
             <div className="flex flex-wrap items-end gap-3">
               <div>
                 <label htmlFor="entity" className="mb-1.5 block text-label-md text-primary">
-                  What are you importing?
+                  Record type
                 </label>
                 <Select
                   id="entity"

@@ -308,14 +308,21 @@ export default function Layout({ children }: { children: ReactNode }) {
             onClick={() => setMobileNavOpen(true)}
           />
 
-          <div className="hidden min-w-0 sm:block">
-            <div className="flex items-center gap-1.5 text-caption text-quaternary">
-              <AppIcon name="home" size="xs" />
-              <span>/</span>
-              <span className="truncate text-tertiary">{pageTitle}</span>
-            </div>
-            <h1 className="truncate font-display text-display-page text-primary">{pageTitle}</h1>
-          </div>
+          {/*
+            Breadcrumb only. The page title itself belongs to <PageHeader>,
+            which every routed page renders — having it here as well printed
+            the same words twice, forty pixels apart, on every screen.
+          */}
+          <nav aria-label="Breadcrumb" className="hidden min-w-0 shrink-0 sm:block">
+            <ol className="flex items-center gap-1.5 text-body-sm text-tertiary">
+              <li className="flex items-center">
+                <AppIcon name="home" size="sm" className="text-icon-quaternary" />
+                <span className="sr-only">Drishti</span>
+              </li>
+              <li aria-hidden className="text-quaternary">/</li>
+              <li className="truncate text-secondary" aria-current="page">{pageTitle}</li>
+            </ol>
+          </nav>
 
           {/* GLOBAL SEARCH — real results over the live API */}
           <div className="relative max-w-md flex-1" ref={searchRef}>

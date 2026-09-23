@@ -90,6 +90,11 @@ export type Breadcrumb = { label: string; to?: string };
  * The top of every page: what this is, what it is for, and the actions that
  * apply to the whole screen. One component so the vertical rhythm above the
  * first card is identical everywhere.
+ *
+ * This carries the page's <h1>. The app shell deliberately does not also
+ * render one — the title used to appear twice on every screen, once in the
+ * top bar and again here, which reads as an unfinished layout rather than as
+ * emphasis. The shell keeps the breadcrumb; the page keeps the title.
  */
 export const PageHeader = ({
   title, description, actions, meta, icon,
@@ -106,7 +111,7 @@ export const PageHeader = ({
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
         {icon && <DomainIcon name={icon} size={20} className="text-brand" />}
-        <h2 className="truncate font-display text-heading-lg text-primary">{title}</h2>
+        <h1 className="truncate font-display text-display-page text-primary">{title}</h1>
       </div>
       {description && (
         <p className="mt-1 max-w-2xl text-body-sm text-tertiary">{description}</p>

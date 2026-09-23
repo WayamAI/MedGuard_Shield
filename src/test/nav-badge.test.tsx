@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
 import Layout from "@/components/Layout";
+import { PageHeader } from "@/components/ui-patterns";
 
 /**
  * The Threat Detection badge is a count a viewer reads as current. It used to
@@ -90,8 +91,8 @@ describe("Threat Detection nav badge", () => {
 
 describe("page title in the header", () => {
   /*
-   * The header title and breadcrumb both read from PAGE_TITLES. A route
-   * missing from that map silently falls back to "Drishti", which is what
+   * The breadcrumb reads from PAGE_TITLES. A route missing from that map
+   * silently falls back to "Drishti", which is what
    * /import did: the one page whose whole job is to be self-explanatory was
    * the one page that did not say what it was.
    */
@@ -128,7 +129,11 @@ describe("page title in the header", () => {
       </QueryClientProvider>,
     );
 
-    expect(await screen.findByRole("heading", { level: 1, name: title })).toBeInTheDocument();
+    // The page's own <h1> lives in <PageHeader>, which is page content and
+    // not rendered here. The breadcrumb is the shell's statement of where you
+    // are, and it is what PAGE_TITLES actually drives.
+    const crumb = await screen.findByLabelText("Breadcrumb");
+    expect(crumb).toHaveTextContent(title);
   });
 
   it("never falls back to the bare product name on a routed page", async () => {
@@ -146,7 +151,60 @@ describe("page title in the header", () => {
       </QueryClientProvider>,
     );
 
-    const h1 = await screen.findByRole("heading", { level: 1 });
-    expect(h1).not.toHaveTextContent(/^Drishti$/);
+    const crumb = await screen.findByLabelText("Breadcrumb");
+    expect(crumb).toHaveTextContent("Data Import");
+    // The bare product name is the fallback for an unmapped route.
+    expect(crumb).not.toHaveTextContent(/^\s*\/?\s*Drishti\s*$/);
+  });
+});
+
+describe("the shell does not repeat the page title", () => {
+  /*
+   * The regression this exists for: the top bar rendered an <h1> with the
+   * page title while every page also rendered its own <PageHeader> with the
+   * same words. The result was the title printed twice, forty pixels apart,
+   * on every screen — which reads as an unfinished layout rather than as
+   * emphasis, and gave screen readers two competing page headings.
+   */
+  const renderShell = (path: string, child: ReactNode) => {
+    threatsOk = true;
+    threatsBody = { summary: SUMMARY, threats: [] };
+    return render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}>
+        <MemoryRouter initialEntries={[path]}>
+          <ThemeProvider>
+            <AuthProvider>
+              <Layout>{child}</Layout>
+            </AuthProvider>
+          </ThemeProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+  };
+
+  it("renders exactly one h1 when the page supplies its own header", async () => {
+    renderShell("/assets", <PageHeader title="Asset Inventory" />);
+
+    await waitFor(() => expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1));
+    expect(screen.getByRole("heading", { level: 1, name: "Asset Inventory" })).toBeInTheDocument();
+  });
+
+  it("does not print the page title twice", async () => {
+    renderShell("/assets", <PageHeader title="Asset Inventory" />);
+
+    await waitFor(() => expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument());
+
+    // The breadcrumb names the page too, but as navigation, not as a heading.
+    const headings = screen.getAllByText("Asset Inventory")
+      .filter(el => /^H[1-6]$/.test(el.tagName));
+    expect(headings).toHaveLength(1);
+  });
+
+  it("keeps the breadcrumb as navigation rather than a second heading", async () => {
+    renderShell("/assets", <PageHeader title="Asset Inventory" />);
+
+    const crumb = await screen.findByLabelText("Breadcrumb");
+    expect(crumb.tagName).toBe("NAV");
+    expect(crumb.querySelector("h1, h2, h3")).toBeNull();
   });
 });
