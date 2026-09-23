@@ -143,7 +143,16 @@ export const PageHeader = ({
       )}
       {meta && <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">{meta}</div>}
     </div>
-    {actions && <div className="flex flex-shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+    {actions && (
+      /*
+       * flex-shrink-0 keeps the controls at their natural size when there is
+       * room, which is what a desktop header wants. Below sm it has to go:
+       * it stopped the row shrinking to the viewport, so the row could never
+       * wrap internally and simply overflowed instead — on PHI Flow that put
+       * Export entirely off-screen and cut "Rescan" in half at 390px.
+       */
+      <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">{actions}</div>
+    )}
   </div>
 );
 
