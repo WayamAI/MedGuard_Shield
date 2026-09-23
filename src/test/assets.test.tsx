@@ -35,12 +35,19 @@ const SEED: ApiAsset[] = [
 ];
 
 let payload: unknown = SEED;
+let detailPayload: unknown = null;
 let status = 200;
 
 beforeEach(() => {
-  payload = SEED; status = 200;
+  payload = SEED; detailPayload = null; status = 200;
   vi.stubEnv("VITE_API_BASE_URL", "http://api.test");
-  vi.stubGlobal("fetch", vi.fn(async () => {
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (/\/api\/assets\/\d+/.test(url) && detailPayload) {
+      return new Response(JSON.stringify({ data: detailPayload }), {
+        status: 200, headers: { "content-type": "application/json" },
+      });
+    }
     const rows = Array.isArray(payload) ? payload : [];
     const body = status === 200
       ? { data: payload, meta: { page: 1, pageSize: 25, total: rows.length, totalPages: 1 } }
@@ -57,6 +64,67 @@ const wrap = (node: ReactNode) => (
     <MemoryRouter><AuthProvider>{node}</AuthProvider></MemoryRouter>
   </QueryClientProvider>
 );
+
+describe("Asset detail", () => {
+  /*
+   * The asset is the hub of the Drishti model — PHI lives in it, identities
+   * reach it, vendors touch it, threats fire against it. The drawer showed
+   * only PHI and flows while the API returned the whole graph in the same
+   * response, so half the model was being fetched and thrown away.
+   */
+  const DETAIL = {
+    ...SEED[0],
+    phiTypes: [{ id: 1, name: "Financial", sensitivity: "MEDIUM", recordsPerDay: 87100 }],
+    risk: { id: 1, likelihood: 5, impact: 5, exposure: 5, controlGap: 5,
+            score: 100, band: "EXTREME", computedAt: "2026-09-18T00:00:00.000Z" },
+    flows: { outbound: [], inbound: [{ from: "Epic EHR Core", recordsPerDay: 87100, encrypted: false }] },
+    vendors: [{ id: 1, name: "Northwind Claims Processing", baaStatus: "MISSING", grantedAt: "2026-01-01T00:00:00.000Z" }],
+    access: [{ id: 9, identityId: 6, identityName: "svc-legacy-billing-sync", kind: "SERVICE_ACCOUNT",
+               active: true, mfaEnabled: false, level: "WRITE",
+               grantedAt: "2024-03-16T00:00:00.000Z", lastUsedAt: null }],
+    threats: [{ id: 1, severity: "CRITICAL", status: "INVESTIGATING",
+                title: "Bulk PHI export from billing database",
+                detectedAt: "2026-09-18T00:00:00.000Z", resolvedAt: null }],
+    controls: [],
+    remediations: [],
+  };
+
+  const openDrawer = async () => {
+    payload = SEED;
+    detailPayload = DETAIL;
+    render(wrap(<Assets />));
+    await waitFor(() => expect(screen.getByText("Billing Engine DB")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("row-1"));
+    await waitFor(() => expect(screen.getByRole("tab", { name: /Overview/ })).toBeInTheDocument());
+  };
+
+  it("offers a tab for each side of the graph the API returns", async () => {
+    await openDrawer();
+    for (const name of [/Overview/, /Risk/, /PHI/, /Flows/, /Access/, /Vendors/, /Threats/]) {
+      expect(screen.getByRole("tab", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("shows the identities that can reach the asset", async () => {
+    await openDrawer();
+    fireEvent.click(screen.getByRole("tab", { name: /Access/ }));
+    expect(await screen.findByText("svc-legacy-billing-sync")).toBeInTheDocument();
+    expect(screen.getByText("Never used")).toBeInTheDocument();
+  });
+
+  it("shows the vendors that touch the asset, with their BAA state", async () => {
+    await openDrawer();
+    fireEvent.click(screen.getByRole("tab", { name: /Vendors/ }));
+    expect(await screen.findByText("Northwind Claims Processing")).toBeInTheDocument();
+    expect(screen.getByText(/BAA missing/)).toBeInTheDocument();
+  });
+
+  it("shows what has been detected against the asset", async () => {
+    await openDrawer();
+    fireEvent.click(screen.getByRole("tab", { name: /Threats/ }));
+    expect(await screen.findByText("Bulk PHI export from billing database")).toBeInTheDocument();
+  });
+});
 
 describe("Asset inventory", () => {
   it("lists every asset the API returned", async () => {

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, Badge, Btn, Input, Select, Modal, SlideOver, ChartSkeleton, ErrorState } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
@@ -256,6 +256,7 @@ export default function Assets() {
 /* --------------------------------------------------------------- drawer */
 
 function AssetDrawer({ id, onClose, canWrite }: { id: number | null; onClose: () => void; canWrite: boolean }) {
+  const navigate = useNavigate();
   const detail = useAsset(id);
   const recompute = useRecomputeAssetRisk();
   const [tab, setTab] = useState("overview");
@@ -277,7 +278,7 @@ function AssetDrawer({ id, onClose, canWrite }: { id: number | null; onClose: ()
     <SlideOver
       open={id !== null}
       onClose={onClose}
-      width={520}
+      width={560}
       title={a?.name ?? "Asset"}
       footer={
         a && canWrite ? (
@@ -333,6 +334,9 @@ function AssetDrawer({ id, onClose, canWrite }: { id: number | null; onClose: ()
               { id: "risk", label: "Risk" },
               { id: "phi", label: "PHI", count: a.phiTypes.length },
               { id: "flows", label: "Flows", count: a.flows.inbound.length + a.flows.outbound.length },
+              { id: "access", label: "Access", count: a.access?.length ?? 0 },
+              { id: "vendors", label: "Vendors", count: a.vendors?.length ?? 0 },
+              { id: "threats", label: "Threats", count: a.threats?.length ?? 0 },
             ]}
           />
 
@@ -366,6 +370,22 @@ function AssetDrawer({ id, onClose, canWrite }: { id: number | null; onClose: ()
                     <Field label="Exposure" value={`${a.risk.exposure} / 5`} />
                     <Field label="Control gap" value={`${a.risk.controlGap} / 5`} />
                     <Field label="Computed" value={fmtDate(a.risk.computedAt)} />
+                  </FieldGroup>
+
+                  <FieldGroup title={`Controls applied (${a.controls?.length ?? 0})`}>
+                    {(a.controls?.length ?? 0) === 0
+                      ? <p className="py-2 text-body-sm text-quaternary">No controls are recorded against this asset.</p>
+                      : a.controls.map(c => (
+                          <Field key={c.id} label={c.name} value={<Badge tone="muted">{c.status}</Badge>} />
+                        ))}
+                  </FieldGroup>
+
+                  <FieldGroup title={`Open findings (${a.remediations?.length ?? 0})`}>
+                    {(a.remediations?.length ?? 0) === 0
+                      ? <p className="py-2 text-body-sm text-quaternary">No remediation has been raised for this asset.</p>
+                      : a.remediations.map(r => (
+                          <Field key={r.id} label={r.title} value={<Badge tone="muted">{r.status}</Badge>} />
+                        ))}
                   </FieldGroup>
                 </div>
               ) : (
@@ -411,6 +431,113 @@ function AssetDrawer({ id, onClose, canWrite }: { id: number | null; onClose: ()
               </div>
             </TabPanel>
           )}
+
+          {tab === "access" && (
+            <TabPanel>
+              {(a.access?.length ?? 0) === 0 ? (
+                <Empty>Nobody holds a recorded grant on this asset.</Empty>
+              ) : (
+                <div className="space-y-2">
+                  {a.access.map(g => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => navigate(`/access?search=${encodeURIComponent(g.identityName)}`)}
+                      className="flex w-full items-center justify-between gap-3 rounded-md border border-default p-2.5 text-left transition-colors hover:border-active"
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <EntityAvatar icon="identity" tone={g.active ? "muted" : "danger"} size="sm" />
+                        <span className="min-w-0">
+                          <span className={`block truncate text-body-md text-primary ${!g.active ? "line-through opacity-70" : ""}`}>
+                            {g.identityName}
+                          </span>
+                          <span className="block text-caption text-tertiary">
+                            {g.lastUsedAt ? `Last used ${fmtDate(g.lastUsedAt)}` : "Never used"}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="flex flex-shrink-0 items-center gap-1.5">
+                        {!g.mfaEnabled && <Badge tone="warning">No MFA</Badge>}
+                        <Badge tone={g.level === "ADMIN" ? "danger" : g.level === "WRITE" ? "warning" : "muted"}>
+                          {g.level}
+                        </Badge>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </TabPanel>
+          )}
+
+          {tab === "vendors" && (
+            <TabPanel>
+              {(a.vendors?.length ?? 0) === 0 ? (
+                <Empty>No third party reaches this asset.</Empty>
+              ) : (
+                <div className="space-y-2">
+                  {a.vendors.map(v => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => navigate(`/vendors?open=${v.id}`)}
+                      className="flex w-full items-center justify-between gap-3 rounded-md border border-default p-2.5 text-left transition-colors hover:border-active"
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <EntityAvatar icon="vendor" tone={v.baaStatus === "SIGNED" ? "success" : "danger"} size="sm" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-body-md text-primary">{v.name}</span>
+                          <span className="block text-caption text-tertiary">
+                            Access since {fmtDate(v.grantedAt)}
+                          </span>
+                        </span>
+                      </span>
+                      <Badge tone={v.baaStatus === "SIGNED" ? "success" : v.baaStatus === "PENDING" ? "warning" : "danger"}>
+                        BAA {v.baaStatus.toLowerCase()}
+                      </Badge>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </TabPanel>
+          )}
+
+          {tab === "threats" && (
+            <TabPanel>
+              {(a.threats?.length ?? 0) === 0 ? (
+                <Empty>Nothing has been detected against this asset.</Empty>
+              ) : (
+                <div className="space-y-2">
+                  {a.threats.map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => navigate(`/threats?open=${t.id}`)}
+                      className="flex w-full items-center justify-between gap-3 rounded-md border border-default p-2.5 text-left transition-colors hover:border-active"
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <EntityAvatar
+                          icon="threat"
+                          tone={t.severity === "CRITICAL" || t.severity === "HIGH" ? "danger" : "warning"}
+                          size="sm"
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate text-body-md text-primary">{t.title}</span>
+                          <span className="block text-caption text-tertiary">
+                            Detected {fmtDate(t.detectedAt)}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="flex flex-shrink-0 items-center gap-1.5">
+                        <Badge tone={t.severity === "CRITICAL" || t.severity === "HIGH" ? "danger" : "warning"}>
+                          {t.severity}
+                        </Badge>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </TabPanel>
+          )}
         </div>
       )}
 
@@ -418,6 +545,11 @@ function AssetDrawer({ id, onClose, canWrite }: { id: number | null; onClose: ()
     </SlideOver>
   );
 }
+
+/** One wording for "this asset has none of these". */
+const Empty = ({ children }: { children: React.ReactNode }) => (
+  <p className="py-6 text-center text-body-sm text-tertiary">{children}</p>
+);
 
 function FlowList({
   title, items, direction,

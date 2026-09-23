@@ -114,6 +114,41 @@ export type ApiAssetDetail = Omit<ApiAsset, "risk"> & {
     outbound: Array<{ to: string; recordsPerDay: number; encrypted: boolean }>;
     inbound: Array<{ from: string; recordsPerDay: number; encrypted: boolean }>;
   };
+  /**
+   * The rest of the graph, in the same call.
+   *
+   * This is what makes an asset the hub of the Drishti model rather than a
+   * row in a table: from one record you can see the PHI it holds, who can
+   * reach it, which third parties touch it, what has been detected against
+   * it, and what is being done about it.
+   */
+  vendors: Array<{ id: number; name: string; baaStatus: BaaStatus; grantedAt: string }>;
+  access: Array<{
+    id: number;
+    identityId: number;
+    identityName: string;
+    kind: IdentityKind;
+    active: boolean;
+    mfaEnabled: boolean;
+    level: AccessLevel;
+    grantedAt: string;
+    lastUsedAt: string | null;
+  }>;
+  threats: Array<{
+    id: number;
+    severity: ThreatSeverity;
+    status: ThreatStatus;
+    title: string;
+    detectedAt: string;
+    resolvedAt: string | null;
+  }>;
+  controls: Array<{ id: number; name: string; status: ControlStatus; category?: string }>;
+  remediations: Array<{
+    id: number;
+    title: string;
+    severity: RemediationSeverity;
+    status: RemediationStatus;
+  }>;
 };
 
 /** POST /api/assets and PATCH /api/assets/:id request body. */
