@@ -132,11 +132,17 @@ export const PageHeader = ({
   meta?: ReactNode;
   icon?: DomainIconName;
 }) => (
-  <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+  /*
+   * Below sm the title and its actions stack instead of sharing a row.
+   * Sharing one meant the actions took their content width and the title —
+   * which is min-w-0 and truncates — lost whatever was left: "Vendor Risk"
+   * rendered as "Ven…" at 390px with Refresh and New vendor beside it.
+   */
+  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-x-6 sm:gap-y-3">
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
         {icon && <DomainIcon name={icon} size={20} className="text-brand" />}
-        <h1 className="truncate font-display text-display-page text-primary">{title}</h1>
+        <h1 className="font-display text-display-page text-primary sm:truncate">{title}</h1>
       </div>
       {description && (
         <p className="mt-1 max-w-2xl text-body-sm text-tertiary">{description}</p>
