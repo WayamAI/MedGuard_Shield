@@ -398,6 +398,10 @@ export type ImportReport = {
    because the server reads it from the signed token.
    -------------------------------------------------------------------------- */
 
+/** The six categories the API accepts. Anything else is a 400. */
+export type ControlCategory =
+  | "ACCESS" | "ENCRYPTION" | "MONITORING" | "GOVERNANCE" | "RESILIENCE" | "VENDOR";
+
 export type ControlStatus = "IMPLEMENTED" | "PARTIAL" | "PLANNED" | "NOT_IMPLEMENTED";
 export type ControlEffectiveness = "EFFECTIVE" | "PARTIALLY_EFFECTIVE" | "INEFFECTIVE" | "NOT_ASSESSED";
 
@@ -405,7 +409,7 @@ export type ApiControl = {
   id: number;
   name: string;
   description: string;
-  category: string;
+  category: ControlCategory;
   status: ControlStatus;
   effectiveness: ControlEffectiveness;
   owner: string | null;
@@ -425,6 +429,40 @@ export type ApiControl = {
   openRemediations: number;
 };
 
+/**
+ * GET /api/controls/:id.
+ *
+ * Deliberately NOT ApiControl. The list row carries aggregate counts
+ * (appliedAssetCount, policyCount, openRemediations) that the detail endpoint
+ * does not return at all — it returns the underlying rows instead. Typing the
+ * drawer as ApiControl printed "undefined assets" straight onto the screen,
+ * which `strictNullChecks: false` was never going to catch.
+ */
+export type ApiControlDetail = {
+  id: number;
+  name: string;
+  description: string;
+  category: ControlCategory;
+  status: ControlStatus;
+  effectiveness: ControlEffectiveness;
+  owner: string | null;
+  frameworkRef: string | null;
+  lastReviewedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  assets: Array<{ id: number; name: string; type: AssetType; phiVolume: number; linkedAt: string }>;
+  policies: Array<{ id: number; name: string; status: PolicyStatus }>;
+  /** Unresolved findings only — the API filters RESOLVED out server-side. */
+  remediations: Array<{
+    id: number; title: string;
+    severity: RemediationSeverity; status: RemediationStatus;
+    dueAt: string | null;
+  }>;
+  /** PHI protected by this control, summed over the assets it applies to. */
+  phiCovered: number;
+};
+
 export type PolicyStatus = "ACTIVE" | "DRAFT" | "UNDER_REVIEW" | "ARCHIVED";
 
 export type ApiPolicy = {
@@ -440,6 +478,25 @@ export type ApiPolicy = {
   archivedAt: string | null;
   createdAt: string;
   controlCount: number;
+};
+
+/** GET /api/policies/:id — carries the control rows, not a controlCount. */
+export type ApiPolicyDetail = {
+  id: number;
+  name: string;
+  description: string;
+  status: PolicyStatus;
+  owner: string | null;
+  evidenceRef: string | null;
+  reviewDueAt: string | null;
+  reviewOverdue: boolean;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  controls: Array<{
+    id: number; name: string; category: ControlCategory;
+    status: ControlStatus; effectiveness: ControlEffectiveness;
+  }>;
 };
 
 export type RemediationStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "ACCEPTED" | "REOPENED";
