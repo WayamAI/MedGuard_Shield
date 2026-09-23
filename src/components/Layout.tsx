@@ -277,8 +277,6 @@ export default function Layout({ children }: { children: ReactNode }) {
             />
           </div>
 
-          {!collapsed && <Badge tone="success" className="w-full justify-center">HIPAA Compliant</Badge>}
-
           <div className={cn("flex items-center gap-2 border-t border-muted pt-2", collapsed && "flex-col gap-2")}>
             <div
               className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-action-primary text-label-sm text-on-color"
