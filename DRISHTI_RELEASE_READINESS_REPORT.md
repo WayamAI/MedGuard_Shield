@@ -1,7 +1,7 @@
 # Drishti Release Readiness
 
 **Audit date:** 23 September 2026
-**Frontend:** `medguard-shield-main` @ `7c3ac07` — clean, pushed
+**Frontend:** `medguard-shield-main` @ `6c85871` — clean, pushed
 **Backend:** `medguard-backend` @ `ac99f3e` — clean, pushed, CI green
 **Release freeze:** 24 September 2026
 **Method:** live stack (Postgres 14 · API :4000 · UI :8080), exercised through
@@ -303,6 +303,20 @@ history rewritten, no force pushes:
 ---
 
 ## Remaining Issues
+
+### Fixed during demo packaging — an unsupported compliance claim in the UI
+
+The sidebar carried a hardcoded green "HIPAA Compliant" badge on every screen
+for every organisation. Nothing computed it.
+
+In a compliance product that is a claim the product cannot support: read one
+way it asserts the customer is compliant, which Drishti cannot know; read the
+other it asserts the product is, which is not a property a product has. It
+also sat beside the evidence against it — in the demo estate the same sidebar
+renders next to six unencrypted systems, three vendors without a valid BAA,
+eighteen flagged access grants and five open threats.
+
+Removed in `6c85871`. All gates re-run green afterwards.
 
 ### 0. Open — a pre-existing intermittent failure in the backend suite
 
