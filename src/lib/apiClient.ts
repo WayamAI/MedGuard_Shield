@@ -12,16 +12,34 @@ export class ApiError extends Error {
   readonly status: number;
   readonly url: string;
   readonly body: unknown;
+  /**
+   * Seconds the server asked us to wait, from its `Retry-After` header.
+   * Null when absent or unparseable. Only 429 and 503 are expected to set it.
+   */
+  readonly retryAfterSeconds: number | null;
 
-  constructor(message: string, status: number, url: string, body: unknown) {
+  constructor(
+    message: string,
+    status: number,
+    url: string,
+    body: unknown,
+    retryAfterSeconds: number | null = null,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.url = url;
     this.body = body;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 
-  /** 401/403 — the session is gone or insufficient, not a server fault. */
+  /**
+   * 401/403 — the server has decided, and the answer is no.
+   *
+   * This is the only class of failure that says anything conclusive about
+   * the session. Everything else (429, 5xx, a dropped connection) means the
+   * question was not answered, which is not the same as being answered no.
+   */
   get isAuthError() {
     return this.status === 401 || this.status === 403;
   }
@@ -30,6 +48,19 @@ export class ApiError extends Error {
   get isNetworkError() {
     return this.status === 0;
   }
+}
+
+/**
+ * `Retry-After` is either delta-seconds or an HTTP-date. express-rate-limit
+ * sends seconds; a proxy in front of it may well send a date, so parse both.
+ */
+export function parseRetryAfter(header: string | null | undefined): number | null {
+  if (!header) return null;
+  const trimmed = header.trim();
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  const at = Date.parse(trimmed);
+  if (Number.isNaN(at)) return null;
+  return Math.max(0, Math.round((at - Date.now()) / 1000));
 }
 
 type TokenGetter = () => string | null | undefined | Promise<string | null | undefined>;
@@ -215,7 +246,10 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
         : parsed && typeof parsed === "object" && "message" in parsed
           ? String((parsed as { message: unknown }).message)
           : res.statusText;
-    throw new ApiError(`${res.status} ${detail}`.trim(), res.status, url, parsed);
+    throw new ApiError(
+      `${res.status} ${detail}`.trim(), res.status, url, parsed,
+      parseRetryAfter(res.headers.get("Retry-After")),
+    );
   }
 
   if (res.status === 204) return undefined as T;
