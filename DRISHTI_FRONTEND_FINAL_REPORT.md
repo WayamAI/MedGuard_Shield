@@ -294,20 +294,26 @@ break, so I am reporting rather than changing them.
 - **A modal does not lock background scroll.** The modal itself stays fixed
   and fully usable; the page behind it can still scroll.
 
-### One non-responsive bug found along the way
+### One non-responsive bug found along the way — since fixed
 
-Not fixed - out of scope for this pass, and worth a decision.
+Found here, fixed separately.
 
 My harness reloaded the app roughly a hundred times, each boot-probing
 `POST /api/auth/refresh`, which tripped the backend's 15-minute rate limit.
 The frontend treated the resulting **429 as a dead session**: it cleared
 state and showed "Your session ended. Please sign in again." The session was
-in fact fine - 60 refresh tokens were still active - and the correct
-response to a 429 is to wait and retry, not to log the user out. A transient
-rate-limit or network blip on boot currently ejects a signed-in user.
+in fact fine — 60 refresh tokens were still active — and the correct
+response to a 429 is to wait and retry, not to log the user out.
 
-`use-auth.tsx` clears the session in a single catch covering every error;
-its comment reasons about 401 and 403 only.
+`use-auth.tsx` cleared the session inside one broad catch covering every
+error, while its comment reasoned only about 401 and 403. It now clears only
+for those two — the codes where the server has actually answered — and keeps
+the session through a 429, a 5xx, a timeout or a dropped connection,
+retrying on a bounded backoff that honours `Retry-After`.
+
+Verified live in the built bundle by forcing a 401 and a 429 at the client
+while leaving the backend untouched: one refresh fired, it was rate limited,
+and the user stayed signed in on the page they were on.
 
 ---
 

@@ -69,7 +69,12 @@ integration tests truncate every table, so refusing is the correct response.
 - Rate limiting verified live: 10 failed logins, then `429 RATE_LIMITED`.
   The throttle applies to a **valid** login from the same IP too, which is
   the point of brute-force defence, and the error body never reveals whether
-  the account exists.
+  the account exists. The 429 carries `Retry-After`, now asserted by a
+  backend test because the client schedules from it.
+- A refresh only ends the session when the server says 401 or 403. A 429, a
+  5xx, a timeout or a dropped connection leave the session intact and are
+  retried on a bounded backoff — an unanswered question is not a "no". This
+  was a real defect found during the responsive pass and fixed afterwards.
 
 ## Authorization
 
