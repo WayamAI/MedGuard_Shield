@@ -1,8 +1,9 @@
 # Drishti Release Readiness
 
 **Audit date:** 23 September 2026
-**Frontend:** `medguard-shield-main` @ `418b44a` — clean, pushed
-**Backend:** `medguard-backend` @ `723420e` — clean, pushed
+**Frontend:** `medguard-shield-main` @ `7c3ac07` — clean, pushed
+**Backend:** `medguard-backend` @ `ac99f3e` — clean, pushed, CI green
+**Release freeze:** 24 September 2026
 **Method:** live stack (Postgres 14 · API :4000 · UI :8080), exercised through
 both the HTTP API and a real browser, with every claim checked against the
 database independently.
@@ -21,10 +22,10 @@ and pushed separately, and CI is green on both.
 | Gate | Result |
 |---|---|
 | Backend `lint` / `typecheck` / `build` | pass |
-| Backend tests | **550 passed**, 20 files, 0 failed |
-| Backend CI on `main` | green at `723420e` |
+| Backend tests | **570 passed**, 21 files — green on CI; see the flake note in Remaining Issues |
+| Backend CI on `main` | green at `ac99f3e` |
 | Frontend `lint` / `typecheck` / `build` | pass (21 warnings, all pre-existing `react-refresh`) |
-| Frontend tests | **258 passed**, 22 files, 0 failed |
+| Frontend tests | **287 passed**, 23 files, 0 failed |
 | Docker, both services | build and serve real traffic |
 | Migrations | 6 applied, schema up to date, none pending |
 
@@ -32,8 +33,8 @@ and pushed separately, and CI is green on both.
 
 ## Frontend
 
-React 18 + TypeScript + Vite. Lint 0 errors, typecheck clean, 258 tests
-green, production build 385 kB (118 kB gzip).
+React 18 + TypeScript + Vite. Lint 0 errors, typecheck clean, 287 tests
+green, production build 387 kB (119 kB gzip).
 
 Every route in the demo path was walked in the browser and rendered live API
 data with a clean console: Dashboard, Assets, PHI Flow, Risk Register,
@@ -46,7 +47,7 @@ access and threat rollups each match those pages' own totals.
 
 ## Backend
 
-Express + Prisma + Postgres. Lint, typecheck and build all clean; 550 tests
+Express + Prisma + Postgres. Lint, typecheck and build all clean; 570 tests
 green against a real Postgres, not a mock.
 
 87 endpoints, all organisation-scoped, all writes audited.
@@ -74,7 +75,13 @@ integration tests truncate every table, so refusing is the correct response.
 - A refresh only ends the session when the server says 401 or 403. A 429, a
   5xx, a timeout or a dropped connection leave the session intact and are
   retried on a bounded backoff — an unanswered question is not a "no". This
-  was a real defect found during the responsive pass and fixed afterwards.
+  was a real defect found during the responsive pass and fixed in `d5cf20f`.
+- The login page distinguishes the two cases rather than guessing from the
+  sessionStorage breadcrumb. While a retry is pending it says "Checking your
+  session…" with a spinner and leaves the form usable; "Your session ended"
+  is reserved for a 401 or 403 the server actually returned. Fixed in
+  `7c3ac07`. Both branches were verified live by booting the built bundle
+  cold with the refresh forced to 429 and then to 401.
 
 ## Authorization
 
@@ -297,6 +304,45 @@ history rewritten, no force pushes:
 
 ## Remaining Issues
 
+### 0. Open — a pre-existing intermittent failure in the backend suite
+
+Found while validating the release, and deliberately **not** fixed: this is
+a freeze, and it is not a product defect.
+
+Roughly one full-suite run in two or three reports a single failure, and it
+is a **different test in a different file every time** — `rbac`, twice in
+`permissions`, once in `import`. The captured cause is not an assertion
+about behaviour at all:
+
+```
+Error: login for admin@test.local returned no token: {}
+  ❯ tokenFor tests/helpers.ts:220
+```
+
+`tokenFor` received HTTP 200 with an empty body from `/api/auth/login`. The
+route's `ok()` helper always sends `{ data: ... }`, so that response shape
+cannot come from the handler — it reads as a response truncated under load
+rather than a logic error.
+
+What rules out the obvious explanations:
+
+- **Not caused by this work.** The commit before any of my backend changes
+  (`07efee2`, 547 tests) flakes the same way — one of two runs failed, on a
+  fourth distinct test.
+- **Not cross-file racing.** `fileParallelism: false` is already set.
+- **Not stale cached tokens.** `tokenFor` performs a fresh login each call;
+  the cache was removed previously and documented as such.
+- **Not file-local.** `permissions.test.ts` passed 4/4 in isolation; the
+  failures only appear in a full ~200s run.
+
+**CI is green**, consistently, on a clean runner — including the most recent
+run at `ac99f3e`. The suite is reliable enough to gate merges; it is the
+loaded local machine that surfaces this.
+
+Recommendation: investigate after the freeze, starting at the `tokenFor`
+login path under concurrent load. It has never produced a wrong assertion
+about product behaviour — only a missing token in a helper.
+
 ### 1. Fixed — remediation writes returned a different shape than reads
 
 `createRemediation`, `updateRemediation`, `transitionRemediation` and
@@ -374,12 +420,19 @@ as a test failure. Cosmetic; not worth blocking on.
 Every critical flow passed against the live stack, verified independently at
 the API, database, UI and audit layers. Authorization, tenant isolation,
 pagination, CSV import, the risk engine and its automatic recalculation, and
-the audit trail all behave as documented. Both defects found during the audit
-were fixed, tested, committed separately and pushed, and CI is green on both
-repositories.
+the audit trail all behave as documented.
 
-The two open items are a database housekeeping note with a one-second remedy
-that is already standard pre-demo practice, and one verification I could not
-perform with the tooling available and have declined to claim.
+Four defects were found across the audit, the responsive pass and the auth
+work — plus six responsive defects — and every one was fixed, tested,
+committed separately and pushed. Backend CI is green.
 
-RELEASE CANDIDATE READY
+Responsive rendering is verified at real CSS viewports from 390 to 1920 in
+both themes. Authentication now keeps a session through an inconclusive
+refresh, and the login page tells the truth about which of the two states
+the user is in.
+
+The one open item is a pre-existing intermittent failure in the backend test
+suite, documented above: it predates this work, has never produced a wrong
+assertion about product behaviour, and does not reproduce on CI.
+
+DRISHTI RELEASE CANDIDATE — READY

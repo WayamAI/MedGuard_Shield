@@ -294,26 +294,39 @@ break, so I am reporting rather than changing them.
 - **A modal does not lock background scroll.** The modal itself stays fixed
   and fully usable; the page behind it can still scroll.
 
-### One non-responsive bug found along the way — since fixed
+### Two auth bugs found along the way — both since fixed
 
-Found here, fixed separately.
+Found during this pass, fixed separately.
 
+**1. A failed refresh ended the session, whatever the failure was.**
 My harness reloaded the app roughly a hundred times, each boot-probing
 `POST /api/auth/refresh`, which tripped the backend's 15-minute rate limit.
-The frontend treated the resulting **429 as a dead session**: it cleared
-state and showed "Your session ended. Please sign in again." The session was
-in fact fine — 60 refresh tokens were still active — and the correct
-response to a 429 is to wait and retry, not to log the user out.
+The frontend treated the resulting 429 as a dead session: it cleared state
+and showed "Your session ended." The session was fine — 60 refresh tokens
+were still live. `use-auth.tsx` cleared inside one broad catch covering
+every error while its comment reasoned only about 401 and 403.
 
-`use-auth.tsx` cleared the session inside one broad catch covering every
-error, while its comment reasoned only about 401 and 403. It now clears only
-for those two — the codes where the server has actually answered — and keeps
-the session through a 429, a 5xx, a timeout or a dropped connection,
-retrying on a bounded backoff that honours `Retry-After`.
+It now clears only for those two, keeps the session through a 429, a 5xx, a
+timeout or a dropped connection, and retries on a bounded backoff that
+honours `Retry-After`. Fixed in `d5cf20f`.
 
-Verified live in the built bundle by forcing a 401 and a 429 at the client
-while leaving the backend untouched: one refresh fired, it was rate limited,
-and the user stayed signed in on the page they were on.
+**2. The login page then still said the session had ended.**
+The notice keyed off the sessionStorage breadcrumb alone, which records only
+that a session existed in this tab — not that it ended. So a cold boot
+during a rate-limit window still announced an expiry that had not happened,
+moments before the background retry restored the user to where they were.
+
+The provider already knew the difference and simply never published it. It
+now exposes `isRecovering`, true only while a further attempt is genuinely
+pending, and the login page shows "Checking your session…" with a spinner
+and a usable form instead of the expiry notice. The expiry notice is
+unchanged and still appears when the server actually answers 401 or 403.
+Fixed in `7c3ac07`.
+
+Verified live in the built bundle by booting cold with the refresh forced to
+429 and then to 401: the first shows the checking state and no expiry
+notice, the second shows the expiry notice and no checking state, and an
+ordinary boot restores the session silently with neither.
 
 ---
 
