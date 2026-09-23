@@ -8,7 +8,7 @@ import drishtiLogoLight from "@/assets/brand/drishti-logo-light.svg";
 import drishtiLogoDark from "@/assets/brand/drishti-logo-dark.svg";
 
 export default function Login() {
-  const { isAuthenticated, isInitializing, login } = useAuth();
+  const { isAuthenticated, isInitializing, isRecovering, login } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,7 +25,19 @@ export default function Login() {
    * tab and is now gone - not after an explicit logout, and not on a first
    * visit, where it would be baffling.
    */
-  const [sessionEnded] = useState(() => hadSession());
+  const [hadOne] = useState(() => hadSession());
+
+  /*
+   * A breadcrumb says a session existed here; it does not say the session
+   * ended. While a refresh is still being retried the server has not told us
+   * anything of the sort — it was rate limited, or unreachable — so claiming
+   * the session ended is a guess, and one that turns out wrong as soon as
+   * the retry lands and puts the user straight back where they were.
+   *
+   * So: recovery wins while it is running, and the expiry notice waits until
+   * the question has actually been answered.
+   */
+  const sessionEnded = hadOne && !isRecovering;
 
   if (!isInitializing && isAuthenticated) {
     const from = (location.state as { from?: string } | null)?.from ?? "/";
@@ -62,6 +74,20 @@ export default function Login() {
         </div>
 
         <div className="bg-raised border border-default rounded-xl shadow-sm p-6 sm:p-8">
+          {isRecovering && !error && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mb-4 flex items-start gap-2 rounded-md border border-default bg-raised-2 px-3 py-2.5 text-body-sm text-secondary"
+            >
+              <span
+                aria-hidden
+                className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 animate-spin rounded-full border-2 border-brand border-t-transparent"
+              />
+              <span>Checking your session… you can sign in below if you prefer not to wait.</span>
+            </div>
+          )}
+
           {sessionEnded && !error && (
             <div
               role="status"

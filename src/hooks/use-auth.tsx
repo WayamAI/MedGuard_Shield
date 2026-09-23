@@ -101,6 +101,16 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   /** True until the boot-time session probe has settled. */
   isInitializing: boolean;
+  /**
+   * A refresh came back inconclusive and another attempt is pending.
+   *
+   * Not the same as being signed out. The server never said the session was
+   * invalid — it was rate limited, or unreachable, or it failed — so the
+   * honest thing to tell the user is that we are still checking, not that
+   * their session ended. Goes false the moment the question is answered
+   * either way, or when the retries are exhausted.
+   */
+  isRecovering: boolean;
   login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => void;
 };
@@ -126,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = React.useState<AuthUser | null>(null);
   const [memberships, setMemberships] = React.useState<Membership[]>([]);
   const [isInitializing, setIsInitializing] = React.useState(true);
+  const [isRecovering, setIsRecovering] = React.useState(false);
 
   const tokenRef = React.useRef<string | null>(null);
   const refreshTimer = React.useRef<number | null>(null);
@@ -175,6 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clearSession = React.useCallback(() => {
     sessionGeneration.current += 1;
     refreshSuppressed.current = true;
+    setIsRecovering(false);
     tokenRef.current = null;
     setUser(null);
     setMemberships([]);
@@ -190,6 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const adoptSession = React.useCallback((result: SessionResponse) => {
     sessionGeneration.current += 1;
     refreshSuppressed.current = false;
+    setIsRecovering(false);
     tokenRef.current = result.token;
     setUser(toAuthUser(result.user));
     setMemberships(result.memberships ?? []);
@@ -281,8 +294,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return Math.min(Math.max(hinted, backoff), TRANSIENT_RETRY_MAX_MS);
   }, []);
 
-  const scheduleRetry = React.useCallback((hintSeconds: number | null) => {
-    if (transientAttempts.current >= TRANSIENT_MAX_ATTEMPTS) return;
+  const scheduleRetry = React.useCallback((hintSeconds: number | null): boolean => {
+    // Out of attempts: stop, and stop claiming to be recovering.
+    if (transientAttempts.current >= TRANSIENT_MAX_ATTEMPTS) {
+      setIsRecovering(false);
+      return false;
+    }
     transientAttempts.current += 1;
     const delay = backoffFor(transientAttempts.current, hintSeconds);
     cancelRetry();
@@ -290,6 +307,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       retryTimer.current = null;
       void refreshSession();
     }, delay);
+    return true;
   }, [backoffFor, cancelRetry]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
@@ -311,7 +329,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const run = (async () => {
       const result = await attemptRefreshOnce();
-      if (result.outcome === "inconclusive") scheduleRetry(result.retryAfterSeconds);
+      if (result.outcome === "inconclusive") {
+        // Recovering only while a further attempt is actually coming.
+        setIsRecovering(scheduleRetry(result.retryAfterSeconds));
+      }
       return result;
     })();
 
@@ -429,9 +450,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     memberships,
     isAuthenticated: user !== null,
     isInitializing,
+    isRecovering,
     login,
     logout,
-  }), [user, memberships, isInitializing, login, logout]);
+  }), [user, memberships, isInitializing, isRecovering, login, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
