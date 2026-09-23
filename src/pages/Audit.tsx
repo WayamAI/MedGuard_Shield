@@ -3,6 +3,7 @@ import { Card, Badge, Btn, SlideOver } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import { PageHeader, Field, FieldGroup, FilterBar, EntityAvatar } from "@/components/ui-patterns";
+import type { DomainIconName } from "@/components/DomainIcon";
 import { useAudit } from "@/hooks/useGovernance";
 import { useListControls } from "@/hooks/useListControls";
 import type { ApiAuditEntry } from "@/lib/apiTypes";
@@ -31,17 +32,34 @@ const resultTone = (result: string): Tone =>
  * Unknown actions fall through to "Other" rather than being hidden — a new
  * backend action must never become invisible here.
  */
-const ACTION_GROUPS: Array<{ value: string; label: string; match: (a: string) => boolean }> = [
-  { value: "all", label: "All activity", match: () => true },
-  { value: "auth", label: "Authentication", match: a => a.startsWith("LOGIN") || a.startsWith("LOGOUT") || a.includes("SESSION") },
-  { value: "asset", label: "Assets", match: a => a.startsWith("ASSET") },
-  { value: "risk", label: "Risk", match: a => a.startsWith("RISK") },
-  { value: "vendor", label: "Vendors", match: a => a.startsWith("VENDOR") },
-  { value: "access", label: "Access", match: a => a.startsWith("ACCESS") || a.startsWith("IDENTITY") },
-  { value: "threat", label: "Threats", match: a => a.startsWith("THREAT") },
-  { value: "remediation", label: "Remediation", match: a => a.startsWith("REMEDIATION") },
-  { value: "import", label: "Imports", match: a => a.startsWith("IMPORT") },
+const ACTION_GROUPS: Array<{
+  value: string; label: string; icon: DomainIconName; match: (a: string) => boolean;
+}> = [
+  { value: "all", label: "All activity", icon: "audit", match: () => true },
+  { value: "auth", label: "Authentication", icon: "identity",
+    match: a => a.startsWith("LOGIN") || a.startsWith("LOGOUT") || a.includes("SESSION") || a.includes("TOKEN") },
+  { value: "asset", label: "Assets", icon: "asset", match: a => a.startsWith("ASSET") },
+  { value: "risk", label: "Risk", icon: "risk", match: a => a.startsWith("RISK") },
+  { value: "vendor", label: "Vendors", icon: "vendor", match: a => a.startsWith("VENDOR") },
+  { value: "access", label: "Access", icon: "identity",
+    match: a => a.startsWith("ACCESS") || a.startsWith("IDENTITY") },
+  { value: "threat", label: "Threats", icon: "threat", match: a => a.startsWith("THREAT") },
+  { value: "remediation", label: "Remediation", icon: "remediation", match: a => a.startsWith("REMEDIATION") },
+  { value: "control", label: "Controls", icon: "control", match: a => a.startsWith("CONTROL") || a.startsWith("POLICY") },
+  { value: "import", label: "Imports", icon: "import", match: a => a.startsWith("IMPORT") },
 ];
+
+/**
+ * The mark for an action, by family.
+ *
+ * Every row previously carried the same document glyph, which made a
+ * fifty-row trail one undifferentiated column — the eye had to read each
+ * label to find "the risk one". Keying the icon to the family makes the
+ * trail scannable, and falls back to the audit mark for any action the
+ * backend adds that this list has not met yet.
+ */
+const iconFor = (action: string): DomainIconName =>
+  ACTION_GROUPS.find(g => g.value !== "all" && g.match(action))?.icon ?? "audit";
 
 /** ASSET_UPDATED → "Asset updated". */
 const humanise = (action: string) =>
@@ -91,7 +109,7 @@ export default function AuditPage() {
       sortValue: e => e.action,
       cell: e => (
         <div className="flex items-center gap-2.5">
-          <EntityAvatar icon="audit" tone={resultTone(e.result)} size="sm" />
+          <EntityAvatar icon={iconFor(e.action)} tone={resultTone(e.result)} size="sm" />
           <span className="truncate text-body-md text-primary">{humanise(e.action)}</span>
         </div>
       ),
@@ -179,7 +197,7 @@ export default function AuditPage() {
         {selected && (
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <EntityAvatar icon="audit" tone={resultTone(selected.result)} size="lg" />
+              <EntityAvatar icon={iconFor(selected.action)} tone={resultTone(selected.result)} size="lg" />
               <div>
                 <Badge tone={resultTone(selected.result)}>{selected.result}</Badge>
                 <p className="mt-1.5 text-body-sm text-tertiary">{fmtWhen(selected.createdAt)}</p>
