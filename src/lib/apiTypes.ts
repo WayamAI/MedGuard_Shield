@@ -526,12 +526,24 @@ export type ApiRemediationDetail = ApiRemediation & {
   allowedTransitions?: RemediationStatus[];
 };
 
+/**
+ * GET /api/remediations/summary.
+ *
+ * The counts arrive keyed by status, not flattened. An earlier version of
+ * this type claimed flat `inProgress` / `resolved` / `accepted` fields that
+ * the API has never returned, so the Closed card rendered NaN and
+ * "undefined resolved · undefined accepted" on screen.
+ *
+ * `open` is the server's own roll-up: OPEN + IN_PROGRESS + REOPENED. Note
+ * that it therefore overlaps the individual byStatus entries — a card
+ * showing `open` beside one showing `byStatus.IN_PROGRESS` double-counts.
+ */
 export type ApiRemediationSummary = {
   total: number;
+  /** OPEN + IN_PROGRESS + REOPENED, per the API. */
   open: number;
-  inProgress: number;
-  resolved: number;
-  accepted: number;
+  byStatus: Record<RemediationStatus, number>;
+  bySeverity: Record<RemediationSeverity, number>;
   overdue: number;
 };
 

@@ -166,15 +166,38 @@ export default function Remediation() {
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <MetricCard label="Open" value={s?.open} icon="tasks" tone="danger" emphasis={Boolean(s?.open)} />
-        <MetricCard label="In progress" value={s?.inProgress} icon="clock" tone="warning" />
-        <MetricCard label="Overdue" value={s?.overdue} icon="threats" tone="danger" emphasis={Boolean(s?.overdue)} />
+        {/*
+          The four cards partition the estate exactly once: awaiting work,
+          being worked, and closed. The server's own `open` roll-up is not
+          used as a card because it already includes IN_PROGRESS, so showing
+          it beside the In progress card would count the same finding twice.
+          Overdue is a flag across the open ones, and is labelled as such.
+        */}
+        <MetricCard
+          label="Awaiting work"
+          value={s ? s.byStatus.OPEN + s.byStatus.REOPENED : undefined}
+          icon="tasks"
+          tone="danger"
+          emphasis={Boolean(s && s.byStatus.OPEN + s.byStatus.REOPENED)}
+          sub={s && s.byStatus.REOPENED ? `${s.byStatus.REOPENED} reopened` : undefined}
+        />
+        <MetricCard label="In progress" value={s?.byStatus.IN_PROGRESS} icon="clock" tone="warning" />
+        <MetricCard
+          label="Overdue"
+          value={s?.overdue}
+          icon="threats"
+          tone="danger"
+          emphasis={Boolean(s?.overdue)}
+          sub={s ? "of the open findings" : undefined}
+        />
         <MetricCard
           label="Closed"
-          value={s ? s.resolved + s.accepted : undefined}
+          value={s ? s.byStatus.RESOLVED + s.byStatus.ACCEPTED : undefined}
           icon="check"
           tone="success"
-          sub={s ? `${s.resolved} resolved · ${s.accepted} accepted` : undefined}
+          // RESOLVED and ACCEPTED stay named separately: "we fixed it" and
+          // "we decided to live with it" are not the same claim.
+          sub={s ? `${s.byStatus.RESOLVED} resolved · ${s.byStatus.ACCEPTED} accepted` : undefined}
         />
       </div>
 
