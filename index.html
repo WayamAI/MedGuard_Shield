@@ -3,14 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MedGuard | Healthcare Governance & Compliance</title>
-    <meta name="description" content="MedGuard: real time governance, compliance, and AI oversight for healthcare systems." />
+    <title>Drishti | Healthcare PHI Risk Intelligence</title>
+    <meta name="description" content="Drishti: continuous visibility into where PHI lives, how it moves, who can reach it, and where the risk concentrates." />
     <meta name="author" content="Wayam AI" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <script>
       (() => {
         try {
-          const storedTheme = window.localStorage.getItem("medguard-theme");
+          const storedTheme = window.localStorage.getItem("drishti-theme")
+            ?? window.localStorage.getItem("medguard-theme");
           const isDark = storedTheme === "dark";
           document.documentElement.classList.toggle("dark", isDark);
           document.documentElement.style.colorScheme = isDark ? "dark" : "light";
@@ -22,8 +23,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <meta property="og:title" content="MedGuard by Wayam AI" />
-    <meta property="og:description" content="Healthcare Governance & Compliance Platform" />
+    <meta property="og:title" content="Drishti by Wayam AI" />
+    <meta property="og:description" content="Healthcare PHI Risk Intelligence Platform" />
     <meta property="og:type" content="website" />
 
     <meta name="twitter:card" content="summary" />

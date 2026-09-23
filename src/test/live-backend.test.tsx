@@ -2,16 +2,16 @@ import { describe, it, expect, beforeAll, vi } from "vitest";
 import { render, screen, waitFor, renderHook, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { execSync, spawn } from "node:child_process";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { api, setAuthTokenGetter } from "@/lib/apiClient";
 import { useAssets } from "@/hooks/useAssets";
-import { useRisks } from "@/hooks/useRisks";
+import { useRisks, useRiskMatrix } from "@/hooks/useRisks";
 import { toMatrixRisks } from "@/lib/mappers";
 import { DataState } from "@/components/DataState";
-import { AppStoreProvider } from "@/store/AppStore";
+import { listAsQuery } from "@/components/DataTable";
 import PhiFlow from "@/pages/PhiFlow";
 import Risks from "@/pages/Risks";
 import Dashboard from "@/pages/Dashboard";
@@ -70,6 +70,39 @@ beforeAll(async () => {
   setAuthTokenGetter(() => token);
 }, 30_000);
 
+/**
+ * Pages read the session to decide which write actions to offer, so they
+ * need a real one.
+ *
+ * These log in *through* AuthProvider rather than installing a token
+ * around it. The provider owns the token getter, so any attempt to set one
+ * beside it is a race the provider wins on its next render — and a test
+ * that passes by winning a race is a test that will fail later for reasons
+ * nobody can reproduce. Signing in properly is also what the product does.
+ */
+function LiveSession({ children }: { children: ReactNode }) {
+  const auth = useAuth();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void auth.login(EMAIL, PASSWORD).then(() => { if (!cancelled) setReady(true); });
+    return () => { cancelled = true; };
+    // Once, on mount.
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+
+  return ready ? <>{children}</> : <div data-testid="signing-in" />;
+}
+
+const renderPage = (node: ReactNode) =>
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { gcTime: 0 } } })}>
+      <MemoryRouter>
+        <AuthProvider><LiveSession>{node}</LiveSession></AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+
 const live = (name: string, fn: () => Promise<void> | void, timeout?: number) =>
   it(name, async () => {
     if (!backendUp) { console.warn(`[skip] backend not reachable at ${API}`); return; }
@@ -114,9 +147,9 @@ describe("live backend: killed mid-session", () => {
 
     function Probe() {
       // Fast heartbeat so the outage is observed in test time, not demo time.
-      const query = useAssets({ pollIntervalMs: 1000, reconnectIntervalMs: 1000, retry: 0 });
+      const query = useAssets({}, { pollIntervalMs: 1000, reconnectIntervalMs: 1000, retry: 0 });
       return (
-        <DataState query={query} height={200}>
+        <DataState query={listAsQuery(query)} height={200}>
           {assets => <div data-testid="count">{(assets as unknown[]).length} assets</div>}
         </DataState>
       );
@@ -231,7 +264,7 @@ describe("live backend: session lifecycle", () => {
 
 describe("live backend: risk bands", () => {
   live("matrix data carries the seeded LOW..EXTREME spread, not one clustered band", async () => {
-    const { result } = renderHook(() => useRisks(), { wrapper });
+    const { result } = renderHook(() => useRiskMatrix(), { wrapper });
     await waitFor(() => expect(result.current.isLoading).toBe(false), { timeout: 10_000 });
     expect(result.current.isError).toBe(false);
 
@@ -268,14 +301,9 @@ describe("live backend: risk bands", () => {
 });
 
 describe("live backend: wired pages render real data", () => {
-  const page = (node: ReactNode) => (
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { gcTime: 0 } } })}>
-      <MemoryRouter><AppStoreProvider>{node}</AppStoreProvider></MemoryRouter>
-    </QueryClientProvider>
-  );
 
   live("F4 · PHI Flow draws the seeded systems and derives its summary", async () => {
-    render(page(<PhiFlow />));
+    renderPage(<PhiFlow />);
     await waitFor(() => expect(screen.getByText("Epic EHR Core")).toBeInTheDocument(), { timeout: 15_000 });
 
     // Nodes came from the API, not the old hardcoded list: assert against a
@@ -288,11 +316,12 @@ describe("live backend: wired pages render real data", () => {
   }, 30_000);
 
   live("F5 · Risk Register renders API bands including EXTREME", async () => {
-    render(page(<Risks />));
+    renderPage(<Risks />);
     await waitFor(() => expect(screen.getAllByText("Billing Engine DB").length).toBeGreaterThan(0), { timeout: 15_000 });
 
-    // Legend carries all five bands; EXTREME is the one the matrix used to lack.
-    expect(screen.getByText("Extreme")).toBeInTheDocument();
+    // "Extreme" now appears twice — the matrix legend and the band filter
+    // chip — so assert presence rather than uniqueness.
+    expect(screen.getAllByText("Extreme").length).toBeGreaterThan(0);
     expect(screen.getAllByText("EXTREME").length).toBeGreaterThan(0);
     expect(screen.getByText("Band = Likelihood x Impact x Exposure x Control gap (API)")).toBeInTheDocument();
     console.info("[live] Risks rendered with API-scored bands");
@@ -305,8 +334,8 @@ describe("live backend: wired pages render real data", () => {
     ]);
     const phiPerDay = flows.reduce((s, f) => s + f.recordsPerDay, 0);
 
-    render(page(<Dashboard />));
-    await waitFor(() => expect(screen.getByText("Assets Monitored")).toBeInTheDocument(), { timeout: 15_000 });
+    renderPage(<Dashboard />);
+    await waitFor(() => expect(screen.getByText("Assets monitored")).toBeInTheDocument(), { timeout: 15_000 });
 
     await waitFor(() => expect(screen.getByText(String(assets.length))).toBeInTheDocument(), { timeout: 15_000 });
     // Flows resolve on their own clock; wait for that card rather than assuming
@@ -327,11 +356,7 @@ describe("live backend: vendor risk", () => {
     const raw = await api.get<Array<{ name: string; baaStatus: string; risk: { band: string } | null }>>("/api/vendors");
     expect(raw.length).toBeGreaterThan(0);
 
-    render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { gcTime: 0 } } })}>
-        <MemoryRouter><Vendors /></MemoryRouter>
-      </QueryClientProvider>,
-    );
+    renderPage(<Vendors />);
 
     await waitFor(() => expect(screen.getByText(raw[0].name)).toBeInTheDocument(), { timeout: 15_000 });
 

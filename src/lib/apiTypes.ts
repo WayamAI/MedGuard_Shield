@@ -1,5 +1,5 @@
 /**
- * Wire types for the MedGuard backend.
+ * Wire types for the Drishti backend.
  *
  * These mirror the API contract exactly as the backend declares it. They are
  * deliberately separate from the component prop types: components keep their
@@ -9,9 +9,14 @@
 
 /** GET /api/dataflows — one record per PHI flow between two systems. */
 export type ApiDataFlow = {
+  id?: number;
   source: string;
+  sourceAssetId?: number;
   target: string;
+  targetAssetId?: number;
   phiType: string;
+  phiTypeId?: number;
+  sensitivity?: Sensitivity;
   recordsPerDay: number;
   encrypted: boolean;
   /**
@@ -29,6 +34,8 @@ export type ApiRisk = {
   id: number;
   assetId: number;
   assetName: string;
+  assetType?: AssetType;
+  assetArchived?: boolean;
   likelihood: number;
   impact: number;
   exposure: number;
@@ -39,14 +46,130 @@ export type ApiRisk = {
   computedAt: string;
 };
 
-/** GET /api/assets — a monitored system, service or data store. */
+/** The asset categories the API accepts, mirroring the Prisma AssetType enum. */
+export const ASSET_TYPES = [
+  "EHR", "DATABASE", "API", "CLOUD_STORAGE", "ANALYTICS", "OTHER",
+] as const;
+export type AssetType = (typeof ASSET_TYPES)[number];
+
+/** PHI sensitivity, as classified by the API. */
+export type Sensitivity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+
+/**
+ * GET /api/assets — a monitored system, service or data store.
+ *
+ * Verified field-by-field against the live response and
+ * `medguard-backend/src/services/assetService.ts#listAssets`. The previous
+ * declaration here was fiction (`id: string`, `department`, `phiRecords`,
+ * `riskBand`) and survived only because the sole consumer read `.length`.
+ *
+ * `risk` is null for an asset that has never been scored — the same shape the
+ * vendor endpoint uses, and the same trap: with strictNullChecks off the
+ * compiler will not enforce this, so read sites must guard by hand.
+ */
 export type ApiAsset = {
-  id: string;
+  id: number;
   name: string;
-  type: string;
-  department?: string;
-  phiRecords?: number;
-  riskBand?: "low" | "moderate" | "high" | "critical";
+  type: AssetType;
+  phiVolume: number;
+  encrypted: boolean;
+  mfaEnabled: boolean;
+  /** null when the asset has never been assessed. */
+  lastAssessedAt: string | null;
+  createdAt: string;
+  /** Non-null once archived. Archived assets are excluded unless asked for. */
+  archivedAt: string | null;
+  risk: { score: number; band: RiskBand; computedAt: string } | null;
+  /** Server-computed fan-out, so a row can show its connections without N+1. */
+  counts: {
+    phiTypes: number;
+    flows: number;
+    accessGrants: number;
+    openThreats: number;
+    controls: number;
+  };
+};
+
+/** GET /api/assets/:id — the list record plus everything it connects to. */
+export type ApiAssetDetail = Omit<ApiAsset, "risk"> & {
+  phiTypes: Array<{
+    id: number;
+    name: string;
+    sensitivity: Sensitivity;
+    recordsPerDay: number;
+  }>;
+  risk:
+    | {
+        id: number;
+        likelihood: number;
+        impact: number;
+        exposure: number;
+        controlGap: number;
+        score: number;
+        band: RiskBand;
+        computedAt: string;
+      }
+    | null;
+  flows: {
+    outbound: Array<{ to: string; recordsPerDay: number; encrypted: boolean }>;
+    inbound: Array<{ from: string; recordsPerDay: number; encrypted: boolean }>;
+  };
+};
+
+/** POST /api/assets and PATCH /api/assets/:id request body. */
+export type AssetWriteInput = {
+  name: string;
+  type: AssetType;
+  phiVolume?: number;
+  encrypted?: boolean;
+  mfaEnabled?: boolean;
+  lastAssessedAt?: string | null;
+};
+
+/**
+ * GET /api/vendors/:id — the vendor plus the assets it can reach.
+ *
+ * Note `assets` here is a list of objects, while the list endpoint returns
+ * `assets: string[]` plus `assetCount`. Two different shapes under one field
+ * name, so the detail view must not be derived from a list row.
+ */
+export type ApiVendorDetail = {
+  id: number;
+  name: string;
+  baaStatus: BaaStatus;
+  phiVolume: number;
+  lastAssessedAt: string | null;
+  daysSinceAssessment: number | null;
+  assessmentOverdue: boolean;
+  baaCompliant: boolean;
+  createdAt: string;
+  assets: Array<{
+    id: number;
+    name: string;
+    type: AssetType;
+    encrypted: boolean;
+    grantedAt: string;
+  }>;
+  risk:
+    | {
+        id: number;
+        likelihood: number;
+        impact: number;
+        exposure: number;
+        controlGap: number;
+        score: number;
+        band: RiskBand;
+        computedAt: string;
+      }
+    | null;
+};
+
+/** POST /api/vendors and PATCH /api/vendors/:id request body. */
+export type VendorWriteInput = {
+  name: string;
+  baaStatus?: BaaStatus;
+  phiVolume?: number;
+  lastAssessedAt?: string | null;
 };
 
 /** GET /api/vendors — third parties with access to PHI. */
@@ -110,25 +233,29 @@ export type ApiAccessGrant = {
   grantedAt: string;
   /** null when the grant has never been used. */
   lastUsedAt: string | null;
+  /** null when nobody has attested to this grant yet. */
+  lastReviewedAt: string | null;
+  /** Non-null once revoked; revoked grants are excluded unless asked for. */
+  revokedAt: string | null;
   daysSinceUse: number | null;
   daysSinceGrant: number;
   flags: AccessFlag[];
   riskFlagCount: number;
 };
 
-export type ApiAccessResponse = {
-  summary: {
-    total: number;
-    flagged: number;
-    stale: number;
-    neverUsed: number;
-    withoutMfa: number;
-    inactiveIdentities: number;
-    excessiveLevel: number;
-    /** The threshold the server used to decide STALE. */
-    staleAfterDays: number;
-  };
-  grants: ApiAccessGrant[];
+/** GET /api/access/summary — organisation-wide, never derived from a page. */
+export type ApiAccessSummary = {
+  total: number;
+  flagged: number;
+  stale: number;
+  neverUsed: number;
+  withoutMfa: number;
+  inactiveIdentities: number;
+  excessiveLevel: number;
+  /** Deliberately not a flag: it would fire on every row of a fresh estate. */
+  neverReviewed: number;
+  /** The threshold the server used to decide STALE. */
+  staleAfterDays: number;
 };
 
 /* ---------------------------------------------------------------------------
@@ -154,15 +281,19 @@ export type ApiThreat = {
   open: boolean;
 };
 
-export type ApiThreatsResponse = {
-  summary: {
-    total: number;
-    open: number;
-    bySeverity: Partial<Record<ThreatSeverity, number>>;
-    byStatus: Partial<Record<ThreatStatus, number>>;
-    openCritical: number;
-  };
-  threats: ApiThreat[];
+/** GET /api/threats/summary — organisation-wide. */
+export type ApiThreatSummary = {
+  total: number;
+  open: number;
+  bySeverity: Partial<Record<ThreatSeverity, number>>;
+  byStatus: Partial<Record<ThreatStatus, number>>;
+  openCritical: number;
+};
+
+/** GET /api/threats/:id — adds the transitions the server will actually accept. */
+export type ApiThreatDetail = ApiThreat & {
+  /** Render exactly these buttons; anything else is a guaranteed 409. */
+  allowedTransitions: ThreatStatus[];
 };
 
 /* ---------------------------------------------------------------------------
@@ -222,4 +353,146 @@ export type ImportReport = {
   preview: Record<string, unknown>[];
   /** Present on the import response; absent on a dry run. */
   imported?: number;
+};
+
+/* ---------------------------------------------------------------------------
+   Controls, policies, remediation, audit, identities and the organisation.
+
+   All added to the API after the Drishti frontend pass. Every one is
+   paginated and organisation-scoped; none takes an organizationId parameter,
+   because the server reads it from the signed token.
+   -------------------------------------------------------------------------- */
+
+export type ControlStatus = "IMPLEMENTED" | "PARTIAL" | "PLANNED" | "NOT_IMPLEMENTED";
+export type ControlEffectiveness = "EFFECTIVE" | "PARTIALLY_EFFECTIVE" | "INEFFECTIVE" | "NOT_ASSESSED";
+
+export type ApiControl = {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+  status: ControlStatus;
+  effectiveness: ControlEffectiveness;
+  owner: string | null;
+  /**
+   * Free text the customer typed, e.g. "HIPAA 164.312(a)(1)".
+   *
+   * Drishti stores it as a citation and asserts no conformance with any
+   * framework on the strength of it. Render it as a reference, never as a
+   * compliance claim.
+   */
+  frameworkRef: string | null;
+  lastReviewedAt: string | null;
+  archivedAt: string | null;
+  createdAt: string;
+  appliedAssetCount: number;
+  policyCount: number;
+  openRemediations: number;
+};
+
+export type PolicyStatus = "ACTIVE" | "DRAFT" | "UNDER_REVIEW" | "ARCHIVED";
+
+export type ApiPolicy = {
+  id: number;
+  name: string;
+  description: string;
+  status: PolicyStatus;
+  owner: string | null;
+  /** Customer-supplied pointer; its contents are never inspected. */
+  evidenceRef: string | null;
+  reviewDueAt: string | null;
+  reviewOverdue: boolean;
+  archivedAt: string | null;
+  createdAt: string;
+  controlCount: number;
+};
+
+export type RemediationStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "ACCEPTED" | "REOPENED";
+export type RemediationSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+export type RemediationSource = "RISK" | "THREAT" | "ACCESS" | "VENDOR" | "CONTROL" | "MANUAL";
+
+export type ApiRemediation = {
+  id: number;
+  title: string;
+  description: string;
+  recommendation: string;
+  severity: RemediationSeverity;
+  status: RemediationStatus;
+  source: RemediationSource;
+  owner: { id: number; email: string } | null;
+  /** Whichever entity the finding points at. */
+  subject: { type: string; id: number; label: string } | null;
+  dueAt: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  open: boolean;
+  overdue: boolean;
+};
+
+export type ApiRemediationDetail = ApiRemediation & {
+  /** The transitions the server will accept from the current status. */
+  allowedTransitions?: RemediationStatus[];
+};
+
+export type ApiRemediationSummary = {
+  total: number;
+  open: number;
+  inProgress: number;
+  resolved: number;
+  accepted: number;
+  overdue: number;
+};
+
+/** GET /api/audit — read-only. ADMIN only. */
+export type ApiAuditEntry = {
+  id: number;
+  action: string;
+  /** null for system-originated entries. */
+  actor: { id: number; email: string } | null;
+  entityType: string | null;
+  entityId: number | null;
+  result: string;
+  /** Credentials and patient identifiers are stripped before storage. */
+  metadata: Record<string, unknown> | null;
+  ip: string | null;
+  createdAt: string;
+};
+
+export type ApiIdentity = {
+  id: number;
+  displayName: string;
+  email: string | null;
+  kind: IdentityKind;
+  department: string | null;
+  role: string | null;
+  active: boolean;
+  mfaEnabled: boolean;
+  createdAt: string;
+  archivedAt: string | null;
+  activeGrants: number;
+};
+
+export type ApiOrganization = {
+  id: number;
+  name: string;
+  slug: string;
+  createdAt: string;
+  counts: Record<string, number>;
+  yourRole: string;
+};
+
+/** GET /api/search — server-side, across every entity. */
+export type ApiSearchResult = {
+  type: "asset" | "vendor" | "risk" | "threat" | "identity" | "remediation" | "control" | "policy";
+  id: number;
+  title: string;
+  context: string;
+  status: string | null;
+};
+
+export type ApiSearchResponse = {
+  query: string;
+  results: ApiSearchResult[];
+  /** True when the server capped the result set. */
+  truncated: boolean;
 };

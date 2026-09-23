@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { AuthProvider } from "@/hooks/use-auth";
 import Vendors from "@/pages/Vendors";
 import type { ApiVendor } from "@/lib/apiTypes";
 
@@ -42,7 +43,7 @@ afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 const wrap = (node: ReactNode) => (
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}>
-    <MemoryRouter>{node}</MemoryRouter>
+    <MemoryRouter><AuthProvider>{node}</AuthProvider></MemoryRouter>
   </QueryClientProvider>
 );
 
@@ -83,7 +84,9 @@ describe("Vendor Risk page", () => {
     render(wrap(<Vendors />));
     await waitFor(() => expect(screen.getByText("Northwind Claims Processing")).toBeInTheDocument());
 
-    const names = [...document.querySelectorAll("tbody tr td:first-child")].map(td => td.textContent);
+    // The name cell now carries a subtitle, so target the name node itself
+    // rather than the whole cell — the assertion is about order, not markup.
+    const names = screen.getAllByTestId("vendor-row-name").map(n => n.textContent);
     expect(names).toEqual([
       "Northwind Claims Processing",   // 100
       "Veritas Transcription",         // 80

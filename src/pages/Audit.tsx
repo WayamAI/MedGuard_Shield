@@ -1,204 +1,220 @@
 import { useMemo, useState } from "react";
-import { Card, Badge, Btn, Modal, Input, Select, Textarea, SectionHeader, SampleDataNotice } from "@/components/ui-bits";
-import { auditLog } from "@/data/mock";
-import { notify } from "@/lib/notify";
+import { Card, Badge, Btn, SlideOver } from "@/components/ui-bits";
+import { AppIcon } from "@/components/AppIcon";
+import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
+import { PageHeader, Field, FieldGroup, FilterBar, EntityAvatar } from "@/components/ui-patterns";
+import { useAudit } from "@/hooks/useGovernance";
+import { useListControls } from "@/hooks/useListControls";
+import type { ApiAuditEntry } from "@/lib/apiTypes";
+import type { Tone } from "@/lib/tone";
 
-const scheduledInit = [
-  { name: "HIPAA Weekly Summary", freq: "Weekly (Mon)", last: "Apr 28", next: "May 5", to: "compliance@meridian.org", paused: false },
-  { name: "SOC 2 Monthly", freq: "Monthly (1st)", last: "May 1", next: "Jun 1", to: "ciso@meridian.org", paused: false },
-  { name: "Access Review", freq: "Weekly (Fri)", last: "May 2", next: "May 9", to: "it-security@meridian.org", paused: false },
-  { name: "AI Governance", freq: "Daily (6 AM)", last: "Today", next: "Tomorrow", to: "cmo@meridian.org", paused: false },
+/**
+ * Audit trail — who did what, to what, when, and with what result.
+ *
+ * Replaces a page that rendered twenty fabricated log rows from a fixture.
+ * This one is the real thing: GET /api/audit, ADMIN-only, newest first, and
+ * strictly read-only. There is no write path in the API and there is none
+ * here — a trail you can add entries to is not a trail.
+ *
+ * Every mutation elsewhere in the app invalidates this query, so an action
+ * taken in another tab shows up here without a manual refresh.
+ */
+
+/** Result → tone. Anything that is not an outright success is worth a colour. */
+const resultTone = (result: string): Tone =>
+  result === "SUCCESS" ? "success"
+    : result === "FAILURE" || result === "DENIED" ? "danger"
+    : "warning";
+
+/**
+ * Group the 43 action types into something a human can filter by.
+ * Unknown actions fall through to "Other" rather than being hidden — a new
+ * backend action must never become invisible here.
+ */
+const ACTION_GROUPS: Array<{ value: string; label: string; match: (a: string) => boolean }> = [
+  { value: "all", label: "All activity", match: () => true },
+  { value: "auth", label: "Authentication", match: a => a.startsWith("LOGIN") || a.startsWith("LOGOUT") || a.includes("SESSION") },
+  { value: "asset", label: "Assets", match: a => a.startsWith("ASSET") },
+  { value: "risk", label: "Risk", match: a => a.startsWith("RISK") },
+  { value: "vendor", label: "Vendors", match: a => a.startsWith("VENDOR") },
+  { value: "access", label: "Access", match: a => a.startsWith("ACCESS") || a.startsWith("IDENTITY") },
+  { value: "threat", label: "Threats", match: a => a.startsWith("THREAT") },
+  { value: "remediation", label: "Remediation", match: a => a.startsWith("REMEDIATION") },
+  { value: "import", label: "Imports", match: a => a.startsWith("IMPORT") },
 ];
 
-type AuditEvent = (typeof auditLog)[number];
+/** ASSET_UPDATED → "Asset updated". */
+const humanise = (action: string) =>
+  action.charAt(0) + action.slice(1).toLowerCase().replace(/_/g, " ");
 
-export default function Audit() {
-  const [search, setSearch] = useState("");
-  const [user, setUser] = useState("All");
-  const [action, setAction] = useState("All");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [event, setEvent] = useState<AuditEvent | null>(null);
-  const [exportOpen, setExportOpen] = useState(false);
-  const [genPhase, setGenPhase] = useState<"idle" | "running" | "done">("idle");
-  const [progress, setProgress] = useState(0);
-  const [scheduled, setScheduled] = useState(scheduledInit);
-  const [recurring, setRecurring] = useState(false);
-  const [recipients, setRecipients] = useState<string[]>([]);
-  const [recipInput, setRecipInput] = useState("");
-  const [editSched, setEditSched] = useState<number | null>(null);
+const fmtWhen = (iso: string) => new Date(iso).toLocaleString();
 
-  const filtered = useMemo(() => auditLog.filter(e =>
-    (search === "" || e.user.toLowerCase().includes(search.toLowerCase()) || e.res.toLowerCase().includes(search.toLowerCase())) &&
-    (user === "All" || e.user === user) &&
-    (action === "All" || e.action === action)
-  ), [search, user, action]);
+export default function AuditPage() {
+  const [group, setGroup] = useState("all");
+  const controls = useListControls<Record<string, never>>({});
+  const entries = useAudit(controls.params);
+  const [selected, setSelected] = useState<ApiAuditEntry | null>(null);
 
-  const generate = () => {
-    setGenPhase("running"); setProgress(0);
-    const t = setInterval(() => setProgress(p => Math.min(100, p + 4)), 100);
-    setTimeout(() => { clearInterval(t); setGenPhase("done"); }, 3000);
-  };
+  const rows = useMemo(() => entries.data ?? [], [entries.data]);
+
+  /*
+   * Grouping is applied client-side over the page, and the UI says so.
+   * The API filters by exact `action`, not by family, so a family filter
+   * would need one request per member — this narrows what is on screen and
+   * does not pretend to have searched the whole trail.
+   */
+  const shown = useMemo(() => {
+    const g = ACTION_GROUPS.find(x => x.value === group);
+    return g && g.value !== "all" ? rows.filter(r => g.match(r.action)) : rows;
+  }, [rows, group]);
+
+  const columns: Column<ApiAuditEntry>[] = [
+    {
+      id: "when",
+      header: "When",
+      width: "w-44",
+      sortValue: e => -new Date(e.createdAt).getTime(),
+      cell: e => <span className="tabular text-tertiary">{fmtWhen(e.createdAt)}</span>,
+    },
+    {
+      id: "actor",
+      header: "Actor",
+      hideBelow: "sm",
+      sortValue: e => e.actor?.email ?? null,
+      cell: e => e.actor
+        ? <span className="truncate text-body-sm text-primary">{e.actor.email}</span>
+        : <span className="text-tertiary">System</span>,
+    },
+    {
+      id: "action",
+      header: "Action",
+      sortValue: e => e.action,
+      cell: e => (
+        <div className="flex items-center gap-2.5">
+          <EntityAvatar icon="audit" tone={resultTone(e.result)} size="sm" />
+          <span className="truncate text-body-md text-primary">{humanise(e.action)}</span>
+        </div>
+      ),
+    },
+    {
+      id: "entity",
+      header: "Subject",
+      hideBelow: "md",
+      sortValue: e => e.entityType ?? null,
+      cell: e => e.entityType
+        ? <span className="text-body-sm text-secondary">{e.entityType} #{e.entityId}</span>
+        : <span className="text-tertiary">—</span>,
+    },
+    {
+      id: "result",
+      header: "Result",
+      sortValue: e => e.result,
+      cell: e => <Badge tone={resultTone(e.result)}>{e.result}</Badge>,
+    },
+  ];
 
   return (
     <div className="space-y-4">
-      <SampleDataNotice module="Audit & Reports" />
-      <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4">
-        <Card className="p-4">
-          <SectionHeader title="Audit Trail" />
-          <div className="flex flex-wrap gap-2 mb-3">
-            <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="w-44" />
-            <Select value={user} onChange={e => setUser(e.target.value)}><option>All</option>{Array.from(new Set(auditLog.map(a => a.user))).map(u => <option key={u}>{u}</option>)}</Select>
-            <Select value={action} onChange={e => setAction(e.target.value)}>{["All", "LOGIN", "RECORD_ACCESS", "POLICY_CHANGE", "REPORT_EXPORT", "ANOMALOUS_LOGIN", "BULK_DOWNLOAD", "ADMIN_ACCESS", "AI_DECISION"].map(o => <option key={o}>{o}</option>)}</Select>
-            <Input type="date" value={from} onChange={e => setFrom(e.target.value)} />
-            <Input type="date" value={to} onChange={e => setTo(e.target.value)} />
-            <Btn variant="outline" onClick={() => notify.success("Filters applied")}>Apply Filters</Btn>
-            <div className="flex-1" />
-            <Btn variant="outline" onClick={() => setExportOpen(true)}>Export Full Trail</Btn>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-caption">
-              <thead className="sticky top-0 z-10 bg-raised text-tertiary uppercase text-caption"><tr className="border-b border-default">{["#", "Time", "User", "Action", "Resource", "IP", "Location", "Result"].map(h => <th key={h} className="text-left py-2 px-2">{h}</th>)}</tr></thead>
-              <tbody>
-                {filtered.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-tertiary">No results found</td></tr>}
-                {filtered.map((e, i) => {
-                  const flagged = ["FLAGGED", "BLOCKED", "FAILED", "POLICY VIOLATION"].includes(e.result);
-                  return (
-                    <tr key={i} onClick={() => setEvent(e)} className={`border-b border-default hover:bg-raised-2 cursor-pointer ${flagged ? "border-l-2 border-l-feedback-error-icon" : ""}`}>
-                      <td className="py-2 px-2 text-tertiary">{i + 1}</td>
-                      <td className="px-2">{e.ts}</td>
-                      <td className="px-2">{e.user}</td>
-                      <td className="px-2 font-mono text-caption">{e.action}</td>
-                      <td className="px-2 text-tertiary">{e.res}</td>
-                      <td className="px-2 font-mono">{e.ip}</td>
-                      <td className="px-2">{e.loc}</td>
-                      <td className="px-2"><Badge tone={flagged ? "danger" : e.result === "Override" || e.result === "Flagged" || e.result === "Alert" ? "warning" : "success"}>{e.result}</Badge></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <div className="text-body-sm text-tertiary mt-3 pt-3 border-t border-default">Showing {filtered.length} of 98,441 events</div>
-        </Card>
+      <PageHeader
+        icon="audit"
+        title="Audit Trail"
+        description="Every recorded action across the organisation, newest first. Read-only by design."
+        actions={
+          <Btn variant="outline" onClick={() => void entries.refresh()} disabled={entries.isFetching}>
+            <AppIcon name="refresh" size="sm" spin={entries.isFetching} />
+            Refresh
+          </Btn>
+        }
+        meta={
+          entries.meta
+            ? <span className="text-caption text-tertiary">
+                {entries.meta.total.toLocaleString()} recorded events
+              </span>
+            : undefined
+        }
+      />
 
-        <div className="space-y-4">
-          <Card className="p-4">
-            <SectionHeader title="Generate Report" />
-            <div className="space-y-2">
-              <Select className="w-full"><option>HIPAA Compliance Summary</option><option>SOC 2 Evidence Package</option><option>Incident Summary</option><option>Access Review</option><option>AI Governance Report</option><option>Custom</option></Select>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><Input type="date" /><Input type="date" /></div>
-              <div className="text-body-sm text-tertiary">Sections</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-body-sm">
-                {["Executive Summary", "Control Details", "Evidence Files", "User Access", "AI Decisions", "Risk Register"].map(s => (
-                  <label key={s} className="flex items-center gap-1.5"><input type="checkbox" defaultChecked className="accent-primary" />{s}</label>
-                ))}
-              </div>
-              <div className="flex gap-3 text-body-sm">
-                {["PDF", "CSV", "JSON"].map(f => <label key={f} className="flex items-center gap-1"><input type="radio" name="fmt" defaultChecked={f === "PDF"} className="accent-primary" />{f}</label>)}
-              </div>
+      <Card className="p-4">
+        <DataTable
+          label="Audit trail"
+          query={listAsQuery({ ...entries, data: entries.data ? shown : undefined })}
+          server={{
+            meta: entries.meta,
+            page: controls.page,
+            onPageChange: controls.setPage,
+            pageSize: controls.pageSize,
+            onPageSizeChange: controls.setPageSize,
+            isPaging: entries.isPaging,
+          }}
+          columns={columns}
+          getRowId={e => e.id}
+          onRowClick={e => setSelected(e)}
+          isRowActive={e => e.id === selected?.id}
+          emptyTitle="No recorded activity"
+          emptyMessage="Nothing has been recorded against this organisation yet."
+          noMatchTitle="Nothing on this page"
+          toolbar={
+            <FilterBar
+              label="Filter by activity"
+              value={group}
+              onChange={setGroup}
+              options={ACTION_GROUPS.map(g => ({ value: g.value, label: g.label }))}
+            />
+          }
+        />
+        {group !== "all" && (
+          <p className="mt-2 text-caption text-tertiary">
+            Narrowing this page only — the API filters by exact action, so use
+            paging to move through the whole trail.
+          </p>
+        )}
+      </Card>
+
+      <SlideOver
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+        width={460}
+        title={selected ? humanise(selected.action) : "Event"}
+      >
+        {selected && (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3">
+              <EntityAvatar icon="audit" tone={resultTone(selected.result)} size="lg" />
               <div>
-                <div className="text-body-sm text-tertiary mb-1">Recipients</div>
-                <div className="flex gap-1">
-                  <Input placeholder="email@meridian.org" value={recipInput} onChange={e => setRecipInput(e.target.value)} className="flex-1" />
-                  <Btn variant="outline" onClick={() => { if (recipInput) { setRecipients([...recipients, recipInput]); setRecipInput(""); } }}>Add +</Btn>
-                </div>
-                <div className="flex flex-wrap gap-1 mt-1">{recipients.map(r => <Badge key={r} tone="info">{r}</Badge>)}</div>
+                <Badge tone={resultTone(selected.result)}>{selected.result}</Badge>
+                <p className="mt-1.5 text-body-sm text-tertiary">{fmtWhen(selected.createdAt)}</p>
               </div>
-              <label className="flex items-center gap-2 text-body-sm"><input type="checkbox" checked={recurring} onChange={e => setRecurring(e.target.checked)} className="accent-primary" /> Schedule Recurring</label>
-              {recurring && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><Select><option>Daily</option><option>Weekly</option><option>Monthly</option></Select><Select><option>Mon</option><option>Tue</option><option>Wed</option></Select></div>
-              )}
-              <Btn variant="primary" className="w-full" onClick={generate}>Generate Report</Btn>
             </div>
-          </Card>
 
-          <Card className="p-4">
-            <SectionHeader title="Scheduled Reports" />
-            <table className="w-full text-caption">
-              <thead className="text-tertiary text-caption uppercase"><tr className="border-b border-default">{["Name", "Freq", "Next", "Actions"].map(h => <th key={h} className="text-left py-1 px-1">{h}</th>)}</tr></thead>
-              <tbody>
-                {scheduled.map((s, i) => (
-                  <tr key={i} className="border-b border-default">
-                    <td className="py-2 px-1">{s.name}{s.paused && <Badge tone="muted" className="ml-1">Paused</Badge>}</td>
-                    <td className="px-1 text-tertiary">{s.freq}</td>
-                    <td className="px-1 text-tertiary">{s.next}</td>
-                    <td className="px-1">
-                      <div className="flex gap-1">
-                        <Btn variant="outline" onClick={() => setEditSched(i)}>Edit</Btn>
-                        <Btn variant="outline" onClick={() => setScheduled(prev => prev.map((x, j) => j === i ? { ...x, paused: !x.paused } : x))}>{s.paused ? "Resume" : "Pause"}</Btn>
-                        <Btn variant="primary" onClick={() => { notify.info("Generating report..."); setTimeout(() => notify.success(`${s.name} sent`), 1500); }}>Run Now</Btn>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
-        </div>
-      </div>
+            <FieldGroup title="Event">
+              <Field label="Action" value={<span className="font-mono text-body-sm">{selected.action}</span>} />
+              <Field label="Actor" value={selected.actor?.email ?? "System"} />
+              <Field
+                label="Subject"
+                value={selected.entityType ? `${selected.entityType} #${selected.entityId}` : "—"}
+              />
+              <Field label="Result" value={selected.result} />
+              <Field label="Source IP" value={selected.ip ?? "—"} />
+              <Field label="Recorded" value={fmtWhen(selected.createdAt)} />
+            </FieldGroup>
 
-      <Modal open={!!event} onClose={() => setEvent(null)} title="Audit Event Detail" size="md">
-        {event && (
-          <div className="space-y-3 text-body-md">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div><div className="text-body-sm text-tertiary">Timestamp</div><div>{event.ts}</div></div>
-              <div><div className="text-body-sm text-tertiary">User</div><div>{event.user}</div></div>
-              <div><div className="text-body-sm text-tertiary">Action</div><div className="font-mono">{event.action}</div></div>
-              <div><div className="text-body-sm text-tertiary">Result</div><div>{event.result}</div></div>
-              <div><div className="text-body-sm text-tertiary">IP</div><div className="font-mono">{event.ip}</div></div>
-              <div><div className="text-body-sm text-tertiary">Location</div><div>{event.loc}</div></div>
-            </div>
-            <div>
-              <div className="text-body-sm text-tertiary mb-1">Resource</div>
-              <div className="bg-raised-2 p-2 rounded">{event.res}</div>
-            </div>
-            <div>
-              <div className="text-body-sm text-tertiary mb-1">Raw log</div>
-              <pre className="bg-action/60 p-2 rounded text-caption font-mono overflow-x-auto">{JSON.stringify(event, null, 2)}</pre>
-            </div>
-            <div className="flex gap-2">
-              <Btn variant="outline" onClick={() => notify.success("Alert created from audit event")}>Create Alert</Btn>
-              <Btn variant="outline" onClick={() => notify.success("Event log downloading...")}>Download Event</Btn>
-            </div>
+            {selected.metadata && Object.keys(selected.metadata).length > 0 && (
+              <FieldGroup title="Details">
+                {/*
+                  Rendered as JSON rather than parsed into prose: the shape
+                  varies by action, and inventing a sentence per action is how
+                  a log starts saying things the record does not.
+                  Credentials and patient identifiers are stripped server-side
+                  before storage.
+                */}
+                <pre className="overflow-x-auto rounded-md border border-default bg-raised-2 p-2.5 text-caption text-secondary">
+                  {JSON.stringify(selected.metadata, null, 2)}
+                </pre>
+              </FieldGroup>
+            )}
           </div>
         )}
-      </Modal>
-
-      <Modal open={exportOpen} onClose={() => setExportOpen(false)} title="Export Audit Trail" size="sm">
-        <div className="space-y-3">
-          <div className="flex gap-3 text-body-sm">{["CSV", "JSON", "PDF"].map(f => <label key={f}><input type="radio" name="exp" defaultChecked={f === "CSV"} className="accent-primary mr-1" />{f}</label>)}</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2"><Input type="date" /><Input type="date" /></div>
-          <Btn variant="primary" className="w-full" onClick={() => { setExportOpen(false); notify.success("Audit trail export ready, downloading audit_trail_2025-05-05.csv"); }}>Generate Export</Btn>
-        </div>
-      </Modal>
-
-      <Modal open={genPhase !== "idle"} onClose={() => setGenPhase("idle")} title={genPhase === "done" ? "Report Ready" : "Generating Report"} size="sm" dismissOnBackdrop={false}>
-        {genPhase === "running" && (
-          <div className="py-4">
-            <p className="text-body-md text-tertiary mb-2">Compiling 47 evidence files... Formatting PDF...</p>
-            <div className="h-2 bg-action rounded overflow-hidden"><div className="h-full bg-brand transition-all" style={{ width: `${progress}%` }} /></div>
-          </div>
-        )}
-        {genPhase === "done" && (
-          <div>
-            <p className="text-body-md mb-3">✓ 47-page PDF generated successfully.</p>
-            <div className="flex gap-2">
-              <Btn variant="primary" onClick={() => { notify.success("Downloading..."); setGenPhase("idle"); }}>Download Now</Btn>
-              <Btn variant="outline" onClick={() => { notify.success("Email sent"); setGenPhase("idle"); }}>Send via Email</Btn>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      <Modal open={editSched !== null} onClose={() => setEditSched(null)} title="Edit Schedule" size="sm">
-        <div className="space-y-3">
-          <Input className="w-full" defaultValue={editSched !== null ? scheduled[editSched].name : ""} />
-          <Select className="w-full"><option>Daily</option><option>Weekly</option><option>Monthly</option></Select>
-          <Input className="w-full" placeholder="Recipients" />
-          <Btn variant="primary" className="w-full" onClick={() => { notify.success("Schedule updated"); setEditSched(null); }}>Save</Btn>
-        </div>
-      </Modal>
+      </SlideOver>
     </div>
   );
 }

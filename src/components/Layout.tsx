@@ -1,91 +1,165 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { useStore } from "@/store/AppStore";
-import { Badge, Btn, SeverityBadge, SlideOver } from "@/components/ui-bits";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { Badge, Btn, EmptyState, SlideOver } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { IconButton } from "@/components/IconButton";
 import { SidebarItem, type SidebarNavItem } from "@/components/SidebarItem";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import wayamLogoLight from "@/assets/brand/wayam-logo-light.svg";
-import wayamLogoDark from "@/assets/brand/wayam-logo-dark.svg";
-import wayamMark from "@/assets/brand/wayam-favicon.svg";
+import { DomainIcon } from "@/components/DomainIcon";
+import drishtiLogoLight from "@/assets/brand/drishti-logo-light.svg";
+import drishtiLogoDark from "@/assets/brand/drishti-logo-dark.svg";
+import drishtiMark from "@/assets/brand/drishti-mark.svg";
 import { notify } from "@/lib/notify";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
-import { useThreats } from "@/hooks/useThreats";
+import { useThreatSummary } from "@/hooks/useThreats";
+import { useGlobalSearch, ENTITY_LABEL } from "@/hooks/useGlobalSearch";
 import { cn } from "@/lib/utils";
 
-const NAV: SidebarNavItem[] = [
-  { to: "/", label: "Dashboard", icon: "dashboard", end: true },
-  { to: "/phi-flow", label: "PHI Flow Map", icon: "phiFlow" },
-  { to: "/access", label: "Access & Identity", icon: "access" },
-  // No badge here: the count is live, so it is filled in at render.
-  { to: "/threats", label: "Threat Detection", icon: "threats", badgeTone: "danger" },
-  { to: "/policy", label: "Policy & Compliance", icon: "policy", note: "Sample data" },
-  { to: "/ai", label: "AI Governance", icon: "ai", badge: "1", badgeTone: "warning", note: "Sample data" },
-  { to: "/audit", label: "Audit & Reports", icon: "audit", note: "Sample data" },
-  { to: "/risks", label: "Risk Register", icon: "risks" },
-  { to: "/vendors", label: "Vendor Risk", icon: "facility" },
-  { to: "/import", label: "Import Data", icon: "database", requireRole: ["ADMIN"] },
+/**
+ * Navigation, grouped by what the user is trying to do.
+ *
+ * Every destination here is backed by a live endpoint. Capabilities without a
+ * backend — Controls, Policies, Audit, Remediation, Users, Settings — are
+ * deliberately absent rather than present-and-inert: a nav item that opens an
+ * empty screen is a promise the product does not keep. Their API contracts are
+ * specified in FRONTEND_API_CONTRACT.md, and the items appear here the day
+ * those land.
+ */
+type NavGroup = { label: string; items: SidebarNavItem[] };
+
+const NAV: NavGroup[] = [
+  {
+    label: "Overview",
+    items: [{ to: "/", label: "Dashboard", domainIcon: "dashboard", end: true }],
+  },
+  {
+    label: "Discover",
+    items: [
+      { to: "/assets", label: "Assets", domainIcon: "asset" },
+      { to: "/phi-flow", label: "PHI Flow", domainIcon: "dataFlow" },
+      { to: "/access", label: "Access & Identity", domainIcon: "identity" },
+      { to: "/vendors", label: "Vendors", domainIcon: "vendor" },
+      // Badge is filled in at render from the live threat summary.
+      { to: "/threats", label: "Threats", domainIcon: "threat", badgeTone: "danger" },
+    ],
+  },
+  {
+    label: "Risk",
+    items: [
+      { to: "/risks", label: "Risk Register", domainIcon: "risk" },
+      { to: "/remediation", label: "Remediation", domainIcon: "remediation" },
+    ],
+  },
+  {
+    label: "Governance",
+    items: [
+      { to: "/controls", label: "Controls", domainIcon: "control" },
+      { to: "/policies", label: "Policies", domainIcon: "audit" },
+      // The audit trail is ADMIN-only server-side; mirror that here so we
+      // never offer a door the API will close.
+      { to: "/audit", label: "Audit Trail", domainIcon: "audit", requireRole: ["ADMIN"] },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [{ to: "/import", label: "Data Import", domainIcon: "import", requireRole: ["ADMIN"] }],
+  },
+  {
+    label: "Admin",
+    items: [
+      { to: "/users", label: "Identities & Members", domainIcon: "identity" },
+      { to: "/settings", label: "Settings", icon: "settings" },
+    ],
+  },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Governance Overview",
+  "/assets": "Asset Inventory",
   "/phi-flow": "PHI Data Flow Map",
-  "/access": "Access & Identity Management",
+  "/access": "Access & Identity Review",
+  "/vendors": "Vendor Risk",
   "/threats": "Threat & Anomaly Detection",
-  "/policy": "Policy & Compliance Engine",
-  "/ai": "AI Governance Monitor",
-  "/audit": "Audit Trail & Reports",
-  "/vendors": "Vendor Risk Management",
   "/risks": "Risk Register",
-  "/import": "Import Data",
+  "/import": "Data Import",
+  "/remediation": "Remediation",
+  "/controls": "Controls",
+  "/policies": "Policies",
+  "/audit": "Audit Trail",
+  "/users": "Identities & Members",
+  "/settings": "Settings",
 };
 
-const SEV_STROKE: Record<string, string> = {
-  CRITICAL: "border-severity-critical",
-  HIGH: "border-severity-high",
-  MEDIUM: "border-severity-medium",
-  LOW: "border-severity-low",
-};
-
-const COLLAPSE_KEY = "medguard-sidebar-collapsed";
+const COLLAPSE_KEY = "drishti-sidebar-collapsed";
 
 export default function Layout({ children }: { children: ReactNode }) {
   const loc = useLocation();
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
 
   /*
-   * The threat count is read off the same /api/threats query the Threats page
-   * uses — same key, so this shares its cache and its poll rather than adding
-   * a second request. It was previously the literal "2" written into NAV,
-   * which would have gone on saying 2 whatever the backend reported.
+   * Read from /api/threats/summary, not from a page of threats. The list is
+   * paginated now, so counting open rows client-side would report "3 open"
+   * when it means "3 open on page one of four". The summary is
+   * organisation-wide by construction.
    *
-   * Undefined while loading or while the backend is unreachable, which hides
-   * the badge: no number at all beats a stale or invented one.
+   * Undefined while loading or unreachable, which hides the badge: no number
+   * at all beats a stale or invented one.
    */
-  /*
-   * Hide what the router would bounce them from. The API is the real gate;
-   * this only keeps the sidebar honest about what this account can open.
-   */
-  const visibleNav = NAV.filter(
-    item => !item.requireRole || item.requireRole.includes(user?.role ?? ""),
-  );
-
-  const openThreats = useThreats().data?.summary.open;
+  const openThreats = useThreatSummary().data?.open;
   const openThreatBadge = openThreats ? String(openThreats) : undefined;
-  const { unreadCount, notifications, markNotifRead, markAllNotifRead } = useStore();
+
+  /* Hide what the router would bounce them from. The API is the real gate. */
+  const visibleNav = NAV
+    .map(g => ({
+      ...g,
+      items: g.items.filter(i => !i.requireRole || i.requireRole.includes(user?.role ?? "")),
+    }))
+    .filter(g => g.items.length > 0);
+
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastSync, setLastSync] = useState("2 mins ago");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeIndex, setActiveIndex] = useState(0);
   const searchRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const search = useGlobalSearch(searchTerm, searchOpen);
+
+  /*
+   * A real refresh: invalidate every cached query and let the hooks refetch.
+   * This used to be a 1.5s timer followed by "Dashboard refreshed" — a button
+   * that asserted freshness it had done nothing to obtain.
+   */
+  const inFlight = useIsFetching();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await queryClient.invalidateQueries();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [queryClient]);
+
+  const onLogout = () => {
+    logout();
+    notify.success("Signed out");
+    navigate("/login", { replace: true });
+  };
 
   // Sidebar collapse persists across reloads, like the theme choice.
   const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return window.localStorage.getItem(COLLAPSE_KEY) === "true"; } catch { return false; }
+    try {
+      const stored =
+        window.localStorage.getItem(COLLAPSE_KEY) ??
+        window.localStorage.getItem("medguard-sidebar-collapsed"); // pre-Drishti
+      return stored === "true";
+    } catch { return false; }
   });
   const toggleCollapsed = useCallback(() => {
     setCollapsed(prev => {
@@ -95,77 +169,104 @@ export default function Layout({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /* Close the palette on outside click, and open it on Cmd/Ctrl-K. */
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) setSearchOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+        window.setTimeout(() => searchInputRef.current?.focus(), 0);
+      }
+      if (e.key === "Escape") setSearchOpen(false);
+    };
     document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-      setLastSync("just now");
-      notify.success("Dashboard refreshed");
-    }, 1500);
-  };
+  useEffect(() => { setActiveIndex(0); }, [search.query]);
 
-  const onLogout = () => {
-    logout();
-    notify.success("Signed out");
-    navigate("/login", { replace: true });
+  const goTo = useCallback((to: string) => {
+    setSearchOpen(false);
+    setSearchTerm("");
+    navigate(to);
+  }, [navigate]);
+
+  const onSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (!search.flat.length) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); setActiveIndex(i => (i + 1) % search.flat.length); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIndex(i => (i - 1 + search.flat.length) % search.flat.length); }
+    else if (e.key === "Enter") { e.preventDefault(); goTo(search.flat[activeIndex].to); }
   };
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   useEffect(() => { setMobileNavOpen(false); }, [loc.pathname]);
 
-  const displayName = user?.name ?? "Dr. Sarah Chen";
+  const displayName = user?.name ?? "Signed in";
   const initials = displayName.split(" ").filter(Boolean).map(p => p[0]).slice(0, 2).join("").toUpperCase();
-  const pageTitle = PAGE_TITLES[loc.pathname] || "MedGuard";
+  const pageTitle = PAGE_TITLES[loc.pathname] ?? "Drishti";
 
   return (
     <div className="flex h-screen overflow-hidden bg-page text-primary">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[60] focus:rounded-md focus:bg-action-primary focus:px-3 focus:py-2 focus:text-on-color"
+      >
+        Skip to content
+      </a>
+
       {mobileNavOpen && (
         <div className="fixed inset-0 z-40 bg-black/60 lg:hidden" onClick={() => setMobileNavOpen(false)} />
       )}
 
       {/* SIDEBAR */}
       <aside
+        aria-label="Main navigation"
         className={cn(
           "fixed inset-y-0 left-0 z-50 flex flex-shrink-0 flex-col border-r border-muted bg-container",
           "transition-[width,transform] duration-200 lg:static lg:translate-x-0",
-          collapsed ? "w-[76px]" : "w-[240px]",
+          collapsed ? "w-[72px]" : "w-[236px]",
           mobileNavOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        <div className={cn("border-b border-muted py-4", collapsed ? "px-3" : "px-5")}>
+        <div className={cn("flex h-14 items-center border-b border-muted", collapsed ? "justify-center px-2" : "px-4")}>
           {collapsed ? (
-            <img src={wayamMark} alt="Wayam AI" className="mx-auto h-9 w-9 object-contain" />
+            <img src={drishtiMark} alt="Drishti" className="h-7 w-7 object-contain" />
           ) : (
-            <div className="flex items-center gap-2">
-              <img src={theme === "dark" ? wayamLogoDark : wayamLogoLight} alt="Wayam AI" className="h-24 object-contain" />
-              <div className="border-l border-muted pl-2">
-                <div className="text-heading-md leading-none text-primary">MedGuard</div>
-                <div className="mt-0.5 text-caption text-tertiary">Meridian Health</div>
-              </div>
-            </div>
+            <img
+              src={theme === "dark" ? drishtiLogoDark : drishtiLogoLight}
+              alt="Drishti"
+              className="h-7 object-contain"
+            />
           )}
         </div>
 
-        <nav className={cn("flex-1 overflow-y-auto overflow-x-hidden py-3", collapsed ? "px-2" : "px-2")}>
-          {visibleNav.map(item => (
-            <SidebarItem
-              key={item.to}
-              item={item.to === "/threats" ? { ...item, badge: openThreatBadge } : item}
-              collapsed={collapsed}
-            />
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
+          {visibleNav.map(group => (
+            <div key={group.label} className="mb-3 last:mb-0">
+              {!collapsed && (
+                <div className="mb-1 px-2 text-caption font-semibold uppercase tracking-wider text-quaternary">
+                  {group.label}
+                </div>
+              )}
+              {group.items.map(item => (
+                <SidebarItem
+                  key={item.to}
+                  item={item.to === "/threats" ? { ...item, badge: openThreatBadge } : item}
+                  collapsed={collapsed}
+                />
+              ))}
+            </div>
           ))}
         </nav>
 
         <div className={cn("space-y-2.5 border-t border-muted", collapsed ? "p-2" : "p-3")}>
-          {/* Collapse control sits with the other utility actions. */}
           <div className={cn("flex", collapsed ? "justify-center" : "justify-end")}>
             <IconButton
               icon={collapsed ? "expand" : "collapse"}
@@ -181,14 +282,14 @@ export default function Layout({ children }: { children: ReactNode }) {
           <div className={cn("flex items-center gap-2 border-t border-muted pt-2", collapsed && "flex-col gap-2")}>
             <div
               className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-action-primary text-label-sm text-on-color"
-              title={collapsed ? `${displayName} · ${user?.email ?? "Chief Compliance Officer"}` : undefined}
+              title={collapsed ? `${displayName} · ${user?.email ?? ""}` : undefined}
             >
               {initials}
             </div>
             {!collapsed && (
               <div className="min-w-0 flex-1">
                 <div className="truncate text-label-md text-primary">{displayName}</div>
-                <div className="truncate text-caption text-tertiary">{user?.email ?? "Chief Compliance Officer"}</div>
+                <div className="truncate text-caption text-tertiary">{user?.email ?? ""}</div>
               </div>
             )}
             <IconButton icon="logout" aria-label="Log out" title="Log out" size="sm" onClick={onLogout} />
@@ -198,7 +299,6 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* MAIN */}
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* TOPBAR */}
         <header className="flex h-14 items-center gap-3 border-b border-muted bg-container px-3 sm:gap-4 sm:px-5">
           <IconButton
             icon="menu"
@@ -208,7 +308,6 @@ export default function Layout({ children }: { children: ReactNode }) {
             onClick={() => setMobileNavOpen(true)}
           />
 
-          {/* Breadcrumb + page title */}
           <div className="hidden min-w-0 sm:block">
             <div className="flex items-center gap-1.5 text-caption text-quaternary">
               <AppIcon name="home" size="xs" />
@@ -218,103 +317,134 @@ export default function Layout({ children }: { children: ReactNode }) {
             <h1 className="truncate font-display text-display-page text-primary">{pageTitle}</h1>
           </div>
 
+          {/* GLOBAL SEARCH — real results over the live API */}
           <div className="relative max-w-md flex-1" ref={searchRef}>
             <AppIcon name="search" size="md" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-icon-quaternary" />
             <input
+              ref={searchInputRef}
+              value={searchTerm}
+              onChange={e => { setSearchTerm(e.target.value); setSearchOpen(true); }}
               onFocus={() => setSearchOpen(true)}
-              placeholder="Search patients, alerts, policies..."
-              aria-label="Search"
-              className="w-full rounded-md border border-default bg-action py-1.5 pl-9 pr-3 text-body-md text-primary placeholder:text-quaternary transition-colors duration-200 focus:border-active focus:outline-none"
+              onKeyDown={onSearchKeyDown}
+              placeholder="Search assets, vendors, risks, threats…"
+              aria-label="Search Drishti"
+              role="combobox"
+              aria-expanded={searchOpen}
+              aria-controls="global-search-results"
+              aria-autocomplete="list"
+              className="w-full rounded-md border border-default bg-action py-1.5 pl-9 pr-12 text-body-md text-primary placeholder:text-quaternary transition-colors duration-200 focus:border-active focus:outline-none"
             />
+            <kbd className="pointer-events-none absolute right-2.5 top-1/2 hidden -translate-y-1/2 rounded border border-default px-1.5 py-0.5 text-caption text-quaternary md:block">
+              ⌘K
+            </kbd>
+
             {searchOpen && (
-              <div className="fade-in absolute top-full z-30 mt-1 w-full overflow-hidden rounded-md border border-default bg-raised shadow-panel">
-                {[
-                  { label: "Alert #A-2847", desc: "Bulk Export, Billing", to: "/threats" },
-                  { label: "Policy: PHI Retention", desc: "Data Privacy", to: "/policy" },
-                  { label: "User: james.wilson", desc: "Billing Analyst", to: "/access" },
-                  { label: "Risk R-003", desc: "Clinical AI Bias", to: "/risks" },
-                ].map(r => (
-                  <button
-                    key={r.label}
-                    onClick={() => { setSearchOpen(false); navigate(r.to); }}
-                    className="w-full border-b border-muted px-3 py-2 text-left transition-colors duration-200 last:border-0 hover:bg-action"
-                  >
-                    <div className="text-body-md text-primary">{r.label}</div>
-                    <div className="text-caption text-tertiary">{r.desc}</div>
-                  </button>
-                ))}
+              <div
+                id="global-search-results"
+                role="listbox"
+                aria-label="Search results"
+                className="fade-in absolute top-full z-30 mt-1 max-h-[420px] w-full overflow-y-auto rounded-md border border-default bg-raised shadow-panel"
+              >
+                {!search.active ? (
+                  <p className="px-3 py-3 text-body-sm text-tertiary">
+                    Type at least two characters to search assets, vendors, risks, threats and identities.
+                  </p>
+                ) : search.isLoading ? (
+                  <p className="px-3 py-3 text-body-sm text-tertiary">Searching…</p>
+                ) : search.isError ? (
+                  <p className="px-3 py-3 text-body-sm text-feedback-error">
+                    Search is unavailable right now.
+                  </p>
+                ) : search.flat.length === 0 ? (
+                  <p className="px-3 py-3 text-body-sm text-tertiary">No matches for “{search.query}”.</p>
+                ) : (
+                  search.grouped.map(group => (
+                    <div key={group.entity}>
+                      <div className="sticky top-0 bg-raised-2 px-3 py-1 text-caption font-semibold uppercase tracking-wider text-quaternary">
+                        {ENTITY_LABEL[group.entity]}
+                      </div>
+                      {group.items.map(r => {
+                        const idx = search.flat.findIndex(f => f.id === r.id);
+                        const active = idx === activeIndex;
+                        return (
+                          <button
+                            key={r.id}
+                            role="option"
+                            aria-selected={active}
+                            onMouseEnter={() => setActiveIndex(idx)}
+                            onClick={() => goTo(r.to)}
+                            className={cn(
+                              "flex w-full items-center gap-2.5 border-b border-muted px-3 py-2 text-left transition-colors last:border-0",
+                              active ? "bg-action" : "hover:bg-action",
+                            )}
+                          >
+                            <DomainIcon name={r.icon} size={16} className="shrink-0 text-icon-tertiary" />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-body-md text-primary">{r.title}</span>
+                              <span className="block truncate text-caption text-tertiary">{r.context}</span>
+                            </span>
+                            {r.status && <Badge tone="muted">{r.status}</Badge>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
 
-          {/* Live monitoring status. Belongs with the other live/system state in
-              the header rather than buried at the bottom of the sidebar. */}
           <div
             className="hidden items-center gap-2 rounded-full border border-default bg-action px-2.5 py-1 md:flex"
-            title="Live monitoring active"
+            title={inFlight > 0 ? "Fetching live data" : "Polling the API"}
           >
             <span className="relative flex h-2 w-2">
               <span className="pulse-dot absolute inline-flex h-full w-full rounded-full bg-feedback-success-icon" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-feedback-success-icon" />
             </span>
-            <span className="whitespace-nowrap text-caption text-secondary">Live Monitoring</span>
+            <span className="whitespace-nowrap text-caption text-secondary">Live</span>
           </div>
-
-          <span className="tabular hidden whitespace-nowrap text-caption text-quaternary lg:inline">Last sync: {lastSync}</span>
 
           <ThemeToggle />
 
-          <IconButton icon="refresh" aria-label="Refresh dashboard" title="Refresh" size="sm" spin={refreshing} onClick={onRefresh} />
+          <IconButton
+            icon="refresh"
+            aria-label="Refresh all data"
+            title="Refresh all data"
+            size="sm"
+            spin={refreshing || inFlight > 0}
+            onClick={() => void onRefresh()}
+          />
 
-          <div className="relative">
-            <IconButton icon="notification" aria-label={`Notifications (${unreadCount} unread)`} size="sm" onClick={() => setNotifOpen(true)} />
-            {unreadCount > 0 && (
-              <span className="tabular pointer-events-none absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-severity-critical px-1 text-caption font-semibold text-white">
-                {unreadCount}
-              </span>
-            )}
-          </div>
+          <IconButton
+            icon="notification"
+            aria-label="Notifications"
+            size="sm"
+            onClick={() => setNotifOpen(true)}
+          />
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden bg-page p-3 sm:p-5">{children}</main>
+        <main id="main" className="flex-1 overflow-y-auto overflow-x-hidden bg-page p-3 sm:p-5">
+          {children}
+        </main>
       </div>
 
-      <SlideOver
-        open={notifOpen}
-        onClose={() => setNotifOpen(false)}
-        width={380}
-        title={
-          <div className="flex w-full items-center justify-between pr-8">
-            <span>Notifications ({unreadCount})</span>
-            <button onClick={markAllNotifRead} className="ml-3 text-label-sm text-brand hover:underline">Mark all read</button>
-          </div>
-        }
-        footer={
-          <Btn variant="inverse" className="w-full" onClick={() => { setNotifOpen(false); navigate("/audit"); }}>
-            View all notifications
+      {/*
+        Notifications have no backend. Rather than a fabricated feed with an
+        invented unread count, this says so. The contract for a real event
+        stream is in FRONTEND_API_CONTRACT.md.
+      */}
+      <SlideOver open={notifOpen} onClose={() => setNotifOpen(false)} width={380} title="Notifications">
+        <EmptyState
+          icon="notification"
+          title="No notifications"
+          message="Drishti will surface new threats, risk-band changes and failed imports here once the events API is connected."
+          height={320}
+        />
+        <div className="mt-2 flex justify-center">
+          <Btn variant="outline" onClick={() => { setNotifOpen(false); navigate("/threats"); }}>
+            View open threats
           </Btn>
-        }
-      >
-        <div className="space-y-2">
-          {notifications.map(n => (
-            <div
-              key={n.id}
-              className={`rounded-md border-l-2 bg-raised p-3 ${SEV_STROKE[n.sev] ?? "border-severity-info"} ${n.read ? "opacity-50" : ""}`}
-            >
-              <div className="mb-1 flex items-center justify-between">
-                <SeverityBadge sev={n.sev} />
-                <span className="tabular text-caption text-quaternary">{n.time}</span>
-              </div>
-              <div className="text-label-md text-primary">{n.title}</div>
-              <div className="mt-0.5 text-caption text-tertiary">{n.desc}</div>
-              <button
-                onClick={() => { markNotifRead(n.id); setNotifOpen(false); navigate(n.page); }}
-                className="mt-1.5 text-caption text-brand hover:underline"
-              >
-                View
-              </button>
-            </div>
-          ))}
         </div>
       </SlideOver>
     </div>

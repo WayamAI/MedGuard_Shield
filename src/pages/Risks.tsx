@@ -1,89 +1,169 @@
 import { useMemo, useState } from "react";
-import { Card, KPI, Badge, Btn, SlideOver, Input, Select, SectionHeader } from "@/components/ui-bits";
-import { toneVar, type Tone } from "@/lib/tone";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Card, Badge, Btn, SectionHeader, SlideOver } from "@/components/ui-bits";
+import { AppIcon } from "@/components/AppIcon";
 import { RiskMatrix } from "@/components/RiskMatrix";
 import { DataState } from "@/components/DataState";
-import { useRawRisks } from "@/hooks/useRisks";
-import { toMatrixRisks } from "@/lib/mappers";
+import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
+import {
+  PageHeader, MetricCard, RiskBadge, Field, FieldGroup, FilterBar,
+  EntityAvatar, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
+} from "@/components/ui-patterns";
+import { useRisks, useRiskMatrix } from "@/hooks/useRisks";
+import { useListControls } from "@/hooks/useListControls";
+import { useRecomputeAssetRisk } from "@/hooks/useMutations";
+import { useCanWrite } from "@/hooks/use-auth";
+import { describeApiError, toApiError } from "@/lib/apiErrors";
+import { notify } from "@/lib/notify";
 import type { ApiRisk, RiskBand } from "@/lib/apiTypes";
 
 /**
  * Risk register, backed by /api/risks.
  *
- * The API scores each asset on likelihood x impact x exposure x control gap and
- * returns the band it derived. Owner, due date, category and workflow status
- * have no source on the wire yet, so those columns and the add/edit flows are
- * not rendered — an empty column reads as missing data, which in a compliance
- * tool is worse than an absent one.
+ * The API scores each asset on likelihood × impact × exposure × control gap
+ * and returns the band it derived. Owner, due date, category and workflow
+ * status have no source on the wire yet, so those columns are not rendered —
+ * an empty column reads as missing data, which in a compliance tool is worse
+ * than an absent one. The remediation workflow that would fill them is
+ * specified in FRONTEND_API_CONTRACT.md.
+ *
+ * Recompute is real: POST /api/risks/:assetId/recompute re-runs the engine
+ * server-side and this page renders whatever comes back. The score is never
+ * calculated in the browser.
  */
-
-const BAND_TONE: Record<RiskBand, Tone> = {
-  LOW: "success",
-  MODERATE: "info",
-  HIGH: "warning",
-  CRITICAL: "danger",
-  EXTREME: "danger",
-};
-
-const scoreTone = (s: number): Tone => s >= 80 ? "danger" : s >= 60 ? "warning" : s >= 40 ? "info" : "success";
-const scoreColor = (s: number) => toneVar(scoreTone(s));
 
 const idOf = (r: ApiRisk) => `R-${String(r.id).padStart(3, "0")}`;
 
-export default function Risks() {
-  const risks = useRawRisks();
-  const [search, setSearch] = useState("");
-  const [band, setBand] = useState("All");
-  const [view, setView] = useState<ApiRisk | null>(null);
-  const [highlightId, setHighlightId] = useState<string | null>(null);
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 
+export default function Risks() {
+  const navigate = useNavigate();
+  const canWrite = useCanWrite();
+
+  const [params, setParams] = useSearchParams();
+  const openId = params.get("open") ? Number(params.get("open")) : null;
+
+  const controls = useListControls<{ band?: RiskBand }>({ band: undefined });
+  const risks = useRisks(controls.params);
   const rows = useMemo(() => risks.data ?? [], [risks.data]);
 
-  const matrixRisks = useMemo(() => toMatrixRisks(rows), [rows]);
+  /* The matrix plots the whole register, not the page under it. */
+  const matrix = useRiskMatrix();
+  const matrixRisks = matrix.matrix ?? [];
+  const allRows = useMemo(() => matrix.data ?? [], [matrix.data]);
 
-  const filtered = useMemo(() => rows.filter(r =>
-    (search === "" || r.assetName.toLowerCase().includes(search.toLowerCase())) &&
-    (band === "All" || r.band === band)
-  ), [rows, search, band]);
+  const raw = useRisks({ pageSize: 200 });
+  const rawRows = useMemo(() => raw.data ?? [], [raw.data]);
 
   const counts = useMemo(() => ({
-    total: rows.length,
-    severe: rows.filter(r => r.band === "CRITICAL" || r.band === "EXTREME").length,
-    high: rows.filter(r => r.band === "HIGH").length,
-    peak: rows.length ? Math.max(...rows.map(r => r.score)) : 0,
-  }), [rows]);
+    total: raw.meta?.total ?? rawRows.length,
+    severe: rawRows.filter(r => r.band === "CRITICAL" || r.band === "EXTREME").length,
+    high: rawRows.filter(r => r.band === "HIGH").length,
+    peak: rawRows.length ? Math.max(...rawRows.map(r => r.score)) : 0,
+  }), [rawRows, raw.meta]);
+
+  const bandCounts = useMemo(
+    () => Object.fromEntries(BAND_ORDER.map(b => [b, rawRows.filter(r => r.band === b).length])),
+    [rawRows],
+  );
+
+  const openRisk = (id: number | null) => {
+    const next = new URLSearchParams(params);
+    if (id === null) next.delete("open");
+    else next.set("open", String(id));
+    setParams(next, { replace: true });
+  };
+
+  const selected = useMemo(
+    () => rawRows.find(r => r.id === openId) ?? rows.find(r => r.id === openId) ?? null,
+    [rawRows, rows, openId],
+  );
+
+  const columns: Column<ApiRisk>[] = [
+    {
+      id: "id",
+      header: "ID",
+      width: "w-24",
+      sortValue: r => r.id,
+      searchValue: r => idOf(r),
+      cell: r => <span className="tabular text-tertiary">{idOf(r)}</span>,
+    },
+    {
+      id: "asset",
+      header: "Asset",
+      sortValue: r => r.assetName,
+      searchValue: r => r.assetName,
+      cell: r => (
+        <div className="flex items-center gap-2.5">
+          <EntityAvatar icon="risk" tone={BAND_TONE[r.band]} size="sm" />
+          <span className="truncate text-body-md text-primary">{r.assetName}</span>
+        </div>
+      ),
+    },
+    { id: "L", header: "L", align: "right", hideBelow: "md", sortValue: r => r.likelihood, cell: r => r.likelihood },
+    { id: "I", header: "I", align: "right", hideBelow: "md", sortValue: r => r.impact, cell: r => r.impact },
+    { id: "exposure", header: "Exposure", align: "right", hideBelow: "lg", sortValue: r => r.exposure, cell: r => r.exposure },
+    { id: "controlGap", header: "Control gap", align: "right", hideBelow: "lg", sortValue: r => r.controlGap, cell: r => r.controlGap },
+    {
+      id: "score",
+      header: "Score",
+      align: "right",
+      sortValue: r => r.score,
+      cell: r => <span className="tabular font-medium text-primary">{r.score}</span>,
+    },
+    {
+      id: "band",
+      header: "Band",
+      sortValue: r => bandRank(r.band),
+      cell: r => <RiskBadge band={r.band} />,
+    },
+  ];
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KPI icon="risks" label="Assets Scored" value={risks.data ? String(counts.total) : undefined}
-             accent="info" loading={risks.isLoading} stale={risks.isReconnecting} />
-        <KPI icon="threats" label="Critical or Extreme" value={risks.data ? String(counts.severe) : undefined}
-             accent="danger" loading={risks.isLoading} stale={risks.isReconnecting} />
-        <KPI icon="activity" label="High" value={risks.data ? String(counts.high) : undefined}
-             accent="warning" loading={risks.isLoading} stale={risks.isReconnecting} />
-        <KPI icon="chart" label="Highest Score" value={risks.data ? String(counts.peak) : undefined}
-             accent="danger" loading={risks.isLoading} stale={risks.isReconnecting} />
+      <PageHeader
+        icon="risk"
+        title="Risk Register"
+        description="Every scored asset, ranked by the score the API derived. Drishti visualises backend truth and never recomputes a band client-side."
+        actions={
+          <Btn variant="outline" onClick={() => { void risks.refresh(); void matrix.refresh(); }} disabled={risks.isFetching}>
+            <AppIcon name="refresh" size="sm" spin={risks.isFetching} />
+            Refresh
+          </Btn>
+        }
+      />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MetricCard label="Assets scored" value={risks.data ? counts.total : undefined} icon="risks" />
+        <MetricCard
+          label="Critical or extreme"
+          value={risks.data ? counts.severe : undefined}
+          icon="threats"
+          tone="danger"
+          emphasis={Boolean(counts.severe)}
+        />
+        <MetricCard label="High" value={risks.data ? counts.high : undefined} icon="activity" tone="warning" />
+        <MetricCard label="Highest score" value={risks.data ? counts.peak : undefined} icon="chart" />
       </div>
 
       <Card className="p-4">
         <SectionHeader
           title="Risk Matrix"
-          subtitle="Every scored asset plotted by likelihood and impact. Colour is the band the API derived. Select a chip to jump to its row."
+          subtitle="Every scored asset plotted by likelihood and impact. Colour is the band the API derived — select a chip to open its record."
         />
         <DataState
-          query={risks}
+          query={listAsQuery(matrix)}
           height={420}
-          emptyTitle="No scored risks"
-          emptyMessage="The API returned no risk rows. If the backend was just set up, run the seed script."
+          emptyTitle="No scored assets"
+          emptyMessage="No risk rows were returned. Import assets and recompute their risk to populate this."
         >
           {() => (
             <RiskMatrix
               risks={matrixRisks}
-              highlightId={highlightId}
-              onSelect={(id) => {
-                setHighlightId(id);
-                document.getElementById(`row-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+              onSelect={id => {
+                const numeric = Number(String(id).replace(/^R-0*/, ""));
+                if (Number.isFinite(numeric)) openRisk(numeric);
               }}
             />
           )}
@@ -91,83 +171,124 @@ export default function Risks() {
       </Card>
 
       <Card className="p-4">
-        <div className="flex flex-wrap gap-2 mb-3">
-          <Input placeholder="Search assets..." value={search} onChange={e => setSearch(e.target.value)} className="w-44" />
-          <Select value={band} onChange={e => setBand(e.target.value)}>
-            {["All", "EXTREME", "CRITICAL", "HIGH", "MODERATE", "LOW"].map(o => <option key={o}>{o}</option>)}
-          </Select>
-          <div className="flex-1" />
-          <Btn variant="outline" onClick={() => risks.refresh()} disabled={risks.isFetching}>
-            {risks.isFetching ? "Refreshing…" : "Refresh"}
-          </Btn>
+        <DataTable
+          label="Risk register"
+          query={listAsQuery(risks)}
+          server={{
+            meta: risks.meta,
+            page: controls.page,
+            onPageChange: controls.setPage,
+            pageSize: controls.pageSize,
+            onPageSizeChange: controls.setPageSize,
+            onSearch: controls.setSearch,
+            searchValue: controls.search,
+            isPaging: risks.isPaging,
+          }}
+          columns={columns}
+          getRowId={r => r.id}
+          onRowClick={r => openRisk(r.id)}
+          isRowActive={r => r.id === openId}
+          initialSort={{ columnId: "score", direction: "desc" }}
+          searchPlaceholder="Search by asset…"
+          emptyTitle="No risks recorded"
+          emptyMessage="No risk rows were returned by the API."
+          toolbar={
+            <FilterBar
+              label="Filter by band"
+              value={controls.filters.band ?? "all"}
+              onChange={v => controls.setFilter("band", v === "all" ? undefined : (v as RiskBand))}
+              options={[
+                { value: "all", label: "All", count: raw.meta?.total ?? rawRows.length },
+                ...BAND_ORDER.map(b => ({ value: b, label: b[0] + b.slice(1).toLowerCase(), count: bandCounts[b] ?? 0 })),
+              ]}
+            />
+          }
+        />
+        <div className="mt-4 border-t border-muted pt-3">
+          <MiniBar segments={BAND_ORDER.map(b => ({ value: bandCounts[b] ?? 0, tone: BAND_TONE[b], label: b }))} />
         </div>
-
-        <DataState query={risks} height={280} emptyTitle="No scored risks">
-          {() => (
-            <div className="overflow-x-auto">
-              <table className="w-full text-body-sm">
-                <thead className="sticky top-0 z-10 bg-raised text-tertiary uppercase text-caption">
-                  <tr className="border-b border-default">
-                    {["ID", "Asset", "L", "I", "Exposure", "Control gap", "Score", "Band", ""].map(h => (
-                      <th key={h} className="text-left py-2 px-2">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(r => {
-                    const id = idOf(r);
-                    return (
-                      <tr key={r.id} id={`row-${id}`} className={`border-b border-default hover:bg-raised-2 ${highlightId === id ? "bg-brand/10" : ""}`}>
-                        <td className="py-2 px-2 font-mono">{id}</td>
-                        <td className="px-2">{r.assetName}</td>
-                        <td className="px-2 tabular">{r.likelihood}</td>
-                        <td className="px-2 tabular">{r.impact}</td>
-                        <td className="px-2 tabular">{r.exposure}</td>
-                        <td className="px-2 tabular">{r.controlGap}</td>
-                        <td className="px-2">
-                          <div className="flex items-center gap-1.5">
-                            <Badge tone={scoreTone(r.score)}>{r.score}</Badge>
-                            <div className="w-16 h-1 bg-action rounded">
-                              <div className="h-full" style={{ width: `${Math.min(100, r.score)}%`, background: scoreColor(r.score) }} />
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-2"><Badge tone={BAND_TONE[r.band]}>{r.band}</Badge></td>
-                        <td className="px-2"><Btn variant="outline" onClick={() => setView(r)}>View</Btn></td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </DataState>
       </Card>
 
-      <SlideOver open={!!view} onClose={() => setView(null)} title={view?.assetName} width={340}>
-        {view && (
-          <div className="space-y-3 text-body-md">
-            <Badge tone={BAND_TONE[view.band]}>{view.band}</Badge>
-            <Row label="Risk ID" value={idOf(view)} />
-            <Row label="Likelihood" value={String(view.likelihood)} />
-            <Row label="Impact" value={String(view.impact)} />
-            <Row label="Exposure" value={String(view.exposure)} />
-            <Row label="Control gap" value={String(view.controlGap)} />
-            <Row label="Score" value={String(view.score)} />
-            <Row label="Last computed" value={new Date(view.computedAt).toLocaleString()} />
-            <p className="text-body-sm text-tertiary">
-              Score = likelihood x impact x exposure x control gap / 625 x 100, each input 1-5.
-            </p>
-          </div>
-        )}
-      </SlideOver>
+      <RiskDrawer risk={selected} onClose={() => openRisk(null)} canWrite={canWrite} onOpenAsset={id => navigate(`/assets?open=${id}`)} />
     </div>
   );
 }
 
-const Row = ({ label, value }: { label: string; value: string }) => (
-  <div className="flex justify-between items-center py-1.5 border-b border-default last:border-0">
-    <span className="text-body-sm text-tertiary">{label}</span>
-    <span className="text-primary tabular">{value}</span>
-  </div>
-);
+function RiskDrawer({
+  risk, onClose, canWrite, onOpenAsset,
+}: {
+  risk: ApiRisk | null;
+  onClose: () => void;
+  canWrite: boolean;
+  onOpenAsset: (assetId: number) => void;
+}) {
+  const recompute = useRecomputeAssetRisk();
+
+  const onRecompute = async () => {
+    if (!risk) return;
+    try {
+      const next = await recompute.mutateAsync(risk.assetId);
+      notify.success(`Risk rescored: ${next.score} (${next.band})`);
+    } catch (err) {
+      notify.error(describeApiError(toApiError(err)).message);
+    }
+  };
+
+  return (
+    <SlideOver
+      open={risk !== null}
+      onClose={onClose}
+      width={460}
+      title={risk ? `${idOf(risk)} · ${risk.assetName}` : "Risk"}
+      footer={
+        risk && canWrite ? (
+          <div className="flex w-full items-center gap-2">
+            <Btn variant="outline" onClick={() => onOpenAsset(risk.assetId)} className="flex-1">
+              Open asset
+            </Btn>
+            <Btn variant="primary" onClick={() => void onRecompute()} disabled={recompute.isPending} className="flex-1">
+              <AppIcon name="refresh" size="sm" spin={recompute.isPending} />
+              {recompute.isPending ? "Rescoring…" : "Recompute"}
+            </Btn>
+          </div>
+        ) : undefined
+      }
+    >
+      {risk && (
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <EntityAvatar icon="risk" tone={BAND_TONE[risk.band]} size="lg" />
+            <div>
+              <div className="flex items-baseline gap-3">
+                <span className="font-display text-display-metric tabular text-primary">{risk.score}</span>
+                <RiskBadge band={risk.band} />
+              </div>
+              <p className="mt-1 text-body-sm text-tertiary">
+                Derived from four factors by the API scoring engine.
+              </p>
+            </div>
+          </div>
+
+          <FieldGroup title="Scoring factors">
+            <Field label="Likelihood" value={`${risk.likelihood} / 5`} />
+            <Field label="Impact" value={`${risk.impact} / 5`} />
+            <Field label="Exposure" value={`${risk.exposure} / 5`} />
+            <Field label="Control gap" value={`${risk.controlGap} / 5`} />
+          </FieldGroup>
+
+          <FieldGroup title="Record">
+            <Field label="Risk ID" value={idOf(risk)} />
+            <Field label="Asset" value={risk.assetName} />
+            <Field label="Last computed" value={fmtDate(risk.computedAt)} />
+          </FieldGroup>
+
+          <p className="rounded-md border border-default bg-raised-2 px-3 py-2 text-caption text-tertiary">
+            The grid position shows likelihood × impact only. The band also weighs exposure and
+            control gap, so a chip's colour will often differ from its cell — that is the engine
+            being more precise than two axes can show, not a display error.
+          </p>
+        </div>
+      )}
+    </SlideOver>
+  );
+}

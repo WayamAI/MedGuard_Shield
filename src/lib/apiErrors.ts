@@ -1,5 +1,16 @@
 import { ApiError } from "@/lib/apiClient";
 
+/**
+ * Narrow a caught value to an ApiError.
+ *
+ * Mutation callbacks catch `unknown`, and describeApiError wants the typed
+ * error or null. Doing the check once here stops every call site inventing
+ * its own — and stops a non-ApiError throw rendering as "[object Object]".
+ */
+export function toApiError(error: unknown): ApiError | null {
+  return error instanceof ApiError ? error : null;
+}
+
 /** Plain-language cause. A viewer cannot act on "TypeError: failed to fetch". */
 export function describeApiError(error: ApiError | null): { title: string; message: string } {
   if (!error) return { title: "Could not load this data", message: "An unknown error occurred." };

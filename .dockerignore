@@ -1,0 +1,16 @@
+node_modules
+dist
+.git
+.github
+.env
+.env.*
+!.env.example
+Logos
+*.md
+!README.md
+coverage
+.DS_Store
+*.log
+
+# Commissioned icon source art (2K JPEGs) — reference only, never shipped.
+design

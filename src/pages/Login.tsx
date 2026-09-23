@@ -4,8 +4,8 @@ import { AppIcon } from "@/components/AppIcon";
 import { useAuth } from "@/hooks/use-auth";
 import { hadSession } from "@/lib/sessionBreadcrumb";
 import { useTheme } from "@/hooks/use-theme";
-import wayamLogoLight from "@/assets/brand/wayam-logo-light.svg";
-import wayamLogoDark from "@/assets/brand/wayam-logo-dark.svg";
+import drishtiLogoLight from "@/assets/brand/drishti-logo-light.svg";
+import drishtiLogoDark from "@/assets/brand/drishti-logo-dark.svg";
 
 export default function Login() {
   const { isAuthenticated, isInitializing, login } = useAuth();
@@ -51,13 +51,13 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <img
-            src={theme === "dark" ? wayamLogoDark : wayamLogoLight}
-            alt="Wayam AI"
-            className="h-32 object-contain mb-6"
+            src={theme === "dark" ? drishtiLogoDark : drishtiLogoLight}
+            alt="Drishti"
+            className="h-14 object-contain mb-7"
           />
-          <h1 className="font-display text-display-page text-primary tracking-tight">Sign in to MedGuard</h1>
+          <h1 className="font-display text-display-page text-primary tracking-tight">Sign in to Drishti</h1>
           <p className="text-body-md text-tertiary mt-1 text-center">
-            Healthcare governance and compliance for Meridian Health
+            Healthcare PHI risk intelligence for Meridian Health
           </p>
         </div>
 
@@ -139,12 +139,12 @@ export default function Login() {
 
           <div className="mt-5 flex items-start gap-2 text-body-sm text-tertiary bg-action/60 border border-default rounded-md px-3 py-2.5">
             <AppIcon name="compliance" size="sm" className="mt-0.5 flex-shrink-0 text-brand" />
-            <span>Sign in with your MedGuard account. Credentials are verified by the API.</span>
+            <span>Sign in with your Drishti account. Credentials are verified by the API.</span>
           </div>
         </div>
 
         <p className="text-center text-body-sm text-tertiary mt-6">
-          Wayam AI Governance Suite · Demo Environment
+          Drishti by Wayam AI · Demo Environment
         </p>
       </div>
     </div>

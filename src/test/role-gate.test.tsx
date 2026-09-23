@@ -7,7 +7,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Layout from "@/components/Layout";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { ThemeProvider } from "@/hooks/use-theme";
-import { AppStoreProvider } from "@/store/AppStore";
 
 /**
  * Role gating is new to this app, so these cover the whole matrix rather than
@@ -49,7 +48,7 @@ const wrap = (node: ReactNode, path = "/import") => (
     <MemoryRouter initialEntries={[path]}>
       <ThemeProvider>
         <AuthProvider>
-          <AppStoreProvider>{node}</AppStoreProvider>
+          {node}
         </AuthProvider>
       </ThemeProvider>
     </MemoryRouter>
@@ -129,7 +128,7 @@ describe("sidebar visibility", () => {
   it("offers Import Data to an ADMIN", async () => {
     role = "ADMIN";
     render(wrap(sidebar, "/"));
-    expect(await screen.findByRole("link", { name: /Import Data/ })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: /Data Import/ })).toBeInTheDocument();
   });
 
   it("hides it from an ANALYST", async () => {
@@ -137,20 +136,20 @@ describe("sidebar visibility", () => {
     render(wrap(sidebar, "/"));
     // Wait for a nav item everyone sees, so absence is measured after render.
     await screen.findByRole("link", { name: /Dashboard/ });
-    expect(screen.queryByRole("link", { name: /Import Data/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Data Import/ })).not.toBeInTheDocument();
   });
 
   it("hides it from a VIEWER", async () => {
     role = "VIEWER";
     render(wrap(sidebar, "/"));
     await screen.findByRole("link", { name: /Dashboard/ });
-    expect(screen.queryByRole("link", { name: /Import Data/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Data Import/ })).not.toBeInTheDocument();
   });
 
   it("leaves the ungated items alone for every role", async () => {
     role = "VIEWER";
     render(wrap(sidebar, "/"));
     expect(await screen.findByRole("link", { name: /Risk Register/ })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Vendor Risk/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Vendors/ })).toBeInTheDocument();
   });
 });

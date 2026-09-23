@@ -1,5 +1,5 @@
 /**
- * Base fetch wrapper for the MedGuard backend.
+ * Base fetch wrapper for the Drishti backend.
  *
  * Auth stays behind an indirection on purpose: nothing here imports the auth
  * layer, so this module has no cycle with it and is trivial to test. The
@@ -48,6 +48,37 @@ export function setAuthTokenGetter(getter: TokenGetter | null) {
   authTokenGetter = getter;
 }
 
+/**
+ * Single-flight session refresh.
+ *
+ * The access token now lives one hour, so an idle tab will meet a 401 during
+ * normal use. AuthProvider registers a handler here; on a 401 the client
+ * calls it once, and replays the request with whatever token comes back.
+ *
+ * `inFlight` collapses concurrent refreshes: six list queries hitting 401 at
+ * the same moment must produce one refresh, not six. Six would be worse than
+ * wasteful — refresh tokens rotate on use, so the five losers would each
+ * present an already-rotated token, which the API treats as theft and
+ * responds to by revoking every session for the account.
+ */
+type RefreshHandler = () => Promise<string | null>;
+let authRefreshHandler: RefreshHandler | null = null;
+let inFlightRefresh: Promise<string | null> | null = null;
+
+export function setAuthRefreshHandler(handler: RefreshHandler | null) {
+  authRefreshHandler = handler;
+  inFlightRefresh = null;
+}
+
+async function attemptRefresh(): Promise<string | null> {
+  if (!authRefreshHandler) return null;
+  inFlightRefresh ??= authRefreshHandler().finally(() => { inFlightRefresh = null; });
+  return inFlightRefresh;
+}
+
+/** Auth routes must never trigger a refresh — that is how you build a loop. */
+const isAuthPath = (path: string) => path.startsWith("/api/auth/");
+
 /** Base URL without a trailing slash, so path joining stays predictable. */
 export function getApiBaseUrl(): string {
   const raw = import.meta.env.VITE_API_BASE_URL;
@@ -71,7 +102,52 @@ async function parseBody(res: Response): Promise<unknown> {
   }
 }
 
-export type RequestOptions = Omit<RequestInit, "body"> & { body?: unknown };
+/**
+ * Collection envelope. The API returns `meta` as a SIBLING of `data`, not
+ * nested inside it:
+ *
+ *   { "data": [ ... ], "meta": { page, pageSize, total, totalPages } }
+ *
+ * `apiFetch` unwraps `data` and throws `meta` away, which is correct for a
+ * single record and silently wrong for a list — the caller gets 25 rows and
+ * no way to know there are 500. `apiList` is the paginated counterpart and
+ * every list endpoint must go through it.
+ */
+export type PageMeta = {
+  page: number;
+  pageSize: number;
+  total: number;
+  /** Never below 1, even when total is 0. */
+  totalPages: number;
+};
+
+export type Paginated<T> = { items: T[]; meta: PageMeta };
+
+/** Query parameters every paginated endpoint accepts. */
+export type PageParams = {
+  page?: number;
+  /** Server caps at 200 rather than rejecting. */
+  pageSize?: number;
+};
+
+/** A meta object for data that is not actually paginated, so callers can
+ *  treat every list uniformly. */
+export const singlePageMeta = (total: number): PageMeta => ({
+  page: 1, pageSize: total, total, totalPages: 1,
+});
+
+export type RequestOptions = Omit<RequestInit, "body"> & {
+  body?: unknown;
+  /**
+   * Send and accept cookies. Used only by /api/auth/*, where the refresh
+   * token lives in an httpOnly cookie the JS is deliberately unable to read.
+   * Data routes stay bearer-only so the Authorization header is the single
+   * thing that grants access to PHI.
+   */
+  withCredentials?: boolean;
+  /** Internal: set on the replay so one failure cannot loop. */
+  _isRetry?: boolean;
+};
 
 /**
  * Perform a JSON request. Resolves with the parsed body on 2xx, throws
@@ -80,7 +156,7 @@ export type RequestOptions = Omit<RequestInit, "body"> & { body?: unknown };
  */
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}`;
-  const { body, headers, ...rest } = options;
+  const { body, headers, withCredentials, _isRetry, ...rest } = options;
 
   const finalHeaders = new Headers(headers);
   finalHeaders.set("Accept", "application/json");
@@ -107,7 +183,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
        * storing that cookie at all, so the Authorization header is the only
        * thing that can grant access.
        */
-      credentials: "omit",
+      credentials: withCredentials ? "include" : "omit",
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (cause) {
@@ -119,12 +195,26 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     );
   }
 
+  /*
+   * One refresh, then one replay. If the replay also 401s the session is
+   * genuinely gone and the error surfaces — DataState renders "session
+   * expired" and ProtectedRoute sends them to /login.
+   */
+  if (res.status === 401 && !_isRetry && !isAuthPath(path)) {
+    const token = await attemptRefresh();
+    if (token) {
+      return apiFetch<T>(path, { ...options, _isRetry: true });
+    }
+  }
+
   if (!res.ok) {
     const parsed = await parseBody(res);
     const detail =
-      parsed && typeof parsed === "object" && "message" in parsed
-        ? String((parsed as { message: unknown }).message)
-        : res.statusText;
+      parsed && typeof parsed === "object" && "error" in parsed
+        ? String((parsed as { error?: { message?: unknown } }).error?.message ?? res.statusText)
+        : parsed && typeof parsed === "object" && "message" in parsed
+          ? String((parsed as { message: unknown }).message)
+          : res.statusText;
     throw new ApiError(`${res.status} ${detail}`.trim(), res.status, url, parsed);
   }
 
@@ -231,10 +321,89 @@ export async function apiDownload(path: string): Promise<{ blob: Blob; filename:
   return { blob: await res.blob(), filename: match?.[1] ?? null };
 }
 
+/** Serialise query parameters, dropping undefined/null/empty rather than
+ *  sending `?page=undefined`. Arrays repeat the key. */
+export function toQuery(params: Record<string, unknown> | undefined): string {
+  if (!params) return "";
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === "") continue;
+    if (Array.isArray(v)) {
+      for (const item of v) if (item !== undefined && item !== null && item !== "") q.append(k, String(item));
+    } else {
+      q.set(k, String(v));
+    }
+  }
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
+/**
+ * GET a paginated collection, keeping the `meta` the API sent.
+ *
+ * Falls back to a synthesised single-page meta when an endpoint returns a
+ * bare array, so a not-yet-paginated route cannot make a caller crash.
+ */
+export async function apiList<T>(
+  path: string,
+  params?: Record<string, unknown>,
+  options: RequestOptions = {},
+): Promise<Paginated<T>> {
+  const url = `${getApiBaseUrl()}${path.startsWith("/") ? path : `/${path}`}${toQuery(params)}`;
+  // `body` is dropped deliberately: this is always a GET.
+  const { headers, body: _body, ...rest } = options;
+
+  const finalHeaders = new Headers(headers);
+  finalHeaders.set("Accept", "application/json");
+  if (authTokenGetter) {
+    const token = await authTokenGetter();
+    if (token) finalHeaders.set("Authorization", `Bearer ${token}`);
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, { ...rest, method: "GET", headers: finalHeaders, credentials: "omit" });
+  } catch (cause) {
+    throw new ApiError(
+      cause instanceof Error ? cause.message : "Network request failed", 0, url, null,
+    );
+  }
+
+  if (res.status === 401 && !options._isRetry && !isAuthPath(path)) {
+    const token = await attemptRefresh();
+    if (token) return apiList<T>(path, params, { ...options, _isRetry: true });
+  }
+
+  const parsed = await parseBody(res);
+
+  if (!res.ok) {
+    const detail =
+      parsed && typeof parsed === "object" && "error" in parsed
+        ? String((parsed as { error?: { message?: unknown } }).error?.message ?? res.statusText)
+        : res.statusText;
+    throw new ApiError(`${res.status} ${detail}`.trim(), res.status, url, parsed);
+  }
+
+  if (Array.isArray(parsed)) return { items: parsed as T[], meta: singlePageMeta(parsed.length) };
+
+  if (parsed && typeof parsed === "object" && "data" in parsed) {
+    const body = parsed as { data: unknown; meta?: PageMeta };
+    const items = Array.isArray(body.data) ? (body.data as T[]) : [];
+    return { items, meta: body.meta ?? singlePageMeta(items.length) };
+  }
+
+  return { items: [], meta: singlePageMeta(0) };
+}
+
 export const api = {
   get: <T>(path: string, options?: RequestOptions) => apiFetch<T>(path, { ...options, method: "GET" }),
+  /** Paginated collection — keeps `meta`. Use for every list endpoint. */
+  list: apiList,
   post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
     apiFetch<T>(path, { ...options, method: "POST", body }),
+  /** Partial update. The API treats absent fields as "leave alone", not "null". */
+  patch: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    apiFetch<T>(path, { ...options, method: "PATCH", body }),
   upload: apiUpload,
   download: apiDownload,
 };

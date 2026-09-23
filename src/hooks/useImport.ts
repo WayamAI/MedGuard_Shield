@@ -155,7 +155,10 @@ export function useTemplateDownload() {
       const href = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = href;
-      anchor.download = filename ?? `medguard-${entity}-template.csv`;
+      // Server-provided Content-Disposition wins; this is only the fallback
+      // for a response without one. The API now sends
+      // `drishti-<entity>-template.csv`, so the two agree.
+      anchor.download = filename ?? `drishti-${entity}-template.csv`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();

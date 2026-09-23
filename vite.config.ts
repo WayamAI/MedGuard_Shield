@@ -11,6 +11,18 @@ export default defineConfig(() => ({
       overlay: false,
     },
   },
+  build: {
+    /*
+     * NOT the default "assets".
+     *
+     * The app has a route at /assets (the asset inventory), and Vite's default
+     * output directory produces a real `dist/assets/` folder. Served by nginx
+     * that directory wins: a request for /assets gets a 301 to /assets/ and
+     * the page never loads. Renaming the build output removes the collision
+     * at the source rather than papering over it in the web-server config.
+     */
+    assetsDir: "static",
+  },
   plugins: [react()],
   resolve: {
     alias: {
