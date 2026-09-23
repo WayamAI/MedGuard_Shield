@@ -192,7 +192,13 @@ export default function PhiFlow() {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
-        <Card className="p-4">
+        {/*
+          min-w-0 matters here: a grid item defaults to min-width:auto, so
+          once the map carries a min-width the column would size to the map
+          rather than to 1fr — pushing the card past the viewport and
+          clipping the last stage instead of letting the wrapper scroll.
+        */}
+        <Card className="min-w-0 p-4">
           <DataState
             query={listAsQuery(flows)}
             height={496}
