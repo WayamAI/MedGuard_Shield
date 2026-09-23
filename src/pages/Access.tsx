@@ -8,6 +8,7 @@ import {
 } from "@/components/ui-patterns";
 import { useAccess, useAccessSummary } from "@/hooks/useAccess";
 import { useListControls } from "@/hooks/useListControls";
+import { daysAgo, daysAgoLabel } from "@/lib/dates";
 import { useRevokeAccess, useReviewAccess, useUpdateAccess } from "@/hooks/useMutations";
 import { useCanWrite } from "@/hooks/use-auth";
 import { describeApiError, toApiError } from "@/lib/apiErrors";
@@ -122,7 +123,7 @@ export default function Access() {
       sortValue: g => (g.lastUsedAt ? new Date(g.lastUsedAt).getTime() : null),
       cell: g => (
         <span className={g.lastUsedAt === null || (g.daysSinceUse ?? 0) > 90 ? "text-feedback-warning" : "text-tertiary"}>
-          {g.lastUsedAt === null ? "Never used" : `${g.daysSinceUse} days ago`}
+          {g.lastUsedAt === null ? "Never used" : daysAgoLabel(g.daysSinceUse)}
         </span>
       ),
     },
@@ -197,7 +198,7 @@ export default function Access() {
             {worst.lastUsedAt === null
               ? ", never used"
               : worst.daysSinceUse !== null && worst.daysSinceUse > 90
-                ? `, last used ${worst.daysSinceUse} days ago`
+                ? `, last used ${daysAgo(worst.daysSinceUse)}`
                 : ""}.
           </span>
           <div className="flex-1" />
@@ -371,10 +372,10 @@ function AccessDrawer({
           <FieldGroup title="Grant">
             <Field label="System" value={grant.assetName} />
             <Field label="Level" value={grant.level} />
-            <Field label="Granted" value={`${fmtDate(grant.grantedAt)} · ${grant.daysSinceGrant} days ago`} />
+            <Field label="Granted" value={`${fmtDate(grant.grantedAt)} · ${daysAgoLabel(grant.daysSinceGrant)}`} />
             <Field
               label="Last used"
-              value={grant.lastUsedAt === null ? "Never" : `${fmtDate(grant.lastUsedAt)} · ${grant.daysSinceUse} days ago`}
+              value={grant.lastUsedAt === null ? "Never" : `${fmtDate(grant.lastUsedAt)} · ${daysAgoLabel(grant.daysSinceUse)}`}
             />
             <Field label="Last reviewed" value={fmtDate(grant.lastReviewedAt)} />
             {grant.revokedAt && <Field label="Revoked" value={fmtDate(grant.revokedAt)} />}

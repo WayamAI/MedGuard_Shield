@@ -10,6 +10,7 @@ import {
 } from "@/components/ui-patterns";
 import { useVendors, useVendor } from "@/hooks/useVendors";
 import { useListControls } from "@/hooks/useListControls";
+import { daysAgoLabel } from "@/lib/dates";
 import { useCreateVendor, useUpdateVendor, useRecomputeVendorRisk } from "@/hooks/useMutations";
 import { useCanWrite } from "@/hooks/use-auth";
 import { describeApiError, toApiError } from "@/lib/apiErrors";
@@ -31,7 +32,7 @@ const fmtDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "Never";
 
 const assessedLabel = (v: ApiVendor) =>
-  v.lastAssessedAt === null ? "Never assessed" : `${v.daysSinceAssessment} days ago`;
+  v.lastAssessedAt === null ? "Never assessed" : daysAgoLabel(v.daysSinceAssessment);
 
 export default function Vendors() {
   const canWrite = useCanWrite();
