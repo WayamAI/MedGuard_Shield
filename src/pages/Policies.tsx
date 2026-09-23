@@ -141,6 +141,7 @@ export default function Policies() {
           onRowClick={p => openPolicy(p.id)}
           isRowActive={p => p.id === openId}
           searchPlaceholder="Search policies…"
+          emptyIcon="document"
           emptyTitle="No policies recorded"
           emptyMessage={
             isAdmin

@@ -227,6 +227,7 @@ export default function Assets() {
           isRowActive={a => a.id === openId}
           initialSort={{ columnId: "score", direction: "desc" }}
           searchPlaceholder="Search assets…"
+          emptyIcon="database"
           emptyTitle="No assets yet"
           emptyMessage="Import an asset CSV from Data Import, or create one directly."
           toolbar={

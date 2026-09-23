@@ -46,6 +46,9 @@ export function AppIcon({
 
   return (
     <Glyph
+      // Names the mark in the DOM. The redesign hangs on the right glyph
+      // appearing in the right place, and without this nothing can assert it.
+      data-icon={name}
       size={size ? SIZE_PX[size] : undefined}
       strokeWidth={ICON_STROKE_WIDTH}
       absoluteStrokeWidth

@@ -197,6 +197,7 @@ export default function Remediation() {
           onRowClick={r => openItem(r.id)}
           isRowActive={r => r.id === openId}
           searchPlaceholder="Search findings…"
+          emptyIcon="remediation"
           emptyTitle="No findings recorded"
           emptyMessage={
             canWrite

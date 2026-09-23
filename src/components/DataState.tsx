@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { describeApiError } from "@/lib/apiErrors";
 import type { ApiQueryResult } from "@/hooks/useApiQuery";
+import type { IconName } from "@/lib/icons";
 import { AppIcon } from "@/components/AppIcon";
 import { ChartSkeleton, ErrorState, EmptyState } from "@/components/ui-bits";
 
@@ -37,6 +38,15 @@ export type DataStateProps<T> = {
   isEmpty?: (data: T) => boolean;
   emptyTitle?: string;
   emptyMessage?: string;
+  /**
+   * The mark to show when there is nothing to draw.
+   *
+   * Defaults to the database glyph, which is right for an inventory and
+   * wrong everywhere else — an empty Controls page showed a data cylinder
+   * while the rest of the screen was built around its own domain mark. Pass
+   * the page's own icon.
+   */
+  emptyIcon?: IconName;
   /** Match the skeleton to the real content's height so nothing jumps. */
   height?: number;
   skeleton?: ReactNode;
@@ -55,6 +65,7 @@ export function DataState<T>({
   isEmpty = defaultIsEmpty,
   emptyTitle = "No data yet",
   emptyMessage = "Nothing has been recorded for this view. If the backend was just set up, run the seed script.",
+  emptyIcon = "database",
   height = 470,
   skeleton,
 }: DataStateProps<T>) {
@@ -88,7 +99,7 @@ export function DataState<T>({
   }
 
   if (isEmpty(data)) {
-    return <EmptyState icon="database" title={emptyTitle} message={emptyMessage} height={height} />;
+    return <EmptyState icon={emptyIcon} title={emptyTitle} message={emptyMessage} height={height} />;
   }
 
   // Success — possibly stale, if the backend vanished after we loaded.

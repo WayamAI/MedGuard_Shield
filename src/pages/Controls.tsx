@@ -195,6 +195,7 @@ export default function Controls() {
           onRowClick={c => openControl(c.id)}
           isRowActive={c => c.id === openId}
           searchPlaceholder="Search controls…"
+          emptyIcon="locked"
           emptyTitle="No controls recorded"
           emptyMessage={
             isAdmin

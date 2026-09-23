@@ -245,3 +245,23 @@ describe("detail drawers render the detail payload, not the list row", () => {
     expect(screen.getByText("Cites 1 control")).toBeInTheDocument();
   });
 });
+
+describe("empty states wear their own mark", () => {
+  it("shows the controls mark, not the inventory cylinder, on an empty Controls page", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/auth/login")) {
+        return json({ data: { token: "t", expiresIn: 3600, user: { id: 1, email: "a@meridian.org", role: "ADMIN", organizationId: 1 } } });
+      }
+      if (url.includes("/api/auth/refresh")) return json({ error: { message: "no" } }, 401);
+      return paged([]);
+    }));
+
+    render(wrap(<Controls />));
+    // DataState hardcoded the database glyph for every empty view, so a page
+    // built around its own domain mark lost it exactly when it mattered.
+    await screen.findByText("No controls recorded");
+    expect(document.querySelector('[data-icon="locked"]')).not.toBeNull();
+    expect(document.querySelector('[data-icon="database"]')).toBeNull();
+  });
+});

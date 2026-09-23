@@ -155,6 +155,7 @@ export default function Risks() {
         <DataState
           query={listAsQuery(matrix)}
           height={420}
+          emptyIcon="risks"
           emptyTitle="No scored assets"
           emptyMessage="No risk rows were returned. Import assets and recompute their risk to populate this."
         >

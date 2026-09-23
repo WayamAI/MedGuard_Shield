@@ -192,6 +192,7 @@ export default function Threats() {
           onRowClick={t => openThreat(t.id)}
           isRowActive={t => t.id === openId}
           searchPlaceholder="Search threats or systems…"
+          emptyIcon="threats"
           emptyTitle="No threats detected"
           emptyMessage="Nothing matches the current filters."
           toolbar={

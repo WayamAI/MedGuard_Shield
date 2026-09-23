@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { AppIcon } from "@/components/AppIcon";
 import { IconButton } from "@/components/IconButton";
 import { Btn, Input, EmptyState } from "@/components/ui-bits";
+import type { IconName } from "@/lib/icons";
 import { DataState } from "@/components/DataState";
 import type { ApiQueryResult, ApiListResult } from "@/hooks/useApiQuery";
 import type { PageMeta } from "@/lib/apiClient";
@@ -115,6 +116,8 @@ export type DataTableProps<T> = {
   pageSize?: number;
 
   emptyTitle?: string;
+  /** Mark for the empty state; defaults to the inventory glyph. */
+  emptyIcon?: IconName;
   emptyMessage?: string;
   /** Empty state shown when a filter/search excludes everything. */
   noMatchTitle?: string;
@@ -144,6 +147,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
         query={query}
         height={props.height ?? 420}
         emptyTitle={props.emptyTitle ?? "Nothing to show yet"}
+        emptyIcon={props.emptyIcon}
         emptyMessage={props.emptyMessage ?? "No records have been recorded for this view."}
       >
         {data => <DataTableInner {...rest} rows={data} />}
