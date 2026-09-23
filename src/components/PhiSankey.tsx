@@ -132,6 +132,13 @@ export function PhiSankey({
   return (
     <svg
       viewBox={`0 0 ${layout.width} ${H + TOP + 34}`}
+      /*
+       * Never scale below 1:1. With w-full alone the viewBox shrank the map
+       * to the container, so at 390px the whole diagram rendered at about a
+       * third and every node label came out under 4px — present, but
+       * unreadable. The wrapper already scrolls horizontally; this lets it.
+       */
+      style={{ minWidth: layout.width }}
       className="h-[540px] w-full"
       role="img"
       aria-label="PHI data flow, sized by daily record volume"
