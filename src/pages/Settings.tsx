@@ -34,7 +34,7 @@ export default function Settings() {
         description="Your session, your organisation, and the preferences this browser remembers."
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Assets" value={counts.assets} icon="database" />
         <MetricCard label="Vendors" value={counts.vendors} icon="facility" />
         <MetricCard label="Identities" value={counts.identities} icon="identity" />

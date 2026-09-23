@@ -105,7 +105,7 @@ export default function Users() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label="Identities" value={identities.meta?.total} icon="identity" />
         <MetricCard label="Drishti members" value={members.data?.length} icon="access" />
         <MetricCard label="Assets" value={org.data?.counts.assets} icon="database" />
