@@ -18,6 +18,7 @@ import { describeApiError, toApiError } from "@/lib/apiErrors";
 import { notify } from "@/lib/notify";
 import type {
   ApiRemediation, RemediationSeverity, RemediationStatus,
+  RemediationSource, RemediationSubject,
 } from "@/lib/apiTypes";
 import type { Tone } from "@/lib/tone";
 
@@ -52,6 +53,38 @@ const STATUS_LABEL: Record<RemediationStatus, string> = {
   RESOLVED: "Resolved",
   ACCEPTED: "Risk accepted",
   REOPENED: "Reopened",
+};
+
+const SOURCE_LABEL: Record<RemediationSource, string> = {
+  RISK: "Raised from risk scoring",
+  THREAT: "Raised from a detected threat",
+  ACCESS: "Raised from an access review",
+  VENDOR: "Raised from a vendor assessment",
+  CONTROL: "Raised from a control assessment",
+  MANUAL: "Raised manually",
+};
+
+/**
+ * What a finding points at, as readable pairs.
+ *
+ * `subject` is always an object with five independently nullable slots, and
+ * a finding may fill more than one — an unencrypted asset reachable by a
+ * vendor without a BAA fills two. So this returns a list, not a single pair,
+ * and the caller decides how much of it to show.
+ */
+type SubjectRef = { kind: string; label: string; to?: string };
+
+const subjectRefs = (s: RemediationSubject): SubjectRef[] => {
+  const out: SubjectRef[] = [];
+  if (s.asset) out.push({ kind: "Asset", label: s.asset.name, to: `/assets?open=${s.asset.id}` });
+  if (s.vendor) out.push({ kind: "Vendor", label: s.vendor.name, to: `/vendors?open=${s.vendor.id}` });
+  if (s.threat) out.push({ kind: "Threat", label: s.threat.title, to: `/threats?open=${s.threat.id}` });
+  if (s.control) out.push({ kind: "Control", label: s.control.name, to: `/controls?open=${s.control.id}` });
+  if (s.identity) out.push({ kind: "Identity", label: s.identity.name });
+  if (s.accessGrantId !== null) {
+    out.push({ kind: "Access grant", label: `#${s.accessGrantId}`, to: `/access?open=${s.accessGrantId}` });
+  }
+  return out;
 };
 
 const SEVERITIES: RemediationSeverity[] = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
@@ -107,7 +140,8 @@ export default function Remediation() {
           <div className="min-w-0">
             <div className="truncate text-body-md text-primary">{r.title}</div>
             <div className="truncate text-caption text-tertiary">
-              {r.subject ? `${r.subject.type}: ${r.subject.label}` : r.source}
+              {subjectRefs(r.subject).map(x => `${x.kind}: ${x.label}`).join(" · ")
+                || SOURCE_LABEL[r.source]}
             </div>
           </div>
         </div>
@@ -322,7 +356,8 @@ function RemediationDrawer({
                 {r.overdue && <Badge tone="danger">Overdue</Badge>}
               </div>
               <p className="mt-1.5 text-body-sm text-tertiary">
-                {r.subject ? `${r.subject.type}: ${r.subject.label}` : `Source: ${r.source}`}
+                {subjectRefs(r.subject).map(x => `${x.kind}: ${x.label}`).join(" · ")
+                  || SOURCE_LABEL[r.source]}
               </p>
             </div>
           </div>
@@ -364,7 +399,7 @@ function RemediationDrawer({
           <FieldGroup title="Record">
             <Field label="Severity" value={r.severity} />
             <Field label="Status" value={STATUS_LABEL[r.status]} />
-            <Field label="Source" value={r.source} />
+            <Field label="Source" value={SOURCE_LABEL[r.source]} />
             <Field label="Owner" value={r.owner?.email ?? "Unassigned"} />
             <Field label="Raised" value={fmtDate(r.createdAt)} />
             <Field label="Due" value={fmtDate(r.dueAt)} />
@@ -382,11 +417,16 @@ function RemediationDrawer({
             directly if the estate itself needs to move.
           </p>
 
-          {r.subject?.type === "Asset" && (
-            <Btn variant="outline" className="w-full" onClick={() => navigate(`/assets?open=${r.subject!.id}`)}>
-              Open {r.subject.label}
+          {/*
+            One link per entity the finding actually points at. This was
+            previously a single branch on subject.type === "Asset", a field
+            that has never existed, so no link ever rendered.
+          */}
+          {subjectRefs(r.subject).filter(x => x.to).map(x => (
+            <Btn key={x.to} variant="outline" className="w-full" onClick={() => navigate(x.to!)}>
+              Open {x.label}
             </Btn>
-          )}
+          ))}
         </div>
       )}
     </SlideOver>

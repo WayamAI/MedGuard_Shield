@@ -503,6 +503,16 @@ export type RemediationStatus = "OPEN" | "IN_PROGRESS" | "RESOLVED" | "ACCEPTED"
 export type RemediationSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 export type RemediationSource = "RISK" | "THREAT" | "ACCESS" | "VENDOR" | "CONTROL" | "MANUAL";
 
+/** The entities a finding points at. Every slot is independently nullable. */
+export type RemediationSubject = {
+  asset: { id: number; name: string } | null;
+  vendor: { id: number; name: string } | null;
+  threat: { id: number; title: string } | null;
+  control: { id: number; name: string } | null;
+  identity: { id: number; name: string } | null;
+  accessGrantId: number | null;
+};
+
 export type ApiRemediation = {
   id: number;
   title: string;
@@ -513,7 +523,16 @@ export type ApiRemediation = {
   source: RemediationSource;
   owner: { id: number; email: string } | null;
   /** Whichever entity the finding points at. */
-  subject: { type: string; id: number; label: string } | null;
+  /**
+   * What the finding points at.
+   *
+   * Always present, never null — it is a record of five nullable slots, and
+   * a finding may fill more than one (an unencrypted asset reachable by a
+   * vendor with no BAA fills two). An earlier version of this type claimed
+   * `{ type, id, label } | null`, so the null guard in the UI never fired
+   * and every row printed "undefined: undefined".
+   */
+  subject: RemediationSubject;
   dueAt: string | null;
   resolvedAt: string | null;
   createdAt: string;

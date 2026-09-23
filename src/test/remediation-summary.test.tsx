@@ -114,3 +114,71 @@ describe("Remediation summary cards", () => {
     expect(el.textContent).toContain("of the open findings");
   });
 });
+
+/**
+ * `subject` is always an object of five independently nullable slots. The
+ * type claimed `{ type, id, label } | null`, so the UI's null guard never
+ * fired: every row printed "undefined: undefined", and the drawer's
+ * cross-link — branching on a `type` field that has never existed — could
+ * never render at all.
+ */
+describe("Remediation subject", () => {
+  const finding = (subject: Record<string, unknown>) => ({
+    id: 1, title: "Billing DB stores PHI unencrypted",
+    description: "d", recommendation: "r",
+    severity: "CRITICAL", status: "OPEN", source: "MANUAL",
+    owner: { id: 1, email: "admin@meridian.org" },
+    subject, dueAt: null, resolvedAt: null,
+    createdAt: "2026-09-01T00:00:00.000Z", open: true, overdue: false,
+  });
+
+  const EMPTY = { asset: null, vendor: null, threat: null, control: null, identity: null, accessGrantId: null };
+
+  const withRows = (rows: unknown[]) => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/auth/login")) {
+        return json({ data: { token: "t", expiresIn: 3600, user: { id: 1, email: "a@meridian.org", role: "ADMIN", organizationId: 1 } } });
+      }
+      if (url.includes("/api/auth/refresh")) return json({ error: { message: "no" } }, 401);
+      if (url.includes("/api/remediations/summary")) return json({ data: SUMMARY });
+      if (url.includes("/api/remediations")) {
+        return json({ data: rows, meta: { page: 1, pageSize: 25, total: rows.length, totalPages: 1 } });
+      }
+      return json({ data: [] });
+    }));
+  };
+
+  it("never prints undefined for a finding that points at nothing", async () => {
+    withRows([finding(EMPTY)]);
+    render(wrap(<Remediation />));
+    await screen.findByText("Billing DB stores PHI unencrypted");
+    expect(document.body.textContent).not.toMatch(/undefined/);
+  });
+
+  it("falls back to the source, in words, when no entity is referenced", async () => {
+    withRows([finding(EMPTY)]);
+    render(wrap(<Remediation />));
+    expect(await screen.findByText("Raised manually")).toBeInTheDocument();
+  });
+
+  it("names the entity when there is one", async () => {
+    withRows([finding({ ...EMPTY, asset: { id: 6, name: "Billing Engine DB" } })]);
+    render(wrap(<Remediation />));
+    expect(await screen.findByText("Asset: Billing Engine DB")).toBeInTheDocument();
+  });
+
+  it("names every entity when a finding points at several", async () => {
+    withRows([finding({
+      ...EMPTY,
+      asset: { id: 6, name: "Billing Engine DB" },
+      vendor: { id: 1, name: "Northwind Claims Processing" },
+    })]);
+    render(wrap(<Remediation />));
+    // A finding can implicate an asset and a vendor at once; showing only
+    // the first would hide half of what it is about.
+    expect(await screen.findByText(
+      "Asset: Billing Engine DB · Vendor: Northwind Claims Processing",
+    )).toBeInTheDocument();
+  });
+});
