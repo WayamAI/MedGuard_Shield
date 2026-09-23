@@ -204,7 +204,7 @@ export default function Dashboard() {
       />
 
       {/* PRIMARY RISK SUMMARY */}
-      <section aria-label="Risk summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <section aria-label="Risk summary" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="Assets monitored"
           value={metrics.assets}
