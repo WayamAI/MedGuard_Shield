@@ -21,22 +21,6 @@ export interface SidebarNavItem {
   badge?: string;
   badgeTone?: "danger" | "warning";
   /**
-   * Marks a destination whose endpoint does not exist yet, so the screen is
-   * drawn from the bundled sample dataset.
-   *
-   * Deliberately not rendered inline. These labels run to "Policy &
-   * Compliance", and every visible marker tried — a pill reading "Sample
-   * data", one reading "Sample", a dot on the icon — either truncated the
-   * label or read as an unfinished control. A truncated product name in the
-   * sidebar is a worse artefact than no marker, so the visible statement
-   * lives on the page itself (SampleDataNotice), where there is room to say
-   * it in full, and this supplies the hover title and the accessible name.
-   *
-   * It still suppresses the item's badge: a severity count drawn from sample
-   * data is the one number nobody should be reading closely.
-   */
-  note?: string;
-  /**
    * Roles allowed to see this destination. Absent means everyone signed in.
    * Mirrors ProtectedRoute's own gate so the sidebar never offers a door the
    * router will bounce them from.
@@ -57,19 +41,14 @@ export interface SidebarNavItem {
  * native tooltip, and any badge shrinks to a dot on the icon slot.
  */
 export function SidebarItem({ item, collapsed = false }: { item: SidebarNavItem; collapsed?: boolean }) {
-  const showBadge = item.badge !== undefined && item.note === undefined;
+  const showBadge = item.badge !== undefined;
   return (
     <NavLink
       to={item.to}
       end={item.end}
-      aria-label={item.note ? `${item.label} (${item.note})` : item.label}
-      title={
-        item.note
-          ? `${item.label} — ${item.note}`
-          : collapsed
-            ? item.label
-            : undefined
-      }
+      aria-label={item.label}
+      // The label is only worth a tooltip when the sidebar has hidden it.
+      title={collapsed ? item.label : undefined}
       className={({ isActive }) =>
         cn(
           "group relative mb-0.5 flex items-center gap-3 rounded-lg py-1.5 transition-colors duration-200",

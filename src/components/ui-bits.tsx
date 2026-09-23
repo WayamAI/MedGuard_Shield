@@ -383,29 +383,6 @@ export const EmptyState = ({
 );
 
 /**
- * Says plainly that a screen is drawn from the bundled sample dataset because
- * its endpoint does not exist yet.
- *
- * Informational, not a warning: it borrows the same blue treatment as the
- * session notice on the login page rather than the amber of a real problem.
- * Nothing here is broken — the module is built and the figures are simply
- * illustrative — and a viewer should be able to read that in one glance and
- * move on.
- */
-export const SampleDataNotice = ({ module }: { module: string }) => (
-  <div
-    role="status"
-    className="mb-4 flex items-start gap-2 rounded-md border border-feedback-info-stroke bg-feedback-info-background px-3 py-2.5 text-body-sm text-feedback-info"
-  >
-    <AppIcon name="info" size="sm" className="mt-0.5 flex-shrink-0 text-feedback-info-icon" />
-    <span>
-      Sample data. {module} is not connected to the API yet, so the figures
-      below are illustrative rather than live.
-    </span>
-  </div>
-);
-
-/**
  * Holds a headline banner's footprint while the data behind it loads.
  *
  * These banners are conditional on their own content — no worst offender, no
