@@ -176,7 +176,7 @@ describe("Import page: after a successful import", () => {
     await pick(file());
     fireEvent.click(await screen.findByRole("button", { name: "Confirm Import" }));
 
-    expect(await screen.findByText(/Imported 2 Assets rows/)).toBeInTheDocument();
+    expect(await screen.findByText(/Imported 2 rows into Assets/)).toBeInTheDocument();
   });
 
   it("tells the user the other views are already up to date", async () => {

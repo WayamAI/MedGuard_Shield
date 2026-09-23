@@ -234,10 +234,16 @@ export default function ImportData() {
             <div role="status" className="flex items-center gap-2 rounded-md border border-feedback-success-stroke bg-feedback-success-background px-3 py-2 text-body-sm text-feedback-success">
               <AppIcon name="check" size="sm" />
               <span>
+                {/*
+                  "Imported 2 rows into Assets" rather than "Imported 2 Assets
+                  rows" — the entity labels are plural nouns ("Assets",
+                  "PHI Types", "Access Grants"), so using one as an adjective
+                  reads wrong for every entity, not just this one.
+                */}
                 <span className="font-semibold">
-                  Imported {commit.report.imported ?? commit.report.totalRows}{" "}
-                  {contract?.label ?? entity} row
+                  Imported {commit.report.imported ?? commit.report.totalRows} row
                   {(commit.report.imported ?? commit.report.totalRows) === 1 ? "" : "s"}
+                  {" into "}{contract?.label ?? entity}
                 </span>{" "}
                 — the dashboard and the other views have been refreshed.
               </span>
