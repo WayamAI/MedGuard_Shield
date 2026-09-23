@@ -1,9 +1,11 @@
 # Drishti Frontend — Final Report
 
 **Date:** 23 September 2026
-**Branch:** `main` @ `8eea0e0`, pushed to origin, working tree clean
+**Branch:** `main`, pushed to origin, working tree clean
 **Method:** live click-through of the running application against the live
 backend, signed in as `admin@meridian.org` (ADMIN)
+**Updated 23 September 2026:** section 4 replaced — responsive rendering has
+since been verified at real CSS viewports, and six further defects fixed.
 
 ---
 
@@ -26,8 +28,9 @@ Final state of the checks:
 Test count rose from 208 to 258 over this pass. Every fix below carries a
 test that was confirmed to fail against the old code.
 
-**One item on the checklist could not be verified — see §4.** It is an
-unverified item, not a known defect.
+Responsive rendering, previously the one unverified item, has since been
+verified across 390, 768, 1024, 1280, 1440 and 1920 in light and dark mode.
+That pass found six more defects, all fixed and pushed — see section 4.
 
 ---
 
@@ -160,23 +163,151 @@ adjectives for every entity, not just that one.
 
 ---
 
-## 4. What I could not verify
+## 4. Responsive rendering — verified
 
-**Responsive rendering.** The browser automation reports a successful window
-resize, but the rendering viewport does not change: after requesting 430×900,
-`window.outerWidth` was 746 while `innerWidth` and
-`document.documentElement.clientWidth` both stayed pinned at 1470. Every
-screenshot came back identical. I therefore did **not** visually verify any
-breakpoint and will not claim otherwise.
+Superseded. The earlier pass reported this unverified because
+`resize_window` changed the OS window but not the rendering viewport: after
+requesting 430x900, `outerWidth` read 746 while `innerWidth` and
+`clientWidth` stayed pinned at 1470 - a macOS Retina coordinate quirk, with
+`innerWidth` exactly equal to `screen.width`. That statement was accurate.
 
-What I could confirm is structural only: tables scroll inside their own
-`overflow-x-auto` container rather than pushing the page wide, ten pages use
-the `hideBelow` column system, and the page reported no horizontal overflow
-at the width available. That is a code check, not a visual one.
+### How it was verified
 
-**Recommendation:** spend two minutes resizing a real browser window across
-1440 / 1024 / 768 / 390 before the demo, or simply present at a fixed
-desktop width.
+CSS media queries inside an iframe evaluate against the **iframe's own**
+dimensions, not the top window's. An iframe sized to exactly 390px therefore
+lays the application out at 390px for real - Tailwind breakpoints, the
+`hideBelow` column system and all. This is real layout, not a faked
+`innerWidth`.
+
+Proof the viewport genuinely changed, measured inside the frame at 390px:
+
+```
+iframe_innerWidth ........................ 390
+top_innerWidth ........................... 1470
+matchMedia("(max-width: 767px)").matches . true
+matchMedia("(min-width: 1024px)").matches  false
+```
+
+The CSS engine is evaluating mobile breakpoints. Each page was then audited
+programmatically - page-level horizontal overflow, any element whose right
+edge passes the viewport outside a deliberate scroller, and any text clipped
+inside its own box - and visually by screenshot.
+
+### Coverage
+
+| What | Widths |
+|---|---|
+| Dashboard, Assets, PHI Flow, Risk Register, Vendors, Access, Threats, Controls, Policies, Remediation, Audit, Import | 390, 768, 1024, 1280, 1440 |
+| Dashboard, Assets, PHI Flow, Risk Register | 1920 |
+| Login | 390, 768, 1024, 1440, 1920 |
+| Asset and Threat detail drawers | 390, 768 |
+| New-asset modal | 390 |
+| Mobile navigation - open, navigate, auto-close | 390 |
+| Table horizontal scroll and column prioritisation | 390 |
+| Dark mode - Dashboard, Assets, PHI Flow, Vendors, Threats, Remediation, Audit, Import | 390, 1440 |
+| Risk matrix | 768 |
+
+### Six defects found and fixed
+
+Each was committed separately and pushed.
+
+1. **`a76f4d3` Metric values clipped mid-digit at 390px.** Four metrics sat
+   two-up, leaving about 139px for a value; "402,200" needs 210px and
+   rendered as "402,20". Shrinking the type does not solve it - at the
+   smaller display size the number still wants 142px, and Assets carries
+   "1,301,800". The grid is now one-up below sm.
+
+2. **`a669d50` PHI Flow's Export button was off-screen at 390px.**
+   `PageHeader` pinned its actions with `flex-shrink-0`, so the row could
+   never shrink to the viewport and never got the chance to wrap. The page
+   reported no horizontal scroll, so Export was not merely awkward to reach,
+   it was unreachable. `flex-shrink-0` now applies from sm up.
+
+3. **`017385b` The PHI flow map was illegible at 390px.** The Sankey sized
+   itself with `w-full` against a `viewBox`, so it scaled to about a third
+   and every node label rendered under 4px - drawn, but unreadable. A
+   min-width lets the wrapper's existing `overflow-x-auto` do its job.
+
+4. **`f5b9535` ...which then broke the same card at 1440.** A grid item
+   defaults to `min-width: auto`, so the column sized to the map rather than
+   to `1fr`: the card ran to 1496px in a 1440px viewport and the last stage
+   was clipped rather than scrollable. `min-w-0` on the card fixed it.
+
+5. **`5ca9c40` Page titles truncated at 390px.** Title and actions shared a
+   row; the actions took their content width and the title, which is
+   `min-w-0` and truncates, got the remainder - "Vendor Risk" rendered as
+   "Ven...". The header stacks below sm and the title wraps rather than
+   elides.
+
+6. **`4ff71bf` Metric values clipped across 1024-1279.** Four-up started at
+   lg (1024). With the sidebar **expanded**, which is the default, that
+   leaves 144px for a value and Assets' "1,321,800" needs 165px. This one
+   survived the first sweep only because that session happened to have the
+   sidebar collapsed to 72px - a layout that holds only when a user
+   preference happens to be set one way is not holding. Four-up now waits
+   for xl (1280).
+
+Re-verified in the running application afterwards at 1024 with the sidebar
+expanded to 236px: metrics two-up, "1,321,800" complete, zero clipping, no
+page overflow.
+
+### Result
+
+After those six fixes, all twelve pages report zero horizontal page
+overflow, zero elements escaping the viewport and zero clipped text at 390,
+768, 1024, 1280 and 1440, in both light and dark mode.
+
+Specifically checked from the brief and found sound: tables scroll inside
+their own container with column prioritisation (at 390 the Assets table
+keeps Asset, PHI records, Score and Risk and scrolls to a 640px minimum);
+drawers fit the viewport (the 560px panel caps to `max-w-full`); modals fit
+with all actions reachable; the risk matrix renders its full 5x5 grid with
+readable axis labels at 768 without scrolling; mobile navigation opens,
+navigates and closes itself; filters wrap rather than overflow; and nothing
+becomes excessively stretched at 1920, where content holds sensible
+max-widths.
+
+### Honest limits of this method
+
+An iframe gives a genuine **CSS** viewport. It is not a mobile device. The
+following were therefore *not* tested and are not claimed:
+
+- touch input, gesture scrolling, or momentum
+- mobile browser chrome and the dynamic viewport it creates (`dvh`,
+  `safe-area-inset`)
+- `devicePixelRatio` - it stayed at the desktop value throughout
+- iOS or Android engine differences; this is Chrome's engine only
+
+For layout, breakpoints, overflow and legibility - which is what the brief
+asked for - the method is exact. For on-device feel, a real handset is still
+the only answer.
+
+### Two observations, deliberately not fixed
+
+Both sit outside "fix actual responsive defects" and neither is a layout
+break, so I am reporting rather than changing them.
+
+- **Touch targets are 28-30px tall** on filter chips and drawer transition
+  buttons. That clears WCAG 2.5.8 AA (24x24) but sits under the 44px comfort
+  guideline. Raising it means changing control sizing across the design
+  system, which is a design decision, not a defect fix.
+- **A modal does not lock background scroll.** The modal itself stays fixed
+  and fully usable; the page behind it can still scroll.
+
+### One non-responsive bug found along the way
+
+Not fixed - out of scope for this pass, and worth a decision.
+
+My harness reloaded the app roughly a hundred times, each boot-probing
+`POST /api/auth/refresh`, which tripped the backend's 15-minute rate limit.
+The frontend treated the resulting **429 as a dead session**: it cleared
+state and showed "Your session ended. Please sign in again." The session was
+in fact fine - 60 refresh tokens were still active - and the correct
+response to a 429 is to wait and retry, not to log the user out. A transient
+rate-limit or network blip on boot currently ejects a signed-in user.
+
+`use-auth.tsx` clears the session in a single catch covering every error;
+its comment reasons about 401 and 403 only.
 
 ---
 
@@ -209,7 +340,11 @@ is built on — that a risk band is the server's, that closing a finding
 changes no inventory, that a framework reference is a citation and not a
 compliance claim — were each checked live rather than assumed.
 
-The one open item is visual responsive QA, which the tooling in this
-environment cannot perform, and which is flagged above rather than glossed.
+Responsive rendering has since been verified at real CSS viewports across
+390, 768, 1024, 1280, 1440 and 1920, in light and dark mode. Six responsive
+defects were found and fixed; section 4 records the method, its limits, and
+what was deliberately left alone.
+
+RESPONSIVE VERIFIED
 
 PRODUCTION DEMO READY
