@@ -8,10 +8,44 @@ import { describeApiError } from "@/lib/apiErrors";
 import {
   useImportEntities, useValidateImport, useRunImport, useTemplateDownload,
 } from "@/hooks/useImport";
-import { IMPORT_ENTITIES, type ImportEntity } from "@/lib/apiTypes";
+import { IMPORT_ENTITIES, type ImportColumnSpec, type ImportEntity } from "@/lib/apiTypes";
 
 /** Client-side first line of defence. The server enforces the same ceiling. */
 const MAX_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Initialisms the server writes in camelCase. Split on the case boundary they
+ * would read as "Phi Volume", which is wrong twice over -- it is an initialism,
+ * and it is the one in the product's name.
+ */
+const INITIALISMS = new Set(["phi", "ephi", "mfa", "sso", "id", "ip", "url", "api", "pii", "csv"]);
+
+/**
+ * `column` is the literal CSV header, so it arrives lowercase and camelCased.
+ * Presented in title case: this list is read as a description of the file, not
+ * copied out of. The exact header stays on the element's `title` for anyone
+ * hand-writing a CSV rather than starting from the downloaded template.
+ */
+const columnLabel = (column: string) =>
+  column
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map(word =>
+      INITIALISMS.has(word.toLowerCase())
+        ? word.toUpperCase()
+        : word.charAt(0).toUpperCase() + word.slice(1),
+    )
+    .join(" ");
+
+/** The wire values are lowercase type names. Spelled out, capitalised. */
+const TYPE_LABEL: Record<ImportColumnSpec["type"], string> = {
+  string: "String",
+  int: "Integer",
+  boolean: "Boolean",
+  date: "Date",
+  enum: "Enum",
+};
 
 type Stage = "idle" | "validated" | "imported";
 
@@ -145,11 +179,11 @@ export default function ImportData() {
             <div className="flex flex-wrap gap-x-4 gap-y-2">
               {contract.columns.map(col => (
                 <span key={col.column} className="flex items-center gap-1.5 text-body-sm">
-                  <span className="text-primary">{col.column}</span>
+                  <span className="text-primary" title={col.column}>{columnLabel(col.column)}</span>
                   <Badge tone={col.required ? "danger" : "muted"}>
-                    {col.required ? "required" : "optional"}
+                    {col.required ? "Required" : "Optional"}
                   </Badge>
-                  <span className="text-tertiary">{col.type}</span>
+                  <span className="text-tertiary">{TYPE_LABEL[col.type]}</span>
                 </span>
               ))}
             </div>
