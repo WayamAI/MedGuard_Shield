@@ -43,6 +43,51 @@ prints.
 
 Other scripts: `npm run build`, `npm run lint`, `npm run test`, `npm run preview`.
 
+## Deploying
+
+Hosted on **Vercel** (static build) against the API on **Render** and Postgres
+on **Supabase** — all three on free tiers. `vercel.json` holds the whole
+frontend side of that; the backend's `DEPLOYMENT.md` holds the rest.
+
+`VITE_API_BASE_URL` is a **build-time** variable. Vite inlines
+`import.meta.env` into the bundle, so it must be set as a Vercel *project
+environment variable* (Production and Preview both) and a change to it needs a
+redeploy — setting it at runtime does nothing. This is a property of Vite, not
+a choice made here.
+
+```bash
+vercel link
+vercel env add VITE_API_BASE_URL production   # https://<service>.onrender.com
+vercel env add VITE_API_BASE_URL preview
+vercel --prod
+```
+
+Three things `vercel.json` is doing that are easy to undo by accident:
+
+- **`installCommand` is pinned to `npm ci`.** A `bun.lockb` sits beside
+  `package-lock.json` in this repo, and left to auto-detect Vercel may pick
+  bun — see the note above about bun and spaces in paths. The pin removes the
+  ambiguity.
+- **The catch-all rewrite to `/index.html`** is the SPA fallback, replacing
+  what `nginx.conf` does in the Docker image. It is safe for assets because
+  Vercel matches the filesystem *before* applying rewrites.
+- **The cache header targets `/static/`, not `/assets/`.** `vite.config.ts`
+  sets `assetsDir: "static"` deliberately, because the app has a route at
+  `/assets` that Vite's default output directory would shadow. Don't "fix"
+  either one.
+
+The security headers (`nosniff`, `DENY`, `strict-origin-when-cross-origin`) are
+ported from `nginx.conf` so the Vercel deploy and the container image behave
+the same way.
+
+**CORS:** the API allowlists exact origins from `FRONTEND_ORIGIN` and never a
+wildcard, so the Render service needs the Vercel production origin set on it
+(scheme + host, no trailing slash) before login will work. Preview deployments
+get a hashed hostname and will *not* match unless listed by hand.
+
+**First load may be slow.** The Render free tier suspends the API after ~15
+minutes of no traffic, and the next request waits 30-60s for it to wake.
+
 ## Data sources
 
 | Screen | Source |
