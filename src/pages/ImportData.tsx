@@ -111,7 +111,6 @@ export default function ImportData() {
                   id="entity"
                   value={entity}
                   onChange={e => onEntityChange(e.target.value as ImportEntity)}
-                  className="w-56"
                 >
                   {IMPORT_ENTITIES.map(slug => {
                     const label = entities.data?.find(e => e.entity === slug)?.label;
