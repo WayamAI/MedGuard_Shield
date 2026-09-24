@@ -28,3 +28,8 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+# Added by `vercel link`, which writes VERCEL_OIDC_TOKEN into .env.local.
+# Broader than the three lines above on purpose -- but .env.example is the
+# documentation of what to set, and it has to stay committable.
+.env*
+!.env.example
