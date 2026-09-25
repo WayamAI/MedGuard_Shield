@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import { Card, Badge, Btn, SectionHeader, ChartSkeleton } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataState } from "@/components/DataState";
@@ -7,7 +8,7 @@ import { listAsQuery } from "@/components/DataTable";
 import { RiskMatrix } from "@/components/RiskMatrix";
 import { DomainIcon, type DomainIconName } from "@/components/DomainIcon";
 import {
-  PageHeader, MetricCard, MiniBar, EntityAvatar, RiskBandScale,
+  PageHeader, MetricCard, MiniBar, EntityAvatar, RiskBandScale, PostureCard,
   BAND_TONE, BAND_ORDER,
 } from "@/components/ui-patterns";
 import { useAssets } from "@/hooks/useAssets";
@@ -16,6 +17,8 @@ import { useRawDataFlows } from "@/hooks/useDataFlows";
 import { useVendors } from "@/hooks/useVendors";
 import { useAccessSummary } from "@/hooks/useAccess";
 import { useThreatSummary } from "@/hooks/useThreats";
+import { useControls, useRemediationSummary, useAudit } from "@/hooks/useGovernance";
+import { useIsAdmin } from "@/hooks/use-auth";
 import type { Tone } from "@/lib/tone";
 import type { RiskBand } from "@/lib/apiTypes";
 
@@ -67,6 +70,23 @@ export default function Dashboard() {
   const accessSummary = useAccessSummary();
   const threatSummary = useThreatSummary();
 
+  /*
+   * Governance posture: the three areas the overview used to leave out.
+   *
+   * Controls has no summary route, so the statuses are counted here from one
+   * page of rows — the estate is small enough that the server's max page is
+   * the whole collection, and `meta.total` is checked against it below so a
+   * larger one says so rather than quietly reporting a slice.
+   *
+   * Audit is ADMIN-only server-side. Asking for it as an analyst is a
+   * guaranteed 403 and a red error card on the dashboard, so the query is
+   * gated on the same role the route is.
+   */
+  const isAdmin = useIsAdmin();
+  const controlList = useControls({ pageSize: 200 });
+  const remediationSummary = useRemediationSummary();
+  const auditList = useAudit({ pageSize: 25 }, { enabled: isAdmin });
+
   /* ------------------------------------------------- headline metrics */
 
   const metrics = useMemo(() => {
@@ -95,6 +115,36 @@ export default function Dashboard() {
     for (const r of riskList.data) counts[r.band] += 1;
     return counts;
   }, [riskList.data]);
+
+  /* --------------------------------------------------- governance posture */
+
+  const controlPosture = useMemo(() => {
+    const rows = controlList.data;
+    if (!rows) return null;
+    const by = (st: string) => rows.filter(c => c.status === st).length;
+    return {
+      total: controlList.meta?.total ?? rows.length,
+      counted: rows.length,
+      implemented: by("IMPLEMENTED"),
+      partial: by("PARTIAL"),
+      planned: by("PLANNED"),
+      missing: by("NOT_IMPLEMENTED"),
+      /* The API's own assessment verdict, not a re-derivation of it. */
+      ineffective: rows.filter(c => c.effectiveness === "INEFFECTIVE").length,
+      unassessed: rows.filter(c => c.effectiveness === "NOT_ASSESSED").length,
+    };
+  }, [controlList.data, controlList.meta]);
+
+  const auditPosture = useMemo(() => {
+    const rows = auditList.data;
+    if (!rows) return null;
+    return {
+      total: auditList.meta?.total ?? rows.length,
+      latest: rows[0]?.createdAt ?? null,
+      failures: rows.filter(e => e.result !== "SUCCESS").length,
+      window: rows.length,
+    };
+  }, [auditList.data, auditList.meta]);
 
   /* ------------------------------------------------------ action centre */
 
@@ -328,6 +378,127 @@ export default function Dashboard() {
           )}
         </Card>
       </div>
+
+      {/* GOVERNANCE POSTURE */}
+      {/*
+        The three areas the overview left out. They sit below the matrix
+        rather than beside the metric row on purpose: each is a programme
+        rather than a number, and promoting them into the top row would give
+        seven equal tiles and no hierarchy at all.
+      */}
+      <section aria-label="Governance posture" className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <PostureCard
+          art="control"
+          fallbackIcon="control"
+          title="Controls"
+          subtitle="What is actually in place against the estate."
+          value={controlPosture ? `${controlPosture.implemented}/${controlPosture.total}` : undefined}
+          valueSub="implemented"
+          loading={controlList.isLoading}
+          breakdown={controlPosture ? [
+            { value: controlPosture.implemented, tone: "success", label: "Implemented" },
+            { value: controlPosture.partial, tone: "warning", label: "Partial" },
+            { value: controlPosture.planned, tone: "info", label: "Planned" },
+            { value: controlPosture.missing, tone: "danger", label: "Not implemented" },
+          ] : undefined}
+          footer={controlPosture && (
+            <>
+              <span className="text-caption text-tertiary">
+                <span className="tabular text-secondary">{controlPosture.ineffective}</span> assessed ineffective
+              </span>
+              <span className="text-caption text-tertiary">
+                <span className="tabular text-secondary">{controlPosture.unassessed}</span> never assessed
+              </span>
+              {/*
+                Says so rather than quietly reporting a slice. The statuses are
+                counted from one page, so a collection larger than that page is
+                a number this card cannot honestly claim.
+              */}
+              {controlPosture.counted < controlPosture.total && (
+                <span className="text-caption text-feedback-warning">
+                  Breakdown covers the first {controlPosture.counted}
+                </span>
+              )}
+            </>
+          )}
+          onOpen={() => navigate("/controls")}
+          openLabel="Open controls"
+        />
+
+        <PostureCard
+          art="remediation"
+          fallbackIcon="remediation"
+          title="Remediation"
+          subtitle="Findings with an owner, a date and somewhere to land."
+          value={remediationSummary.data?.open}
+          valueSub="still open"
+          loading={remediationSummary.isLoading}
+          breakdown={remediationSummary.data ? [
+            { value: remediationSummary.data.bySeverity.CRITICAL ?? 0, tone: "danger", label: "Critical" },
+            { value: remediationSummary.data.bySeverity.HIGH ?? 0, tone: "warning", label: "High" },
+            { value: remediationSummary.data.bySeverity.MEDIUM ?? 0, tone: "info", label: "Medium" },
+            { value: remediationSummary.data.bySeverity.LOW ?? 0, tone: "success", label: "Low" },
+          ] : undefined}
+          footer={remediationSummary.data && (
+            <>
+              <span className="text-caption text-tertiary">
+                <span className={cn("tabular", remediationSummary.data.overdue ? "text-feedback-error" : "text-secondary")}>
+                  {remediationSummary.data.overdue}
+                </span> past due
+              </span>
+              <span className="text-caption text-tertiary">
+                <span className="tabular text-secondary">{remediationSummary.data.byStatus.IN_PROGRESS ?? 0}</span> in progress
+              </span>
+              <span className="text-caption text-tertiary">
+                <span className="tabular text-secondary">{remediationSummary.data.byStatus.RESOLVED ?? 0}</span> resolved
+              </span>
+            </>
+          )}
+          onOpen={() => navigate("/remediation")}
+          openLabel="Open remediation"
+        />
+
+        {/*
+          Audit is ADMIN-only server-side. A non-admin gets the card explaining
+          that rather than a 403, because a tile that silently disappears reads
+          as a broken dashboard rather than as a permission boundary.
+        */}
+        {isAdmin ? (
+          <PostureCard
+            art="audit"
+            fallbackIcon="audit"
+            title="Audit activity"
+            subtitle="Every write, who made it, and whether it succeeded."
+            value={auditPosture?.total?.toLocaleString()}
+            valueSub="recorded events"
+            loading={auditList.isLoading}
+            footer={auditPosture && (
+              <>
+                {auditPosture.latest && (
+                  <span className="text-caption text-tertiary">
+                    Last entry {new Date(auditPosture.latest).toLocaleString()}
+                  </span>
+                )}
+                <span className="text-caption text-tertiary">
+                  <span className={cn("tabular", auditPosture.failures ? "text-feedback-warning" : "text-secondary")}>
+                    {auditPosture.failures}
+                  </span> failed in the last {auditPosture.window}
+                </span>
+              </>
+            )}
+            onOpen={() => navigate("/audit")}
+            openLabel="Open audit trail"
+          />
+        ) : (
+          <div className="flex flex-col justify-center rounded-card border border-dashed border-default bg-raised-2 p-4">
+            <h3 className="text-heading-sm text-primary">Audit activity</h3>
+            <p className="mt-1 text-body-sm text-tertiary">
+              The audit trail is restricted to administrators. Your role can see
+              everything else on this page.
+            </p>
+          </div>
+        )}
+      </section>
 
       {/* ACTION CENTRE */}
       <Card className="p-4">

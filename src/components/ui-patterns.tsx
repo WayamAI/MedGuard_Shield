@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { AppIcon } from "@/components/AppIcon";
 import { DomainIcon, type DomainIconName } from "@/components/DomainIcon";
 import { Drishti3DIcon } from "@/components/Drishti3DIcon";
-import { Badge } from "@/components/ui-bits";
+import { Badge, Btn } from "@/components/ui-bits";
 import type { IconName } from "@/lib/icons";
 import { DOMAIN_TO_3D, BAND_TO_3D, type Icon3DName } from "@/lib/icons3d";
 import type { Tone } from "@/lib/tone";
@@ -273,7 +273,28 @@ export const MetricCard = ({
       {loading || value === undefined ? (
         <span className="mt-1 inline-block h-8 w-16 animate-pulse rounded bg-raised-2" />
       ) : (
-        <span className="font-display text-display-metric tabular text-primary">{value}</span>
+        /*
+         * The display size is for a figure, and a name is not one. The
+         * organisation tile on Identities passed "Drishti Demo Healthcare"
+         * through here and 2.25rem wrapped it onto three lines, which pushed
+         * that one card to twice the height of the three beside it and broke
+         * the row. Anything longer than a formatted number drops to the
+         * smaller display size and is allowed to wrap to two lines.
+         *
+         * `tabular` goes with it: lining figures align a column of numbers,
+         * and do nothing for prose but widen the spaces.
+         */
+        <span
+          className={cn(
+            "font-display text-primary",
+            String(value).length > 8
+              ? "line-clamp-2 text-display-metric-sm"
+              : "text-display-metric tabular",
+          )}
+          title={String(value)}
+        >
+          {value}
+        </span>
       )}
       {sub && <span className="text-caption text-tertiary">{sub}</span>}
     </Wrapper>
@@ -465,6 +486,84 @@ export const EntityMark = ({
     className="mt-0.5"
     fallback={<EntityAvatar icon={icon} tone={tone} size="lg" />}
   />
+);
+
+/**
+ * A governance area summarised as one card: what it is, where it stands, and
+ * the way in.
+ *
+ * The three areas the dashboard was missing — controls, remediation and audit
+ * — are each a count plus a breakdown plus a link, and writing that three
+ * times produced three subtly different cards. This is the shape they share.
+ *
+ * It takes a 3D mark rather than a glyph because these are the dashboard's
+ * secondary summaries, one tier below the metric row: large enough to carry
+ * artwork, and distinct enough from the tiles above that the eye reads two
+ * levels rather than seven equal boxes. The mark sits beside the heading, not
+ * above the number, so the number stays the first thing read.
+ */
+export const PostureCard = ({
+  art, fallbackIcon, title, subtitle, value, valueSub, breakdown, footer, onOpen, openLabel, loading,
+}: {
+  art: Icon3DName;
+  fallbackIcon: DomainIconName;
+  title: string;
+  subtitle: string;
+  /** Undefined renders a pulse. A governance count must never default to 0. */
+  value: number | string | undefined;
+  valueSub?: string;
+  /** The composition behind the headline figure. */
+  breakdown?: Array<{ value: number; tone: Tone; label: string }>;
+  /** A row of small facts under the breakdown. */
+  footer?: ReactNode;
+  onOpen: () => void;
+  openLabel: string;
+  loading?: boolean;
+}) => (
+  <div className="flex flex-col rounded-card border border-default bg-raised p-4">
+    <div className="flex items-start gap-3">
+      <Drishti3DIcon
+        name={art}
+        size="md"
+        className="mt-0.5"
+        fallback={<DomainIcon name={fallbackIcon} size={22} className="mt-1 text-brand" />}
+      />
+      <div className="min-w-0 flex-1">
+        <h3 className="text-heading-sm text-primary">{title}</h3>
+        <p className="mt-0.5 text-body-sm text-tertiary">{subtitle}</p>
+      </div>
+    </div>
+
+    <div className="mt-4 flex items-baseline gap-2">
+      {loading || value === undefined ? (
+        <span className="inline-block h-8 w-14 animate-pulse rounded bg-raised-2" />
+      ) : (
+        <span className="font-display text-display-metric tabular text-primary">{value}</span>
+      )}
+      {valueSub && <span className="text-body-sm text-tertiary">{valueSub}</span>}
+    </div>
+
+    {breakdown && breakdown.some(b => b.value > 0) && (
+      <div className="mt-3">
+        <MiniBar segments={breakdown} />
+      </div>
+    )}
+
+    {footer && <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1">{footer}</div>}
+
+    {/*
+      Pushed to the bottom so three cards of unequal content still line their
+      actions up. Without this the Audit card's button floated a row higher
+      than the other two and the group read as misaligned rather than as three
+      cards of different lengths.
+    */}
+    <div className="mt-auto pt-4">
+      <Btn variant="outline" onClick={onOpen} className="w-full">
+        {openLabel}
+        <AppIcon name="chevronRight" size="sm" />
+      </Btn>
+    </div>
+  </div>
 );
 
 /* ------------------------------------------------------------------ misc */
