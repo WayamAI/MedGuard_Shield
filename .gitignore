@@ -33,3 +33,12 @@ dist-ssr
 # documentation of what to set, and it has to stay committable.
 .env*
 !.env.example
+
+# Agent tooling, not application code. `.agents/` holds skill documents pulled
+# down by an editor integration, `.claude/` is that integration's workspace,
+# and skills-lock.json pins their versions. Nothing in the app imports any of
+# it and the production build succeeds without it, so it stays out of the repo
+# rather than riding along in every diff.
+.agents/
+.claude/
+skills-lock.json
