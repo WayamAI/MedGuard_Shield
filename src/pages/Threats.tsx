@@ -280,7 +280,14 @@ function ThreatDrawer({ id, onClose }: { id: number | null; onClose: () => void 
         ) : undefined
       }
     >
-      {detail.isLoading && <ChartSkeleton height={300} label="Loading threat" />}
+      {/*
+        Keyed off "no record yet and no error" rather than off isLoading, so
+        the three branches below are exhaustive and the panel can never render
+        empty. isLoading alone left a hole: between a failed attempt and its
+        retry the query is neither loading nor errored, and the drawer showed
+        nothing but its own title.
+      */}
+      {!t && !detail.isError && <ChartSkeleton height={300} label="Loading threat" />}
 
       {t && (
         <div className="space-y-4">

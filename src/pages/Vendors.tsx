@@ -330,9 +330,16 @@ function VendorDrawer({ id, onClose, canWrite }: { id: number | null; onClose: (
         ) : undefined
       }
     >
-      {detail.isLoading && <ChartSkeleton height={340} label="Loading vendor" />}
+      {/*
+        Keyed off "no record yet and no error" rather than off isLoading, so
+        the three branches below are exhaustive and the panel can never render
+        empty. isLoading alone left a hole: between a failed attempt and its
+        retry the query is neither loading nor errored, and the drawer showed
+        nothing but its own title.
+      */}
+      {!v && !detail.isError && <ChartSkeleton height={340} label="Loading vendor" />}
 
-      {!detail.isLoading && detail.isError && (
+      {!v && detail.isError && (
         <ErrorState
           title={describeApiError(detail.error).title}
           message={describeApiError(detail.error).message}

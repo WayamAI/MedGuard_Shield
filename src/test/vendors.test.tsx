@@ -191,3 +191,35 @@ describe("Vendor Risk page: a vendor the engine has not scored", () => {
     expect(screen.getByTestId("band-count-LOW").textContent).toBe("1");
   });
 });
+
+describe("a vendor that is not there", () => {
+  /*
+   * Reached by a bookmark to a record since deleted, or by an id typed into
+   * the URL. The drawer opened and then sat empty: the fetch 404s, so there
+   * is no vendor to render, and nothing else claimed the space. Eighteen
+   * seconds of a panel showing only the word "Vendor" reads as a hung app,
+   * not as "that record is gone".
+   */
+  it("explains a 404 instead of opening an empty panel", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (/\/api\/vendors\/\d+$/.test(url)) {
+        return new Response(JSON.stringify({ error: { code: "NOT_FOUND", message: "No such vendor" } }),
+          { status: 404, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ data: SEED }),
+        { status: 200, headers: { "content-type": "application/json" } });
+    }));
+
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } })}>
+        <MemoryRouter initialEntries={["/vendors?open=999999"]}>
+          <AuthProvider><Vendors /></AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    // The panel must say something. Anything the user can act on.
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+});

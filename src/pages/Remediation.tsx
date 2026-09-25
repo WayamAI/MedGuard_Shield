@@ -344,7 +344,14 @@ function RemediationDrawer({
         ) : undefined
       }
     >
-      {detail.isLoading && <ChartSkeleton height={320} label="Loading finding" />}
+      {/*
+        Keyed off "no record yet and no error" rather than off isLoading, so
+        the three branches below are exhaustive and the panel can never render
+        empty. isLoading alone left a hole: between a failed attempt and its
+        retry the query is neither loading nor errored, and the drawer showed
+        nothing but its own title.
+      */}
+      {!r && !detail.isError && <ChartSkeleton height={320} label="Loading finding" />}
 
       {r && (
         <div className="space-y-4">

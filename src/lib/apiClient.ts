@@ -48,6 +48,26 @@ export class ApiError extends Error {
   get isNetworkError() {
     return this.status === 0;
   }
+
+  /**
+   * The server answered, and asking again will not change the answer.
+   *
+   * A 404 on a record that was deleted, a 400 on a malformed id, a 409 on a
+   * state conflict: these are settled. Retrying them wastes requests and,
+   * worse, keeps the query out of its error state — a query that is forever
+   * about to try again is never `isError`, so a view waiting for that flag
+   * waits forever. That is precisely how a drawer opened on a deleted record
+   * ended up rendering nothing at all.
+   *
+   * 408 and 429 are excluded because they are explicitly "try again": a
+   * timeout and a rate limit are both the question going unanswered rather
+   * than being answered no. 401/403 have their own flag and their own
+   * handling, and are deliberately not folded in here.
+   */
+  get isPermanent() {
+    if (this.status === 408 || this.status === 429) return false;
+    return this.status >= 400 && this.status < 500;
+  }
 }
 
 /**

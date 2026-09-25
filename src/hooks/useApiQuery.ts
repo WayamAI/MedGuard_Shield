@@ -82,14 +82,24 @@ export function useApiQuery<TWire, TData = TWire>(
     select,
     enabled,
     staleTime,
-    // Auth failures will not fix themselves by asking again.
-    retry: (attempt, error) => !error.isAuthError && attempt < maxRetries,
+    /*
+     * Auth failures will not fix themselves by asking again, and neither will
+     * a settled client error — a 404 on a deleted record is not going to
+     * become a 200. Retrying one is not merely wasteful: while retries are
+     * pending the query is neither loading nor errored, so a view branching
+     * on those two flags renders nothing at all.
+     */
+    retry: (attempt, error) =>
+      !error.isAuthError && !error.isPermanent && attempt < maxRetries,
     retryDelay: attempt => Math.min(1000 * 2 ** attempt, 8000),
     // Heartbeat while healthy; tighter cadence while down, so the view both
     // notices the outage and heals from it without a reload.
     refetchInterval: q => {
       if (q.state.status === "error") {
-        return q.state.error?.isAuthError ? false : reconnectIntervalMs;
+        // Nothing to reconnect to when the answer is settled: polling a 404
+        // every five seconds forever is just noise on the network tab.
+        const err = q.state.error;
+        return err?.isAuthError || err?.isPermanent ? false : reconnectIntervalMs;
       }
       return pollIntervalMs;
     },
@@ -197,11 +207,13 @@ export function useApiList<T>(
      * as "the data went away" rather than "the next page is coming".
      */
     placeholderData: previous => previous,
-    retry: (attempt, error) => !error.isAuthError && attempt < maxRetries,
+    retry: (attempt, error) =>
+      !error.isAuthError && !error.isPermanent && attempt < maxRetries,
     retryDelay: attempt => Math.min(1000 * 2 ** attempt, 8000),
     refetchInterval: q => {
       if (q.state.status === "error") {
-        return q.state.error?.isAuthError ? false : reconnectIntervalMs;
+        const err = q.state.error;
+        return err?.isAuthError || err?.isPermanent ? false : reconnectIntervalMs;
       }
       return pollIntervalMs;
     },
