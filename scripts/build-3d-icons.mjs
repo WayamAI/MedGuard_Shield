@@ -202,7 +202,42 @@ const INTERIOR_VOIDS = {
 };
 
 const POSTCLIP = {
-  risk: { right: 0.83, bottom: 0.82 },
+  /*
+   * Everything past the artwork. Measured: the gauge's orange body ends at
+   * x 0.799 and y 0.779 of the working frame, so this sits just outside it
+   * with a little air for the anti-aliased rim.
+   */
+  risk: { right: 0.808, bottom: 0.788 },
+};
+
+/**
+ * Bands in which a neutral pixel is checkerboard, whatever its brightness.
+ *
+ * The risk gauge alone. Its checker column starts at x 0.755 and its dark
+ * checker field at y 0.72, but the gauge's own orange reaches x 0.799 and
+ * y 0.779 — so the two overlap, and a clip wide enough to spare the gauge
+ * leaves a dithered grey band down its right side. That band shipped onto the
+ * Risk Register's page header.
+ *
+ * It defeats every general rule in this file, and each near-miss is worth
+ * recording because each looks like it should have worked:
+ *
+ *   - The de-checker tests for near-white. This band is mid-grey, luma 76-95.
+ *   - `dropNeutralBorderRegions` erases trapped regions *brighter* than 150,
+ *     and this is darker than that.
+ *   - Colour cannot separate it from the artwork either: the gauge's dial and
+ *     its shadow are neutral too, so any global saturation test that clears
+ *     the band also drills through the dial.
+ *   - Position alone cannot do it: the band begins inside the gauge's own
+ *     bounding box.
+ *
+ * Position AND colour together can. Inside these bands the artwork is nothing
+ * but saturated orange rim, so "neutral here means backdrop" is exact. Opt-in
+ * per icon, and expressed as open-ended edges rather than boxes, because what
+ * is being described is the backdrop's own geometry.
+ */
+const CHECKER_BANDS = {
+  risk: [{ left: 0.75 }, { top: 0.72 }],
 };
 
 /** Not square, not an icon: the login backdrop keeps its framing and its backdrop. */
@@ -383,6 +418,46 @@ function trimEdges(alpha, data, w, h, channels, sides) {
   }
 }
 
+/**
+ * Drop detached specks left by the generator.
+ *
+ * Nearly every render carries a small mark in its lower-right corner — a
+ * few dozen pixels, disconnected from the subject, invisible at any size the
+ * app draws these at. It would be tempting to ignore it, and that would be a
+ * mistake: `contentBox` measures *everything* still opaque, so a speck in the
+ * corner stretches the box to the corner, and the subject is then scaled down
+ * and pushed off-centre to make room for it. It was costing real size on
+ * every icon in the set.
+ *
+ * The threshold is set from the gap in the data rather than picked: across
+ * the whole set the specks measure 0.03-0.05% of the frame, and the smallest
+ * *legitimate* detached part — a drum lid, a chart bar, a lens element — is
+ * 0.085%. Anything under 0.06% is a speck, with room either side.
+ */
+function dropSpecks(alpha, w, h) {
+  const label = new Int32Array(w * h).fill(-1);
+  const stack = new Int32Array(w * h);
+  const minArea = w * h * 0.0006;
+
+  for (let start = 0; start < w * h; start++) {
+    if (alpha[start] === 0 || label[start] !== -1) continue;
+    let top = 0;
+    const members = [];
+    stack[top++] = start;
+    label[start] = start;
+    while (top > 0) {
+      const i = stack[--top];
+      members.push(i);
+      const x = i % w, y = (i / w) | 0;
+      if (x > 0 && alpha[i - 1] && label[i - 1] === -1) { label[i - 1] = start; stack[top++] = i - 1; }
+      if (x < w - 1 && alpha[i + 1] && label[i + 1] === -1) { label[i + 1] = start; stack[top++] = i + 1; }
+      if (y > 0 && alpha[i - w] && label[i - w] === -1) { label[i - w] = start; stack[top++] = i - w; }
+      if (y < h - 1 && alpha[i + w] && label[i + w] === -1) { label[i + w] = start; stack[top++] = i + w; }
+    }
+    if (members.length < minArea) for (const i of members) alpha[i] = 0;
+  }
+}
+
 /** Tight box around everything still opaque, so subjects can be re-scaled to match. */
 function contentBox(alpha, w, h) {
   let x0 = w, y0 = h, x1 = -1, y1 = -1;
@@ -442,6 +517,20 @@ async function buildIcon(slug, file) {
       if (spread < 18 && data[p] * 0.299 + data[p + 1] * 0.587 + data[p + 2] * 0.114 > 150) alpha[i] = 0;
     }
   }
+  for (const band of CHECKER_BANDS[slug] ?? []) {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (!alpha[i]) continue;
+        if (band.left !== undefined && x / w < band.left) continue;
+        if (band.top !== undefined && y / h < band.top) continue;
+        const p = i * channels;
+        const spread = Math.max(data[p], data[p + 1], data[p + 2]) - Math.min(data[p], data[p + 1], data[p + 2]);
+        if (spread < 25) alpha[i] = 0;
+      }
+    }
+  }
+
   const clip = POSTCLIP[slug];
   if (clip) {
     for (let y = 0; y < h; y++) {
@@ -450,6 +539,7 @@ async function buildIcon(slug, file) {
       }
     }
   }
+  dropSpecks(alpha, w, h);
   const box = contentBox(alpha, w, h);
   if (!box) throw new Error(`${slug}: keyed to nothing — tolerance too high for ${file}`);
 
