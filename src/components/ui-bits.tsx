@@ -1,7 +1,9 @@
 import { ReactNode, useEffect } from "react";
 import { AppIcon } from "@/components/AppIcon";
+import { Drishti3DIcon } from "@/components/Drishti3DIcon";
 import { IconButton } from "@/components/IconButton";
 import type { IconName } from "@/lib/icons";
+import type { Icon3DName } from "@/lib/icons3d";
 import { cn } from "@/lib/utils";
 import { type Tone, toneVar } from "@/lib/tone";
 
@@ -361,25 +363,47 @@ export const ErrorState = ({
   </div>
 );
 
-/** Request succeeded, there is simply nothing to draw. Not an error. */
+/**
+ * Request succeeded, there is simply nothing to draw. Not an error.
+ *
+ * The one surface in the app with room for the 3D artwork and no competition
+ * for attention: a dashed container, eight units of padding, and previously a
+ * single 24px glyph adrift in it. `art` names the render to show instead —
+ * always the page's own subject in its empty condition, an open drum on
+ * Assets, a radar with a clean sweep on Threats, so the picture states the
+ * situation before the sentence does.
+ *
+ * `icon` stays required in practice: it is what renders if the artwork fails,
+ * and what renders on every empty state that has not been given art.
+ */
 export const EmptyState = ({
   icon = "info",
+  art,
   title,
   message,
   action,
   height,
 }: {
   icon?: IconName;
+  art?: Icon3DName;
   title: string;
   message?: string;
   action?: ReactNode;
   height?: number;
 }) => (
   <div
-    className="flex w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-default bg-raised-2 p-8 text-center"
+    className="flex w-full flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-default bg-raised-2 p-8 text-center"
     style={height ? { minHeight: height } : undefined}
   >
-    <AppIcon name={icon} size="2xl" className="text-icon-tertiary" />
+    {art ? (
+      <Drishti3DIcon
+        name={art}
+        size="xl"
+        fallback={<AppIcon name={icon} size="2xl" className="text-icon-tertiary" />}
+      />
+    ) : (
+      <AppIcon name={icon} size="2xl" className="text-icon-tertiary" />
+    )}
     <div>
       <div className="text-heading-sm text-primary">{title}</div>
       {message && <p className="mt-1 max-w-md text-body-sm text-tertiary">{message}</p>}

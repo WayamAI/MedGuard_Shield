@@ -227,7 +227,7 @@ export default function Vendors() {
           isRowActive={v => v.id === openId}
           initialSort={{ columnId: "score", direction: "desc" }}
           searchPlaceholder="Search vendors…"
-          emptyIcon="facility"
+          emptyIcon="facility" emptyArt="emptyVendors"
           emptyTitle="No vendors recorded"
           emptyMessage="Import a vendor CSV from Data Import, or create one directly."
           toolbar={

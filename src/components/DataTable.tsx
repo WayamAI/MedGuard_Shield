@@ -4,6 +4,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { IconButton } from "@/components/IconButton";
 import { Btn, Input, EmptyState } from "@/components/ui-bits";
 import type { IconName } from "@/lib/icons";
+import type { Icon3DName } from "@/lib/icons3d";
 import { DataState } from "@/components/DataState";
 import type { ApiQueryResult, ApiListResult } from "@/hooks/useApiQuery";
 import type { PageMeta } from "@/lib/apiClient";
@@ -118,6 +119,15 @@ export type DataTableProps<T> = {
   emptyTitle?: string;
   /** Mark for the empty state; defaults to the inventory glyph. */
   emptyIcon?: IconName;
+  /**
+   * 3D render for the empty state, where the page has one.
+   *
+   * Only the "nothing has been recorded" state gets artwork. The
+   * no-search-match state below stays a plain glyph on purpose: it is a
+   * transient consequence of what the viewer just typed, and dressing it up
+   * would read as a bigger deal than a filter that matched nothing.
+   */
+  emptyArt?: Icon3DName;
   emptyMessage?: string;
   /** Empty state shown when a filter/search excludes everything. */
   noMatchTitle?: string;
@@ -148,6 +158,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
         height={props.height ?? 420}
         emptyTitle={props.emptyTitle ?? "Nothing to show yet"}
         emptyIcon={props.emptyIcon}
+        emptyArt={props.emptyArt}
         emptyMessage={props.emptyMessage ?? "No records have been recorded for this view."}
       >
         {data => <DataTableInner {...rest} rows={data} />}

@@ -187,6 +187,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       <PageHeader
+        icon="dashboard"
         title="Governance Overview"
         description="Where PHI lives, how it moves, who can reach it, and where the risk concentrates. Computed live from the Drishti API."
         meta={
@@ -209,6 +210,7 @@ export default function Dashboard() {
           label="Assets monitored"
           value={metrics.assets}
           icon="database"
+          art="asset"
           sub={metrics.totalFlows !== undefined ? `${metrics.totalFlows} PHI flows mapped` : undefined}
           onClick={() => navigate("/assets")}
         />
@@ -216,6 +218,7 @@ export default function Dashboard() {
           label="Critical or extreme"
           value={metrics.criticalOrExtreme}
           icon="threats"
+          art="kpiCritical"
           tone="danger"
           emphasis={Boolean(metrics.criticalOrExtreme)}
           sub={bandCounts ? `${bandCounts.EXTREME} extreme · ${bandCounts.CRITICAL} critical` : undefined}
@@ -225,6 +228,7 @@ export default function Dashboard() {
           label="PHI records / day"
           value={metrics.phiRecordsPerDay?.toLocaleString()}
           icon="record"
+          art="phi"
           sub="across all mapped flows"
           onClick={() => navigate("/phi-flow")}
         />
@@ -232,6 +236,7 @@ export default function Dashboard() {
           label="Unencrypted flows"
           value={metrics.unencryptedFlows}
           icon="unlocked"
+          art="kpiUnencrypted"
           tone="danger"
           emphasis={Boolean(metrics.unencryptedFlows)}
           sub={metrics.totalFlows !== undefined ? `of ${metrics.totalFlows} total` : undefined}
@@ -257,6 +262,7 @@ export default function Dashboard() {
             height={360}
             emptyTitle="No scored assets"
             emptyMessage="Import assets and run a risk assessment to populate the matrix."
+            emptyArt="emptyRisks"
           >
             {data => <RiskMatrix risks={data} onSelect={() => navigate("/risks")} />}
           </DataState>

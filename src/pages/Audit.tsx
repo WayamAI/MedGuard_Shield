@@ -168,7 +168,7 @@ export default function AuditPage() {
           getRowId={e => e.id}
           onRowClick={e => setSelected(e)}
           isRowActive={e => e.id === selected?.id}
-          emptyIcon="audit"
+          emptyIcon="audit" emptyArt="emptyAudit"
           emptyTitle="No recorded activity"
           emptyMessage="Nothing has been recorded against this organisation yet."
           noMatchTitle="Nothing on this page"

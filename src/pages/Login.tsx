@@ -6,6 +6,7 @@ import { hadSession } from "@/lib/sessionBreadcrumb";
 import { useTheme } from "@/hooks/use-theme";
 import drishtiLogoLight from "@/assets/brand/drishti-logo-light.svg";
 import drishtiLogoDark from "@/assets/brand/drishti-logo-dark.svg";
+import { LOGIN_BACKDROP } from "@/lib/icons3d";
 
 export default function Login() {
   const { isAuthenticated, isInitializing, isRecovering, login } = useAuth();
@@ -59,8 +60,32 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4 py-10">
-      <div className="w-full max-w-md">
+    <div className="relative min-h-screen flex items-center justify-center bg-background px-4 py-10">
+      {/*
+       * The backdrop render, behind a scrim.
+       *
+       * It is a dark machine-room interior, so it cannot simply be dropped
+       * behind a form that also ships a light theme. The scrim is what makes it
+       * work in both: near-opaque over the light surface, where the image
+       * survives as a faint ghost, and lighter over dark, where it can actually
+       * be seen. Either way the card keeps its contrast, which is the only
+       * thing on this page that has to be legible.
+       *
+       * Hidden below `sm`: on a phone the card fills the viewport and the
+       * image would be 70 KB of pixels nobody sees.
+       */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 hidden overflow-hidden sm:block">
+        <img
+          src={LOGIN_BACKDROP}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="lazy"
+          decoding="async"
+        />
+        <div className="absolute inset-0 bg-[rgba(247,247,248,0.94)] dark:bg-[rgba(15,15,17,0.82)]" />
+      </div>
+
+      <div className="relative w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <img
             src={theme === "dark" ? drishtiLogoDark : drishtiLogoLight}

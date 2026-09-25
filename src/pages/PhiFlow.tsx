@@ -204,6 +204,7 @@ export default function PhiFlow() {
             height={496}
             emptyTitle="No PHI flows recorded"
             emptyMessage="The API returned no data flows. If the backend was just set up, run the seed script."
+            emptyArt="emptyPhiFlow"
           >
             {() => (
               <div className="relative w-full overflow-x-auto" ref={chartRef}>

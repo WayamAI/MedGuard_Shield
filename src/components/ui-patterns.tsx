@@ -2,8 +2,10 @@ import { useId, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { AppIcon } from "@/components/AppIcon";
 import { DomainIcon, type DomainIconName } from "@/components/DomainIcon";
+import { Drishti3DIcon } from "@/components/Drishti3DIcon";
 import { Badge } from "@/components/ui-bits";
 import type { IconName } from "@/lib/icons";
+import { DOMAIN_TO_3D, BAND_TO_3D, type Icon3DName } from "@/lib/icons3d";
 import type { Tone } from "@/lib/tone";
 import type { RiskBand, BaaStatus, Sensitivity } from "@/lib/apiTypes";
 
@@ -139,15 +141,35 @@ export const PageHeader = ({
    * rendered as "Ven…" at 390px with Refresh and New vendor beside it.
    */
   <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-x-6 sm:gap-y-3">
-    <div className="min-w-0 flex-1">
-      <div className="flex items-center gap-2">
-        {icon && <DomainIcon name={icon} size={20} className="text-brand" />}
-        <h1 className="font-display text-display-page text-primary sm:truncate">{title}</h1>
-      </div>
-      {description && (
-        <p className="mt-1 max-w-2xl text-body-sm text-tertiary">{description}</p>
+    <div className="flex min-w-0 flex-1 items-start gap-3">
+      {icon && (
+        /*
+         * The page's identity anchor. It sits beside the title block rather
+         * than inline with the title, because at 40px an inline mark drags the
+         * baseline of a `font-display` heading off centre.
+         *
+         * 40px is a considered ceiling, not a default: large enough that the
+         * render reads as an object, small enough that it stays subordinate to
+         * the page name. Hidden below `sm`, where the title and its actions
+         * already stack and the horizontal budget is spent.
+         */
+        <Drishti3DIcon
+          name={DOMAIN_TO_3D[icon]}
+          size="md"
+          className="mt-0.5 hidden sm:inline-block"
+          fallback={<DomainIcon name={icon} size={20} className="mt-1 text-brand" />}
+        />
       )}
-      {meta && <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">{meta}</div>}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          {icon && <DomainIcon name={icon} size={18} className="text-brand sm:hidden" />}
+          <h1 className="font-display text-display-page text-primary sm:truncate">{title}</h1>
+        </div>
+        {description && (
+          <p className="mt-1 max-w-2xl text-body-sm text-tertiary">{description}</p>
+        )}
+        {meta && <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">{meta}</div>}
+      </div>
     </div>
     {actions && (
       /*
@@ -172,13 +194,21 @@ export const PageHeader = ({
  * reassuring thing this product can say and it must never be said by accident.
  */
 export const MetricCard = ({
-  label, value, sub, icon, tone = "muted", onClick, loading, emphasis,
+  label, value, sub, icon, art, tone = "muted", onClick, loading, emphasis,
 }: {
   label: string;
   value: number | string | undefined;
   sub?: ReactNode;
   icon?: IconName;
-  domainIcon?: DomainIconName;
+  /**
+   * 3D render for the tile, in place of the small glyph.
+   *
+   * For lead metrics only. Four tiles in a row each carrying 40px of artwork
+   * reads as a toy shelf, and the number is what the tile is for — so the
+   * dashboard gives art to the two that lead and leaves the rest in line art.
+   * That difference is the hierarchy.
+   */
+  art?: Icon3DName;
   tone?: Tone;
   onClick?: () => void;
   loading?: boolean;
@@ -204,9 +234,18 @@ export const MetricCard = ({
           style={{ background: `var(--sem-feedback-${tone === "danger" ? "error" : tone === "muted" ? "neutral" : tone}-icon)` }}
         />
       )}
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <span className="text-label-sm uppercase tracking-wide text-tertiary">{label}</span>
-        {icon && <AppIcon name={icon} size="md" className="text-icon-quaternary" />}
+        {art ? (
+          <Drishti3DIcon
+            name={art}
+            size="md"
+            className="-mr-1 -mt-1"
+            fallback={icon ? <AppIcon name={icon} size="md" className="text-icon-quaternary" /> : null}
+          />
+        ) : (
+          icon && <AppIcon name={icon} size="md" className="text-icon-quaternary" />
+        )}
       </div>
       {loading || value === undefined ? (
         <span className="mt-1 inline-block h-8 w-16 animate-pulse rounded bg-raised-2" />

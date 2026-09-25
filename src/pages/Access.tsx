@@ -225,7 +225,7 @@ export default function Access() {
           onRowClick={g => openGrant(g.id)}
           isRowActive={g => g.id === openId}
           searchPlaceholder="Search identity or system…"
-          emptyIcon="identity"
+          emptyIcon="identity" emptyArt="emptyAccess"
           emptyTitle="No access grants"
           emptyMessage="No grants were returned for the current filters."
           toolbar={

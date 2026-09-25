@@ -260,8 +260,15 @@ describe("empty states wear their own mark", () => {
     render(wrap(<Controls />));
     // DataState hardcoded the database glyph for every empty view, so a page
     // built around its own domain mark lost it exactly when it mattered.
+    //
+    // The mark is now the 3D render rather than the line-art glyph, so that is
+    // what this asserts. The guarantee is unchanged and still the point of the
+    // test: the empty Controls page wears the controls mark, and the inventory
+    // cylinder does not appear on it. `emptyIcon="locked"` remains declared at
+    // the call site as the fallback if the asset fails to load.
     await screen.findByText("No controls recorded");
-    expect(document.querySelector('[data-icon="locked"]')).not.toBeNull();
+    expect(document.querySelector('[data-icon-3d="emptyControls"]')).not.toBeNull();
     expect(document.querySelector('[data-icon="database"]')).toBeNull();
+    expect(document.querySelector('[data-icon-3d="kpiAssets"]')).toBeNull();
   });
 });
