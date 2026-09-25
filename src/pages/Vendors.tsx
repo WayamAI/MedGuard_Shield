@@ -200,7 +200,7 @@ export default function Vendors() {
             {worstGap.phiVolume.toLocaleString()} PHI records across {worstGap.assetCount} system
             {worstGap.assetCount === 1 ? "" : "s"} with a{" "}
             <strong>{worstGap.baaStatus.toLowerCase()}</strong> business associate agreement
-            {worstGap.lastAssessedAt === null && " — never assessed"}.
+            {worstGap.lastAssessedAt === null && ", never assessed"}.
           </span>
           <div className="flex-1" />
           <Btn variant="outline" onClick={() => openVendor(worstGap.id)}>View details</Btn>
@@ -359,7 +359,7 @@ function VendorDrawer({ id, onClose, canWrite }: { id: number | null; onClose: (
           {!v.baaCompliant && (
             <div className="rounded-md border border-feedback-error-stroke bg-feedback-error-background px-3 py-2 text-body-sm text-feedback-error">
               Under HIPAA, a vendor processing PHI without a signed BAA is a compliance breach in
-              itself — independent of whether any data has been exposed.
+              itself, independent of whether any data has been exposed.
             </div>
           )}
 

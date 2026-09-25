@@ -188,7 +188,7 @@ export default function Dashboard() {
     <div className="space-y-5">
       <PageHeader
         title="Governance Overview"
-        description="Where PHI lives, how it moves, who can reach it, and where the risk concentrates — computed live from the Drishti API."
+        description="Where PHI lives, how it moves, who can reach it, and where the risk concentrates. Computed live from the Drishti API."
         meta={
           <>
             <span className="flex items-center gap-1.5 text-caption text-tertiary">

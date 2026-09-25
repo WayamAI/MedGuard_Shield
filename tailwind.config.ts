@@ -58,6 +58,19 @@ export default {
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
+    /*
+     * Overrides the scale rather than extending it, and that distinction is
+     * the whole point: `extend.boxShadow` MERGES with Tailwind's defaults, so
+     * shadow-sm/md/lg would survive and the ~20 shadcn primitives under
+     * components/ui would keep painting drop shadows. Replacing the scale
+     * makes every `shadow-*` class inert in one place, instead of editing
+     * twenty vendored files and hoping the next `shadcn add` does not undo it.
+     *
+     * Elevation here comes from surface steps (page < container < raised <
+     * raised-2) plus a stroke. Nothing floats.
+     */
+    boxShadow: { none: "none" },
+
     extend: {
       fontFamily: {
         // Geist — every piece of UI text.
@@ -234,18 +247,31 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+
+        /*
+         * Two radii carry the whole product, so a card and the control inside
+         * it can never disagree. `card` is every container: card, modal,
+         * slide-over, login panel. `control` is everything you can click or
+         * type into: button, input, select, dropdown, chip.
+         *
+         * Concentric, not equal: 16px container, 10px control. A control
+         * sitting inside a card needs the smaller radius or the corners read
+         * as two unrelated curves.
+         *
+         * 0.625rem is not an arbitrary pick. It is exactly what `rounded-md`
+         * already resolves to (--radius 0.75rem minus 2px), so the 80-odd
+         * existing `rounded-md` controls are already conformant and this token
+         * names the current value rather than silently restyling every button
+         * in the product.
+         */
         card: "1rem",
+        control: "0.625rem",
       },
 
       transitionDuration: {
         DEFAULT: "180ms",
       },
 
-      boxShadow: {
-        // Restrained elevation only — no large diffuse shadows.
-        raised: "0 1px 2px 0 rgb(0 0 0 / 0.40)",
-        panel: "0 8px 24px -8px rgb(0 0 0 / 0.55)",
-      },
     },
   },
   plugins: [tailwindcssAnimate],

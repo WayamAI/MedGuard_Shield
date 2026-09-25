@@ -50,7 +50,7 @@ const TONE_ICON: Record<Tone, string> = {
 };
 
 export const Card = ({ className = "", children }: { className?: string; children: ReactNode }) => (
-  <div className={cn("bg-raised border border-default rounded-card shadow-raised", className)}>{children}</div>
+  <div className={cn("bg-raised border border-default rounded-card", className)}>{children}</div>
 );
 
 export const Badge = ({ tone = "muted", children, className = "" }: { tone?: Tone; children: ReactNode; className?: string }) => (
@@ -108,7 +108,7 @@ export function Modal({ open, onClose, title, children, size = "md", dismissOnBa
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70" onClick={() => dismissOnBackdrop && onClose()} />
-      <div className={cn("relative flex max-h-[88vh] w-full flex-col rounded-card border border-default bg-raised shadow-panel fade-in", w)}>
+      <div className={cn("relative flex max-h-[88vh] w-full flex-col rounded-card border border-active bg-raised fade-in", w)}>
         {title && (
           <div className="flex items-center justify-between border-b border-muted px-5 py-4">
             <h3 className="text-heading-md text-primary">{title}</h3>
@@ -154,7 +154,7 @@ export function SlideOver({ open, onClose, title, children, footer, width = 440 
 type BtnVariant = "default" | "primary" | "danger" | "success" | "ghost" | "outline" | "warning" | "inverse";
 
 const BTN_VARIANT: Record<BtnVariant, string> = {
-  default: "bg-action-secondary text-action-secondary border border-default hover:bg-action-secondary-hover",
+  default: "bg-action-secondary text-action-secondary hover:bg-action-secondary-hover",
   primary: "bg-brand text-primary-foreground hover:bg-brand-hover",
   // `inverse` is the light-on-dark CTA used for a panel's primary action.
   inverse: "bg-action-primary text-on-color hover:bg-action-primary-hover",
@@ -262,7 +262,7 @@ export const KPI = ({ icon, label, value, trend, accent = "info", onClick, loadi
       ) : (
         <div
           className={cn("font-display text-display-metric-sm tabular text-primary", stale && "opacity-60")}
-          title={stale ? "Last known value — backend unreachable" : undefined}
+          title={stale ? "Last known value. Backend unreachable." : undefined}
         >
           {value ?? "—"}
         </div>

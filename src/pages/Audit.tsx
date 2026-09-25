@@ -183,7 +183,7 @@ export default function AuditPage() {
         />
         {group !== "all" && (
           <p className="mt-2 text-caption text-tertiary">
-            Narrowing this page only — the API filters by exact action, so use
+            Narrowing this page only. The API filters by exact action, so use
             paging to move through the whole trail.
           </p>
         )}

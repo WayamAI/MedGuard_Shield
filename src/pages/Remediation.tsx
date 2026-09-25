@@ -407,13 +407,13 @@ function RemediationDrawer({
           </FieldGroup>
 
           {/*
-            The API is explicit that closing a finding records a decision — it
+            The API is explicit that closing a finding records a decision. It
             does not change the estate. Saying so here stops the drawer
             implying the underlying problem went away.
           */}
           <p className="rounded-md border border-default bg-raised-2 px-3 py-2 text-caption text-tertiary">
             Closing a finding records who decided what, and when. It does not
-            alter the asset, control or threat it points at — change those
+            alter the asset, control or threat it points at. Change those
             directly if the estate itself needs to move.
           </p>
 

@@ -165,7 +165,7 @@ export default function Threats() {
           <AppIcon name="threats" size="md" className="text-feedback-error" />
           <span className="text-body-md text-primary">
             <span className="font-semibold">Open critical:</span> {headline.title} on{" "}
-            {headline.assetName} — detected {age(headline.hoursSinceDetection)}, still{" "}
+            {headline.assetName}, detected {age(headline.hoursSinceDetection)}, still{" "}
             {STATUS_LABEL[headline.status].toLowerCase()}.
           </span>
           <div className="flex-1" />

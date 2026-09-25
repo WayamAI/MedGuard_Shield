@@ -110,7 +110,7 @@ export default function PhiFlow() {
    */
   const onExport = useCallback(() => {
     const svg = chartRef.current?.querySelector("svg");
-    if (!svg) { notify.error("Nothing to export yet — the map is still loading."); return; }
+    if (!svg) { notify.error("Nothing to export yet. The map is still loading."); return; }
     const clone = svg.cloneNode(true) as SVGElement;
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     const blob = new Blob([new XMLSerializer().serializeToString(clone)], {

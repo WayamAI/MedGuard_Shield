@@ -150,7 +150,7 @@ export default function Risks() {
       <Card className="p-4">
         <SectionHeader
           title="Risk Matrix"
-          subtitle="Every scored asset plotted by likelihood and impact. Colour is the band the API derived — select a chip to open its record."
+          subtitle="Every scored asset plotted by likelihood and impact. Colour is the band the API derived. Select a chip to open its record."
         />
         <DataState
           query={listAsQuery(matrix)}
@@ -285,7 +285,7 @@ function RiskDrawer({
 
           <p className="rounded-md border border-default bg-raised-2 px-3 py-2 text-caption text-tertiary">
             The grid position shows likelihood × impact only. The band also weighs exposure and
-            control gap, so a chip's colour will often differ from its cell — that is the engine
+            control gap, so a chip's colour will often differ from its cell. That is the engine
             being more precise than two axes can show, not a display error.
           </p>
         </div>

@@ -73,7 +73,7 @@ export default function Login() {
           </p>
         </div>
 
-        <div className="bg-raised border border-default rounded-xl shadow-sm p-6 sm:p-8">
+        <div className="bg-raised border border-default rounded-card p-6 sm:p-8">
           {isRecovering && !error && (
             <div
               role="status"
