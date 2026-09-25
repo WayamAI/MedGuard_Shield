@@ -6,9 +6,10 @@ import { RiskMatrix } from "@/components/RiskMatrix";
 import { DataState } from "@/components/DataState";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
-  PageHeader, MetricCard, RiskBadge, RiskScore, formatScore, Field, FieldGroup, FilterBar,
-  EntityAvatar, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
+  PageHeader, MetricCard, RiskBadge, RiskScore, formatScore, Field, FieldGroup, FilterBar, RiskBandScale,
+  EntityAvatar, EntityMark, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
 } from "@/components/ui-patterns";
+import { BAND_TO_3D } from "@/lib/icons3d";
 import { useRisks, useRiskMatrix } from "@/hooks/useRisks";
 import { useListControls } from "@/hooks/useListControls";
 import { useRecomputeAssetRisk } from "@/hooks/useMutations";
@@ -207,6 +208,9 @@ export default function Risks() {
         />
         <div className="mt-4 border-t border-muted pt-3">
           <MiniBar segments={BAND_ORDER.map(b => ({ value: bandCounts[b] ?? 0, tone: BAND_TONE[b], label: b }))} />
+          <div className="mt-3">
+            <RiskBandScale counts={bandCounts as Record<RiskBand, number>} />
+          </div>
         </div>
       </Card>
 
@@ -258,7 +262,7 @@ function RiskDrawer({
       {risk && (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <EntityAvatar icon="risk" tone={BAND_TONE[risk.band]} size="lg" />
+            <EntityMark art={BAND_TO_3D[risk.band]} icon="risk" tone={BAND_TONE[risk.band]} />
             <div>
               <div className="flex items-baseline gap-3">
                 <RiskScore score={risk.score} className="font-display text-display-metric tabular text-primary" />

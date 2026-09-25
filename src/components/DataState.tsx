@@ -95,7 +95,7 @@ export function DataState<T>({
    */
   if (error?.isAuthError) {
     const { title, message } = describeApiError(error);
-    return <ErrorState title={title} message={message} height={height} />;
+    return <ErrorState title={title} message={message} height={height} art="sessionExpired" />;
   }
 
   // Failed with nothing cached to fall back on.

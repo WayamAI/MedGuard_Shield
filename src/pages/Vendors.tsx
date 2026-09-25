@@ -5,7 +5,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
   PageHeader, MetricCard, RiskBadge, RiskScore, formatScore, Tabs, TabPanel, Field, FieldGroup,
-  FilterBar, EntityAvatar, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
+  FilterBar, EntityAvatar, EntityMark, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
   BAA_TONE, BAA_LABEL,
 } from "@/components/ui-patterns";
 import { useVendors, useVendor } from "@/hooks/useVendors";
@@ -343,7 +343,7 @@ function VendorDrawer({ id, onClose, canWrite }: { id: number | null; onClose: (
       {v && (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <EntityAvatar icon="vendor" tone={v.risk ? BAND_TONE[v.risk.band] : "muted"} size="lg" />
+            <EntityMark art="vendor" icon="vendor" tone={v.risk ? BAND_TONE[v.risk.band] : "muted"} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone={BAA_TONE[v.baaStatus]}>BAA {BAA_LABEL[v.baaStatus]}</Badge>

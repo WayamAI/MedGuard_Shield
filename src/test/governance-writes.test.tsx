@@ -246,6 +246,43 @@ describe("detail drawers render the detail payload, not the list row", () => {
   });
 });
 
+describe("the 3D marks land on the surfaces that claim them", () => {
+  /*
+   * The registry is a catalogue, not a policy: adding a name to `ICON_3D_NAMES`
+   * puts nothing on screen, and a mark wired to the wrong concept is invisible
+   * in review because both spellings typecheck. These pin the mapping that the
+   * design actually depends on, using the `data-icon-3d` hook the component
+   * stamps for exactly this purpose.
+   */
+  it("anchors the Policies header with the barrier, not the borrowed audit slab", async () => {
+    render(wrap(<Policies />));
+    await screen.findByText("PHI Access Control Policy");
+    expect(document.querySelector('[data-icon-3d="policy"]')).not.toBeNull();
+    // Policies wore the audit mark before it had one of its own; two pages
+    // sharing an identity is the thing this replaced.
+    expect(document.querySelector('[data-icon-3d="audit"]')).toBeNull();
+  });
+
+  it("gives the control drawer a control mark as its identity anchor", async () => {
+    render(wrap(<Controls />));
+    fireEvent.click(await screen.findByText("Encryption at rest"));
+    await screen.findByText("Security Engineering");
+    expect(document.querySelector('[data-icon-3d="control"]')).not.toBeNull();
+  });
+
+  it("gives the policy drawer the same barrier the page header wears", async () => {
+    render(wrap(<Policies />));
+    fireEvent.click(await screen.findByText("PHI Access Control Policy"));
+    // Waits on something only the drawer renders. The owner appears in the
+    // table row too, so waiting on that returns before the detail lands and
+    // the assertion below then measures a drawer that is not there yet.
+    await screen.findByText("Cites 1 control");
+    // Header and drawer both, so opening a record does not change what kind
+    // of thing the screen says you are looking at.
+    expect(document.querySelectorAll('[data-icon-3d="policy"]').length).toBe(2);
+  });
+});
+
 describe("empty states wear their own mark", () => {
   it("shows the controls mark, not the inventory cylinder, on an empty Controls page", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {

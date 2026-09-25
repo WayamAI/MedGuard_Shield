@@ -4,7 +4,7 @@ import { Card, Badge, Btn, SlideOver, ChartSkeleton } from "@/components/ui-bits
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
-  PageHeader, MetricCard, Field, FieldGroup, FilterBar, EntityAvatar,
+  PageHeader, MetricCard, Field, FieldGroup, FilterBar, EntityAvatar, EntityMark,
 } from "@/components/ui-patterns";
 import { useThreats, useThreatSummary, useThreat } from "@/hooks/useThreats";
 import { useListControls } from "@/hooks/useListControls";
@@ -285,7 +285,7 @@ function ThreatDrawer({ id, onClose }: { id: number | null; onClose: () => void 
       {t && (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <EntityAvatar icon="threat" tone={SEVERITY_TONE[t.severity]} size="lg" />
+            <EntityMark art="threat" icon="threat" tone={SEVERITY_TONE[t.severity]} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone={SEVERITY_TONE[t.severity]}>{t.severity}</Badge>

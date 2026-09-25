@@ -8,6 +8,7 @@ import type { IconName } from "@/lib/icons";
 import { DOMAIN_TO_3D, BAND_TO_3D, type Icon3DName } from "@/lib/icons3d";
 import type { Tone } from "@/lib/tone";
 import type { RiskBand, BaaStatus, Sensitivity } from "@/lib/apiTypes";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * Composite patterns built from ui-bits primitives.
@@ -106,7 +107,7 @@ export const RiskScore = ({
   className?: string;
 }) =>
   score == null
-    ? <span className={className}>—</span>
+    ? <span className={className}>{EMPTY_VALUE}</span>
     : <span className={className} title={String(score)}>{formatScore(score)}</span>;
 
 /* ------------------------------------------------------------ page header */
@@ -124,15 +125,28 @@ export type Breadcrumb = { label: string; to?: string };
  * emphasis. The shell keeps the breadcrumb; the page keeps the title.
  */
 export const PageHeader = ({
-  title, description, actions, meta, icon,
+  title, description, actions, meta, icon, art, fallbackIcon,
 }: {
   title: string;
   description?: string;
-  /** Right-aligned controls — refresh, create, export. */
+  /** Right-aligned controls: refresh, create, export. */
   actions?: ReactNode;
   /** A row of small facts under the description (counts, last-updated). */
   meta?: ReactNode;
   icon?: DomainIconName;
+  /**
+   * A 3D mark for a page whose concept has no domain glyph.
+   *
+   * Two destinations need this: Policies, whose barrier exists in 3D but not
+   * in `DomainIcon`, and Settings, which has no domain noun at all. Everywhere
+   * else `icon` is the right prop, because it upgrades the mark *and* keeps a
+   * line-art twin for the sub-`sm` layout and the failure path.
+   *
+   * `fallbackIcon` supplies that twin here. Without one the small-screen
+   * header simply has no mark, which is the honest degradation.
+   */
+  art?: Icon3DName;
+  fallbackIcon?: DomainIconName;
 }) => (
   /*
    * Below sm the title and its actions stack instead of sharing a row.
@@ -142,7 +156,7 @@ export const PageHeader = ({
    */
   <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-x-6 sm:gap-y-3">
     <div className="flex min-w-0 flex-1 items-start gap-3">
-      {icon && (
+      {(icon || art) && (
         /*
          * The page's identity anchor. It sits beside the title block rather
          * than inline with the title, because at 40px an inline mark drags the
@@ -154,15 +168,21 @@ export const PageHeader = ({
          * already stack and the horizontal budget is spent.
          */
         <Drishti3DIcon
-          name={DOMAIN_TO_3D[icon]}
+          name={art ?? DOMAIN_TO_3D[icon!]}
           size="md"
           className="mt-0.5 hidden sm:inline-block"
-          fallback={<DomainIcon name={icon} size={20} className="mt-1 text-brand" />}
+          fallback={
+            (icon ?? fallbackIcon)
+              ? <DomainIcon name={(icon ?? fallbackIcon)!} size={20} className="mt-1 text-brand" />
+              : null
+          }
         />
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          {icon && <DomainIcon name={icon} size={18} className="text-brand sm:hidden" />}
+          {(icon ?? fallbackIcon) && (
+            <DomainIcon name={(icon ?? fallbackIcon)!} size={18} className="text-brand sm:hidden" />
+          )}
           <h1 className="font-display text-display-page text-primary sm:truncate">{title}</h1>
         </div>
         {description && (
@@ -204,9 +224,12 @@ export const MetricCard = ({
    * 3D render for the tile, in place of the small glyph.
    *
    * For lead metrics only. Four tiles in a row each carrying 40px of artwork
-   * reads as a toy shelf, and the number is what the tile is for — so the
-   * dashboard gives art to the two that lead and leaves the rest in line art.
-   * That difference is the hierarchy.
+   * reads as a toy shelf, and the number is what the tile is for, so the
+   * dashboard gives art to the two that carry the row's story: what is being
+   * watched (assets) and what is wrong with it (critical and extreme). The
+   * other two are supporting counts and stay in line art. That difference is
+   * the hierarchy, and it only works while it stays a difference: adding art
+   * to a third tile flattens all four back into a row of pictures.
    */
   art?: Icon3DName;
   tone?: Tone;
@@ -415,9 +438,67 @@ export const EntityAvatar = ({
   );
 };
 
+/**
+ * The identity anchor at the top of an entity drawer.
+ *
+ * A drawer is the one place in the app where a single record fills the
+ * screen, so it is worth saying which *kind* of thing it is in more than
+ * 18px of line art. This is `EntityAvatar`'s bigger sibling and takes its
+ * place there, nowhere else — the avatar stays correct in every table row,
+ * where §16's density rule applies.
+ *
+ * The tone tile is dropped rather than kept behind the render, and that is
+ * deliberate: every drawer that uses this puts the severity, band or status
+ * in a `Badge` immediately to the right, so a second colour-coded surface
+ * saying the same thing is noise. Where the tone *is* the identity — a risk,
+ * whose band marker is the mark — the caller passes the band's own art.
+ *
+ * `EntityAvatar` remains the fallback, so a render that fails to load leaves
+ * the drawer looking exactly as it did before any of this existed.
+ */
+export const EntityMark = ({
+  art, icon, tone = "muted",
+}: { art: Icon3DName; icon: DomainIconName; tone?: Tone }) => (
+  <Drishti3DIcon
+    name={art}
+    size="lg"
+    className="mt-0.5"
+    fallback={<EntityAvatar icon={icon} tone={tone} size="lg" />}
+  />
+);
+
 /* ------------------------------------------------------------------ misc */
 
 /** Inline "n of m" bar, for composition breakdowns. */
+/**
+ * The five risk bands as a row of physical markers, with their counts.
+ *
+ * The band markers are the one part of the 3D set that leaves the orange lock,
+ * because here the colour *is* the data. They were shot as a scale — five
+ * monoliths of descending height on one camera — so they only do their job
+ * seen together. Used on the two band summaries, never in a table row, where
+ * §16's density rule applies and `RiskBadge` stays the right answer.
+ *
+ * The marker is an anchor, not the datum. The band name and the count are
+ * still text, still selectable, still the thing a screen reader reads; strip
+ * the artwork out and the component still says everything it needs to.
+ */
+export const RiskBandScale = ({ counts }: { counts: Record<RiskBand, number> }) => (
+  <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+    {BAND_ORDER.map(band => (
+      <div key={band} className="flex items-center gap-2">
+        <Drishti3DIcon name={BAND_TO_3D[band]} size="sm" fallback={<RiskBadge band={band} />} />
+        <div className="flex flex-col leading-tight">
+          <span className="text-caption text-tertiary">
+            {band[0] + band.slice(1).toLowerCase()}
+          </span>
+          <span className="tabular text-label-md text-primary">{counts[band] ?? 0}</span>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
 export const MiniBar = ({ segments }: { segments: Array<{ value: number; tone: Tone; label: string }> }) => {
   const total = segments.reduce((s, x) => s + x.value, 0) || 1;
   return (

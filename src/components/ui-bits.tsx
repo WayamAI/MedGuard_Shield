@@ -6,6 +6,7 @@ import type { IconName } from "@/lib/icons";
 import type { Icon3DName } from "@/lib/icons3d";
 import { cn } from "@/lib/utils";
 import { type Tone, toneVar } from "@/lib/tone";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * Shared primitives for the application surface.
@@ -272,7 +273,7 @@ export const KPI = ({ icon, label, value, trend, accent = "info", onClick, loadi
           className={cn("font-display text-display-metric-sm tabular text-primary", stale && "opacity-60")}
           title={stale ? "Last known value. Backend unreachable." : undefined}
         >
-          {value ?? "—"}
+          {value ?? EMPTY_VALUE}
         </div>
       )}
       {/*
@@ -338,19 +339,36 @@ export const ErrorState = ({
   onRetry,
   isRetrying,
   height,
+  art,
 }: {
   title?: string;
   message?: string;
   onRetry?: () => void;
   isRetrying?: boolean;
   height?: number;
+  /**
+   * A 3D mark for an error that is a *state* rather than a fault.
+   *
+   * An expired session is the only one so far: it is an ordinary thing that
+   * happens to everyone, and the red warning triangle overstates it. A real
+   * failure keeps the triangle, because there the alarm is the point.
+   */
+  art?: Icon3DName;
 }) => (
   <div
     role="alert"
     className="flex w-full flex-col items-center justify-center gap-3 rounded-lg border border-default bg-raised-2 p-8 text-center"
     style={height ? { minHeight: height } : undefined}
   >
-    <AppIcon name="warning" size="2xl" className="text-feedback-error" />
+    {art ? (
+      <Drishti3DIcon
+        name={art}
+        size="xl"
+        fallback={<AppIcon name="warning" size="2xl" className="text-feedback-error" />}
+      />
+    ) : (
+      <AppIcon name="warning" size="2xl" className="text-feedback-error" />
+    )}
     <div>
       <div className="text-heading-sm text-primary">{title ?? "Could not load this data"}</div>
       {message && <p className="mt-1 max-w-md text-body-sm text-tertiary">{message}</p>}

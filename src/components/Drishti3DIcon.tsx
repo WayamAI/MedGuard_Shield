@@ -44,8 +44,18 @@ export interface Drishti3DIconProps {
    */
   label?: string;
   /**
-   * Load eagerly and at high fetch priority. For the one icon above the fold
-   * on first paint — the login mark. Everything else stays lazy.
+   * Load eagerly, at normal fetch priority. For marks that are always above
+   * the fold — the page-header anchor, the dashboard's lead tiles — where lazy
+   * buys nothing and costs a visible pop-in after the layout has settled.
+   *
+   * Normal priority rather than high on purpose: these sit on pages that are
+   * simultaneously fetching the data the tile exists to display, and the number
+   * matters more than the picture beside it.
+   */
+  eager?: boolean;
+  /**
+   * Eager *and* high fetch priority. For a page whose whole content is the
+   * illustration — the 404 — where there is nothing else competing to load.
    */
   priority?: boolean;
   /**

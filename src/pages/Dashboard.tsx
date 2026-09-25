@@ -7,7 +7,7 @@ import { listAsQuery } from "@/components/DataTable";
 import { RiskMatrix } from "@/components/RiskMatrix";
 import { DomainIcon, type DomainIconName } from "@/components/DomainIcon";
 import {
-  PageHeader, MetricCard, RiskBadge, MiniBar, EntityAvatar,
+  PageHeader, MetricCard, MiniBar, EntityAvatar, RiskBandScale,
   BAND_TONE, BAND_ORDER,
 } from "@/components/ui-patterns";
 import { useAssets } from "@/hooks/useAssets";
@@ -185,7 +185,7 @@ export default function Dashboard() {
     vendorList.isLoading || accessSummary.isLoading || threatSummary.isLoading;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PageHeader
         icon="dashboard"
         title="Governance Overview"
@@ -228,7 +228,6 @@ export default function Dashboard() {
           label="PHI records / day"
           value={metrics.phiRecordsPerDay?.toLocaleString()}
           icon="record"
-          art="phi"
           sub="across all mapped flows"
           onClick={() => navigate("/phi-flow")}
         />
@@ -236,7 +235,6 @@ export default function Dashboard() {
           label="Unencrypted flows"
           value={metrics.unencryptedFlows}
           icon="unlocked"
-          art="kpiUnencrypted"
           tone="danger"
           emphasis={Boolean(metrics.unencryptedFlows)}
           sub={metrics.totalFlows !== undefined ? `of ${metrics.totalFlows} total` : undefined}
@@ -323,13 +321,8 @@ export default function Dashboard() {
                   label: b,
                 }))}
               />
-              <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1.5">
-                {BAND_ORDER.map(b => (
-                  <span key={b} className="flex items-center gap-1.5">
-                    <RiskBadge band={b} />
-                    <span className="tabular text-caption text-tertiary">{bandCounts[b]}</span>
-                  </span>
-                ))}
+              <div className="mt-3">
+                <RiskBandScale counts={bandCounts} />
               </div>
             </div>
           )}

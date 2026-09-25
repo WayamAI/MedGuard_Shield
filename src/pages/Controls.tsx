@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { Card, Badge, Btn, Input, Select, Textarea, Modal, SlideOver } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
-import { PageHeader, FilterBar, EntityAvatar, Field, FieldGroup } from "@/components/ui-patterns";
+import { PageHeader, FilterBar, EntityAvatar, EntityMark, Field, FieldGroup } from "@/components/ui-patterns";
 import {
   useControls, useControl, useCreateControl, useUpdateControl,
   type ControlWriteInput,
@@ -16,6 +16,7 @@ import type {
   ApiControl, ControlStatus, ControlCategory, ControlEffectiveness,
 } from "@/lib/apiTypes";
 import type { Tone } from "@/lib/tone";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * Safeguards in place across the estate.
@@ -138,7 +139,7 @@ export default function Controls() {
       sortValue: c => c.openRemediations,
       cell: c => c.openRemediations > 0
         ? <Badge tone="warning">{c.openRemediations}</Badge>
-        : <span className="text-tertiary">—</span>,
+        : <span className="text-tertiary">{EMPTY_VALUE}</span>,
     },
     {
       id: "ref",
@@ -148,7 +149,7 @@ export default function Controls() {
       // A citation the customer supplied, not a conformance assertion.
       cell: c => c.frameworkRef
         ? <span className="font-mono text-caption text-tertiary">{c.frameworkRef}</span>
-        : <span className="text-tertiary">—</span>,
+        : <span className="text-tertiary">{EMPTY_VALUE}</span>,
     },
   ];
 
@@ -313,12 +314,15 @@ function ControlDrawer({ id, onClose, canAssess, isAdmin }: {
     >
       {c && draft && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
-            <Badge tone={EFFECTIVENESS_TONE[c.effectiveness]}>
-              {EFFECTIVENESS_LABEL[c.effectiveness]}
-            </Badge>
-            <span className="text-body-sm text-tertiary">{CATEGORY_LABEL[c.category]}</span>
+          <div className="flex items-start gap-3">
+            <EntityMark art="control" icon="control" tone={STATUS_TONE[c.status]} />
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 pt-1">
+              <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
+              <Badge tone={EFFECTIVENESS_TONE[c.effectiveness]}>
+                {EFFECTIVENESS_LABEL[c.effectiveness]}
+              </Badge>
+              <span className="text-body-sm text-tertiary">{CATEGORY_LABEL[c.category]}</span>
+            </div>
           </div>
 
           <p className="text-body-sm text-secondary">{c.description}</p>
@@ -330,7 +334,7 @@ function ControlDrawer({ id, onClose, canAssess, isAdmin }: {
               value={
                 c.frameworkRef
                   ? <span className="font-mono text-body-sm">{c.frameworkRef}</span>
-                  : "—"
+                  : EMPTY_VALUE
               }
             />
             <Field label="PHI covered" value={c.phiCovered.toLocaleString()} />

@@ -6,7 +6,7 @@ import {
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
-  PageHeader, MetricCard, Field, FieldGroup, FilterBar, EntityAvatar,
+  PageHeader, MetricCard, Field, FieldGroup, FilterBar, EntityAvatar, EntityMark,
 } from "@/components/ui-patterns";
 import {
   useRemediations, useRemediation, useRemediationSummary, useOrgMembers,
@@ -21,6 +21,7 @@ import type {
   RemediationSource, RemediationSubject,
 } from "@/lib/apiTypes";
 import type { Tone } from "@/lib/tone";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * Remediation — findings, owners and what was done about them.
@@ -100,7 +101,7 @@ const NEXT_STATUSES: Record<RemediationStatus, RemediationStatus[]> = {
 };
 
 const fmtDate = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—";
+  iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : EMPTY_VALUE;
 
 export default function Remediation() {
   const canWrite = useCanWrite();
@@ -348,7 +349,7 @@ function RemediationDrawer({
       {r && (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <EntityAvatar icon="remediation" tone={SEVERITY_TONE[r.severity]} size="lg" />
+            <EntityMark art="remediation" icon="remediation" tone={SEVERITY_TONE[r.severity]} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone={SEVERITY_TONE[r.severity]}>{r.severity}</Badge>

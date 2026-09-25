@@ -2,12 +2,13 @@ import { useMemo, useState } from "react";
 import { Card, Badge, Btn, SlideOver } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
-import { PageHeader, Field, FieldGroup, FilterBar, EntityAvatar } from "@/components/ui-patterns";
+import { PageHeader, Field, FieldGroup, FilterBar, EntityAvatar, EntityMark } from "@/components/ui-patterns";
 import type { DomainIconName } from "@/components/DomainIcon";
 import { useAudit } from "@/hooks/useGovernance";
 import { useListControls } from "@/hooks/useListControls";
 import type { ApiAuditEntry } from "@/lib/apiTypes";
 import type { Tone } from "@/lib/tone";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * Audit trail — who did what, to what, when, and with what result.
@@ -121,7 +122,7 @@ export default function AuditPage() {
       sortValue: e => e.entityType ?? null,
       cell: e => e.entityType
         ? <span className="text-body-sm text-secondary">{e.entityType} #{e.entityId}</span>
-        : <span className="text-tertiary">—</span>,
+        : <span className="text-tertiary">{EMPTY_VALUE}</span>,
     },
     {
       id: "result",
@@ -198,7 +199,7 @@ export default function AuditPage() {
         {selected && (
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <EntityAvatar icon={iconFor(selected.action)} tone={resultTone(selected.result)} size="lg" />
+              <EntityMark art="audit" icon={iconFor(selected.action)} tone={resultTone(selected.result)} />
               <div>
                 <Badge tone={resultTone(selected.result)}>{selected.result}</Badge>
                 <p className="mt-1.5 text-body-sm text-tertiary">{fmtWhen(selected.createdAt)}</p>
@@ -210,10 +211,10 @@ export default function AuditPage() {
               <Field label="Actor" value={selected.actor?.email ?? "System"} />
               <Field
                 label="Subject"
-                value={selected.entityType ? `${selected.entityType} #${selected.entityId}` : "—"}
+                value={selected.entityType ? `${selected.entityType} #${selected.entityId}` : EMPTY_VALUE}
               />
               <Field label="Result" value={selected.result} />
-              <Field label="Source IP" value={selected.ip ?? "—"} />
+              <Field label="Source IP" value={selected.ip ?? EMPTY_VALUE} />
               <Field label="Recorded" value={fmtWhen(selected.createdAt)} />
             </FieldGroup>
 
