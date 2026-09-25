@@ -192,6 +192,25 @@
       ]
     },
     {
+      "slug": "policy",
+      "source": "3D_product_icon_of_barrier_2K_20260925120105.jpg",
+      "coverage": 0.49275548696844995,
+      "written": [
+        {
+          "file": "policy-96.webp",
+          "bytes": 3508
+        },
+        {
+          "file": "policy-320.webp",
+          "bytes": 11550
+        },
+        {
+          "file": "policy-96.png",
+          "bytes": 11037
+        }
+      ]
+    },
+    {
       "slug": "dashboard",
       "source": "3D_dashboard_product_icon_layout_2K_20260925120444.jpg",
       "coverage": 0.6327667236328125,
@@ -871,7 +890,6 @@
     "3D_closed_ring_with_core_2K_20260925120236.jpg",
     "3D_marker_pin_icon_2K_20260925120200.jpg",
     "3D_network_node_icon_2K_20260925120024.jpg",
-    "3D_product_icon_of_barrier_2K_20260925120105.jpg",
     "3D_product_icon_of_barrier_2K_20260925120110.jpg",
     "Stacked_storage_drums_product_icon_2K_20260925120512.jpg"
   ]

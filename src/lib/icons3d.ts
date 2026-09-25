@@ -18,6 +18,12 @@
  * Assets are produced by `scripts/build-3d-icons.mjs` from the originals in
  * `3D Icons/`, and land in `public/brand/icons-3d/`. Served from `public/`
  * rather than imported so they stay out of the JS bundle and are cached by URL.
+ *
+ * Forty-seven of the fifty-one commissioned renders are bound to a slug. The
+ * five that are not are second takes, not gaps: near-identical alternates of
+ * `success`, `info`, `network` and `asset`, plus the second barrier. They are
+ * left in `3D Icons/` rather than deleted, and `manifest.json` lists them
+ * under `unusedSources` on every build so the count stays honest.
  */
 
 /** Concepts the set covers. Slugs match the emitted filenames exactly. */
@@ -25,6 +31,10 @@ export const ICON_3D_NAMES = [
   // domain marks — the nouns of the risk model, one per DomainIconName
   "asset", "phi", "dataFlow", "risk", "vendor", "identity", "threat",
   "control", "remediation", "audit", "dashboard", "import",
+  // `policy` has no DomainIcon counterpart — Policies borrows the audit glyph
+  // for its 18px slots — so it is named here and passed explicitly rather than
+  // arriving through DOMAIN_TO_3D.
+  "policy",
   // empty states — the same noun, in its empty condition
   "emptyAssets", "emptyPhiFlow", "emptyAccess", "emptyVendors", "emptyThreats",
   "emptyRisks", "emptyRemediation", "emptyControls", "emptyAudit",

@@ -53,6 +53,7 @@ const MAP = {
   control: "3D_closed_padlock_product_icon_2K_20260925120451.jpg",
   remediation: "Orange_wrench_fixing_object_2K_20260925120502.jpg",
   audit: "3D_orange_ruled_slab_2K_20260925120224.jpg",
+  policy: "3D_product_icon_of_barrier_2K_20260925120105.jpg",
   dashboard: "3D_dashboard_product_icon_layout_2K_20260925120444.jpg",
   import: "Intake_tray_receiving_records_stack_2K_20260925120441.jpg",
 
@@ -111,7 +112,21 @@ const MAP = {
  * has to be keyed, not cropped. The hook stays for a render that frames its
  * subject in a corner with clear air around it.
  */
-const PRECROP = {};
+const PRECROP = {
+  /*
+   * The barrier came back composited on a black rounded plate rather than on
+   * the open studio field the rest of the set uses. The checker keys away
+   * fine, but that leaves the plate as the content — a black tile, which is
+   * wrong twice: it is the only icon in the set with a container, and on a
+   * dark surface it reads as a hole rather than as an object.
+   *
+   * The plate is the same #111113 as the standard backdrop, so it keys
+   * cleanly *once it touches the border*. Cropping just inside it is what puts
+   * it there. Safe here because the gate has clear air on all four sides
+   * within the plate, which is exactly the case this hook was left for.
+   */
+  policy: { left: 0.12, top: 0.12, width: 0.78, height: 0.74 },
+};
 
 /**
  * Per-icon edge trims, by side.
@@ -156,6 +171,35 @@ const EDGE_TRIM = {
  * orange slabs and an elbow — they own almost no white — so here it is free.
  */
 const DECHECKER = new Set(["phi", "risk", "dataFlow"]);
+
+/**
+ * Backdrop sealed *inside* an icon's own silhouette, and where to find it.
+ *
+ * Only the barrier. Its plate keys away from the border once precropped, but
+ * the rectangle framed by the two posts, the boom and the lower rail is walled
+ * off from the edge, so the flood can never reach it and it survives as a
+ * black panel hanging in the middle of the gate.
+ *
+ * Two approaches fail here, and both are worth recording because both are the
+ * obvious thing to reach for:
+ *
+ *   - Region labelling cannot find it. The labeller walks opaque pixels, and
+ *     the void is surrounded by opaque artwork, so the void and the gate come
+ *     back as one region. Nothing about the *shape* separates them.
+ *   - Colour alone cannot find it either. The void is the flat #121214 of the
+ *     studio field, but so is the shadowed interior of the cabinet on the
+ *     right — a tolerance wide enough to clear the void ate a ragged bite out
+ *     of the cabinet, and one tight enough to spare the cabinet left the void.
+ *
+ * So the colour test is kept and simply aimed: a rectangle, in fractions of
+ * the working frame, inside which near-backdrop pixels are backdrop. The
+ * bounds come from mapping where the void actually sits (x 0.21–0.51,
+ * y 0.44–0.66) and stopping short of the posts and the rail that bound it.
+ * Narrow and per-icon on purpose — it is a patch for one render, not a rule.
+ */
+const INTERIOR_VOIDS = {
+  policy: { left: 0.20, top: 0.42, right: 0.52, bottom: 0.685 },
+};
 
 const POSTCLIP = {
   risk: { right: 0.83, bottom: 0.82 },
@@ -375,6 +419,20 @@ async function buildIcon(slug, file) {
 
   const alpha = keyBackdrop(data, w, h, channels, 52);
   dropNeutralBorderRegions(alpha, data, w, h, channels);
+  const voidBox = INTERIOR_VOIDS[slug];
+  if (voidBox) {
+    // The corner is backdrop by construction: the border flood seeded there.
+    const [br, bg, bb] = [data[0], data[1], data[2]];
+    for (let y = Math.round(voidBox.top * h); y < Math.round(voidBox.bottom * h); y++) {
+      for (let x = Math.round(voidBox.left * w); x < Math.round(voidBox.right * w); x++) {
+        const i = y * w + x;
+        if (!alpha[i]) continue;
+        const p = i * channels;
+        const dr = data[p] - br, dg = data[p + 1] - bg, db = data[p + 2] - bb;
+        if (dr * dr + dg * dg + db * db <= 20 * 20) alpha[i] = 0;
+      }
+    }
+  }
   if (EDGE_TRIM[slug]) trimEdges(alpha, data, w, h, channels, EDGE_TRIM[slug]);
   if (DECHECKER.has(slug)) {
     for (let i = 0; i < w * h; i++) {
