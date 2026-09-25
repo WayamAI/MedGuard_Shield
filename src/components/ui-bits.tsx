@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useId, useRef } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { Drishti3DIcon } from "@/components/Drishti3DIcon";
 import { IconButton } from "@/components/IconButton";
@@ -99,22 +99,101 @@ export const FilterChip = ({
   </button>
 );
 
-export function Modal({ open, onClose, title, children, size = "md", dismissOnBackdrop = true }: { open: boolean; onClose: () => void; title?: ReactNode; children: ReactNode; size?: "sm" | "md" | "lg" | "xl"; dismissOnBackdrop?: boolean }) {
+/**
+ * Everything a dialog owes a keyboard.
+ *
+ * Both overlays in this file — the centred Modal and the edge-anchored
+ * SlideOver — were `<div>`s. Visually complete, and to a screen reader not
+ * dialogs at all: no role, no name, and no boundary, so Tab walked straight
+ * out of the panel and off into the page behind it while the backdrop implied
+ * it was unreachable. Focus never came back to whatever opened them either,
+ * which on a table of rows means losing your place entirely.
+ *
+ * One hook rather than two implementations, and returned props rather than a
+ * wrapper component, so each overlay keeps its own markup and layout and only
+ * borrows the behaviour.
+ *
+ * `onClose` is held in a ref on purpose. Callers pass an inline arrow, so its
+ * identity changes on every render; in the effect's dependency list that would
+ * tear down and re-run the whole thing constantly — stealing focus back to the
+ * first field mid-typing, and restoring focus to the trigger on every
+ * keystroke. The effect depends on `open` alone.
+ */
+function useDialog(open: boolean, onClose: () => void) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const restoreRef = useRef<HTMLElement | null>(null);
+  const closeRef = useRef(onClose);
+  const titleId = useId();
+
+  useEffect(() => { closeRef.current = onClose; });
+
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    const panel = panelRef.current;
+    restoreRef.current = document.activeElement as HTMLElement | null;
+
+    /*
+     * Recomputed per keystroke rather than cached: a drawer's contents change
+     * as its data lands, and a trap built from the elements present on open
+     * would still be guarding a skeleton.
+     */
+    const focusables = () =>
+      Array.from(
+        panel?.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter(el => el.getClientRects().length > 0);
+
+    (focusables()[0] ?? panel)?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { closeRef.current(); return; }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) { e.preventDefault(); panel?.focus(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      const outside = !panel?.contains(active);
+      if (e.shiftKey && (active === first || outside)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (active === last || outside)) { e.preventDefault(); first.focus(); }
+    };
+
+    // Capture phase, so the trap sees Tab before anything inside can stop it.
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      // Back to the row, button or link that opened this.
+      restoreRef.current?.focus?.();
+    };
+  }, [open]);
+
+  return { panelRef, titleId };
+}
+
+export function Modal({ open, onClose, title, children, size = "md", dismissOnBackdrop = true }: { open: boolean; onClose: () => void; title?: ReactNode; children: ReactNode; size?: "sm" | "md" | "lg" | "xl"; dismissOnBackdrop?: boolean }) {
+  const { panelRef, titleId } = useDialog(open, onClose);
   if (!open) return null;
   const w = { sm: "max-w-md", md: "max-w-2xl", lg: "max-w-4xl", xl: "max-w-6xl" }[size];
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70" onClick={() => dismissOnBackdrop && onClose()} />
-      <div className={cn("relative flex max-h-[88vh] w-full flex-col rounded-card border border-active bg-raised fade-in", w)}>
+      <div aria-hidden className="absolute inset-0 bg-black/70" onClick={() => dismissOnBackdrop && onClose()} />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        /*
+         * Named by its heading when it has one. An untitled Modal falls back
+         * to a literal label rather than going unnamed: a dialog a screen
+         * reader announces as just "dialog" gives no reason to be there.
+         */
+        {...(title ? { "aria-labelledby": titleId } : { "aria-label": "Dialog" })}
+        tabIndex={-1}
+        className={cn("relative flex max-h-[88vh] w-full flex-col rounded-card border border-active bg-raised fade-in focus:outline-none", w)}
+      >
         {title && (
           <div className="flex items-center justify-between border-b border-muted px-5 py-4">
-            <h3 className="text-heading-md text-primary">{title}</h3>
+            <h3 id={titleId} className="text-heading-md text-primary">{title}</h3>
             <IconButton icon="close" aria-label="Close dialog" size="sm" onClick={onClose} />
           </div>
         )}
@@ -129,22 +208,22 @@ export function Modal({ open, onClose, title, children, size = "md", dismissOnBa
  * flush to the viewport edge, single hairline stroke, no backdrop blur.
  */
 export function SlideOver({ open, onClose, title, children, footer, width = 440 }: { open: boolean; onClose: () => void; title?: ReactNode; children: ReactNode; footer?: ReactNode; width?: number }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const { panelRef, titleId } = useDialog(open, onClose);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div aria-hidden className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div
-        className="absolute right-0 top-0 flex h-full max-w-full flex-col border-l border-default bg-container slide-in-right"
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        {...(title ? { "aria-labelledby": titleId } : { "aria-label": "Details panel" })}
+        tabIndex={-1}
+        className="absolute right-0 top-0 flex h-full max-w-full flex-col border-l border-default bg-container slide-in-right focus:outline-none"
         style={{ width }}
       >
         <div className="flex items-center justify-between border-b border-muted px-5 py-4">
-          <h3 className="text-heading-md text-primary">{title}</h3>
+          <h3 id={titleId} className="text-heading-md text-primary">{title}</h3>
           <IconButton icon="close" aria-label="Close panel" size="sm" onClick={onClose} />
         </div>
         <div className="flex-1 overflow-y-auto p-5">{children}</div>
