@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, Badge, Btn, Input, Select, Textarea, Modal, SlideOver } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
-import { PageHeader, FilterBar, EntityAvatar, EntityMark, Field, FieldGroup } from "@/components/ui-patterns";
+import { PageHeader, MetricCard, FilterBar, EntityAvatar, EntityMark, Field, FieldGroup } from "@/components/ui-patterns";
 import {
   useControls, useControl, useCreateControl, useUpdateControl,
   type ControlWriteInput,
@@ -80,6 +80,30 @@ export default function Controls() {
   const isAdmin = useIsAdmin();
   const controls = useListControls<{ status?: ControlStatus }>({ status: undefined });
   const list = useControls(controls.params);
+
+  /*
+   * The summary row is a second, unfiltered query on purpose.
+   *
+   * Deriving it from `list` would be one fewer request and wrong: `list`
+   * carries whatever status filter is active, so picking "Partial" would
+   * redraw the tiles to say 3 of 3 implemented. These tiles describe the
+   * estate, and the estate does not change when you narrow the table.
+   */
+  const estate = useControls({ pageSize: 200 });
+  const posture = useMemo(() => {
+    const rows = estate.data;
+    if (!rows) return null;
+    const by = (st: ControlStatus) => rows.filter(c => c.status === st).length;
+    return {
+      total: estate.meta?.total ?? rows.length,
+      implemented: by("IMPLEMENTED"),
+      partial: by("PARTIAL"),
+      planned: by("PLANNED"),
+      missing: by("NOT_IMPLEMENTED"),
+      ineffective: rows.filter(c => c.effectiveness === "INEFFECTIVE").length,
+      unassessed: rows.filter(c => c.effectiveness === "NOT_ASSESSED").length,
+    };
+  }, [estate.data, estate.meta]);
 
   const [params, setParams] = useSearchParams();
   const openId = params.get("open") ? Number(params.get("open")) : null;
@@ -176,6 +200,38 @@ export default function Controls() {
           </>
         }
       />
+
+      <section aria-label="Control coverage" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Controls recorded"
+          value={posture?.total}
+          icon="locked"
+          sub={posture ? `${posture.planned} planned` : undefined}
+        />
+        <MetricCard
+          label="Implemented"
+          value={posture?.implemented}
+          icon="check"
+          tone="success"
+          sub={posture ? `${posture.partial} partially in place` : undefined}
+        />
+        <MetricCard
+          label="Not implemented"
+          value={posture?.missing}
+          icon="warning"
+          tone="danger"
+          emphasis={Boolean(posture?.missing)}
+          sub="no safeguard in place yet"
+        />
+        <MetricCard
+          label="Assessed ineffective"
+          value={posture?.ineffective}
+          icon="block"
+          tone="danger"
+          emphasis={Boolean(posture?.ineffective)}
+          sub={posture ? `${posture.unassessed} never assessed` : undefined}
+        />
+      </section>
 
       <Card className="p-4">
         <DataTable

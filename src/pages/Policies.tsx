@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, Badge, Btn, Input, Select, Textarea, Modal, SlideOver } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
-import { PageHeader, FilterBar, EntityAvatar, EntityMark, Field, FieldGroup } from "@/components/ui-patterns";
+import { PageHeader, MetricCard, FilterBar, EntityAvatar, EntityMark, Field, FieldGroup } from "@/components/ui-patterns";
 import {
   usePolicies, usePolicy, useCreatePolicy, useUpdatePolicy,
   type PolicyWriteInput,
@@ -44,6 +44,26 @@ export default function Policies() {
   const isAdmin = useIsAdmin();
   const controls = useListControls<{ status?: PolicyStatus }>({ status: undefined });
   const list = usePolicies(controls.params);
+
+  /*
+   * Unfiltered, for the same reason Controls is: these tiles describe the
+   * policy set, and narrowing the table below must not redraw them.
+   */
+  const estate = usePolicies({ pageSize: 200 });
+  const posture = useMemo(() => {
+    const rows = estate.data;
+    if (!rows) return null;
+    const by = (st: PolicyStatus) => rows.filter(p => p.status === st).length;
+    return {
+      total: estate.meta?.total ?? rows.length,
+      active: by("ACTIVE"),
+      draft: by("DRAFT"),
+      underReview: by("UNDER_REVIEW"),
+      archived: by("ARCHIVED"),
+      overdue: rows.filter(p => p.reviewOverdue).length,
+      unowned: rows.filter(p => !p.owner).length,
+    };
+  }, [estate.data, estate.meta]);
 
   const [params, setParams] = useSearchParams();
   const openId = params.get("open") ? Number(params.get("open")) : null;
@@ -123,6 +143,37 @@ export default function Policies() {
           </>
         }
       />
+
+      <section aria-label="Policy posture" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Policies recorded"
+          value={posture?.total}
+          icon="document"
+          sub={posture ? `${posture.archived} archived` : undefined}
+        />
+        <MetricCard
+          label="Active"
+          value={posture?.active}
+          icon="check"
+          tone="success"
+          sub={posture ? `${posture.draft} still in draft` : undefined}
+        />
+        <MetricCard
+          label="Under review"
+          value={posture?.underReview}
+          icon="history"
+          tone="info"
+          sub="being revised now"
+        />
+        <MetricCard
+          label="Review overdue"
+          value={posture?.overdue}
+          icon="warning"
+          tone="danger"
+          emphasis={Boolean(posture?.overdue)}
+          sub={posture ? `${posture.unowned} with no owner` : undefined}
+        />
+      </section>
 
       <Card className="p-4">
         <DataTable
