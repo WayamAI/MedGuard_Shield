@@ -145,7 +145,7 @@ export default function Risks() {
           emphasis={Boolean(counts.severe)}
         />
         <MetricCard label="High" value={risks.data ? counts.high : undefined} icon="activity" tone="warning" />
-        <MetricCard label="Highest score" value={risks.data ? counts.peak : undefined} icon="chart" />
+        <MetricCard label="Highest score" value={risks.data ? counts.peak : undefined} icon="chart" art="chart" />
       </div>
 
       <Card className="p-4">

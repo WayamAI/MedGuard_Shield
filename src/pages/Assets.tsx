@@ -182,7 +182,7 @@ export default function Assets() {
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Assets" value={stats?.total} icon="database" />
+        <MetricCard label="Assets" value={stats?.total} icon="database" art="kpiAssets" />
         <MetricCard
           label="PHI records"
           value={stats ? stats.phiRecords.toLocaleString() : undefined}
@@ -193,6 +193,7 @@ export default function Assets() {
           label="Unencrypted"
           value={stats?.unencrypted}
           icon="unlocked"
+          art="kpiUnencrypted"
           tone="danger"
           emphasis={Boolean(stats?.unencrypted)}
           sub={stats ? `${stats.noMfa} without MFA` : undefined}

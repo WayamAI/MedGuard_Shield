@@ -177,6 +177,7 @@ export default function Vendors() {
           label="Assessment overdue"
           value={stats?.overdue}
           icon="clock"
+          art="clock"
           tone="warning"
           emphasis={Boolean(stats?.overdue)}
         />

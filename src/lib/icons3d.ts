@@ -24,6 +24,30 @@
  * `success`, `info`, `network` and `asset`, plus the second barrier. They are
  * left in `3D Icons/` rather than deleted, and `manifest.json` lists them
  * under `unusedSources` on every build so the count stays honest.
+ *
+ * Eight slugs are built but never rendered, and that is also a decision
+ * rather than an omission, so it is written down here:
+ *
+ *   intelligence, model  The AI marks. Drishti shows what the API computed
+ *                        and nothing else; there is no AI surface for them to
+ *                        sit on, and adding one to use the artwork would be
+ *                        the tail wagging the dog.
+ *   database, server,    Platform nouns with no page of their own. Asset type
+ *   network              is a table column and a badge, both far below the
+ *                        size at which a render is legible.
+ *   success, loading     State marks. `success` belongs on a toast and
+ *                        `loading` on a skeleton, and both are surfaces whose
+ *                        whole job is to be cheap and instant. A 5 KB image
+ *                        in a loading state is a contradiction.
+ *   clock                Now used on Vendors. Kept in this note's history
+ *                        because it was the borderline case: a state mark
+ *                        that turned out to have one genuine entity meaning.
+ *   commandMark          The eye ribbon. Login already carries the Drishti
+ *                        wordmark, and a second brand mark above it is one
+ *                        logo too many on the one screen that needs none.
+ *
+ * They stay in the registry because they are built, catalogued and ready if a
+ * surface ever earns one. A name here has never meant a name on screen.
  */
 
 /** Concepts the set covers. Slugs match the emitted filenames exactly. */
