@@ -296,12 +296,21 @@ export const KPI = ({ icon, label, value, trend, accent = "info", onClick, loadi
 );
 
 export const SectionHeader = ({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) => (
-  <div className="mb-3 flex items-end justify-between gap-3">
+  /*
+   * Stacks below `sm`, for the same reason PageHeader does.
+   *
+   * Sharing one row at 390px put the action at its content width and left the
+   * subtitle to wrap underneath it: on the dashboard "Every scored asset by
+   * likelihood and impact…" ran straight under the Open register button and
+   * the two were unreadable on top of each other. There is no horizontal
+   * budget to share at that width, so they stop trying to share it.
+   */
+  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
     <div className="min-w-0">
       <h3 className="text-heading-sm text-primary">{title}</h3>
       {subtitle && <p className="mt-0.5 text-body-sm text-tertiary">{subtitle}</p>}
     </div>
-    {action}
+    {action && <div className="sm:shrink-0">{action}</div>}
   </div>
 );
 
