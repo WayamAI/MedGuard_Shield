@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { ImportPreviewTable, ImportErrorTable } from "@/components/ImportTables";
 import type { ImportRowError } from "@/lib/apiTypes";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 describe("ImportPreviewTable", () => {
   it("shows the rows as the server parsed them", () => {
@@ -28,7 +29,7 @@ describe("ImportPreviewTable", () => {
     // "no data", which is the opposite claim.
     render(<ImportPreviewTable rows={[{ encrypted: false }]} />);
     expect(screen.getByText("No")).toBeInTheDocument();
-    expect(screen.queryByText("—")).not.toBeInTheDocument();
+    expect(screen.queryByText(EMPTY_VALUE)).not.toBeInTheDocument();
   });
 
   it("renders zero as zero, not as a dash", () => {
@@ -43,7 +44,7 @@ describe("ImportPreviewTable", () => {
 
   it("shows a dash for null and undefined", () => {
     render(<ImportPreviewTable rows={[{ lastAssessedAt: null, note: undefined }]} />);
-    expect(screen.getAllByText("—")).toHaveLength(2);
+    expect(screen.getAllByText(EMPTY_VALUE)).toHaveLength(2);
   });
 
   it("trims the midnight off a date-only value", () => {

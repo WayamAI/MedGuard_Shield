@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { RiskScore, formatScore } from "@/components/ui-patterns";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * The API returns a score as a product of its factors, so some rows come back
@@ -33,9 +34,9 @@ describe("formatScore", () => {
 describe("<RiskScore />", () => {
   it("renders an em dash for an unscored row", () => {
     render(<RiskScore score={null} />);
-    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText(EMPTY_VALUE)).toBeInTheDocument();
     render(<RiskScore score={undefined} />);
-    expect(screen.getAllByText("—")).toHaveLength(2);
+    expect(screen.getAllByText(EMPTY_VALUE)).toHaveLength(2);
   });
 
   it("shows the formatted value and keeps the exact one on hover", () => {

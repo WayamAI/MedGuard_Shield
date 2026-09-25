@@ -9,6 +9,7 @@ import { RiskMatrix } from "@/components/RiskMatrix";
 import { KPI } from "@/components/ui-bits";
 import { toSankeyData, toMatrixRisks } from "@/lib/mappers";
 import type { ApiDataFlow, ApiRisk } from "@/lib/apiTypes";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /* ---------------------------------------------------------------------------
    Backend simulator.
@@ -148,7 +149,7 @@ describe("slow network", () => {
     const { rerender } = render(<KPI icon="database" label="PHI Records" loading />);
     expect(screen.getByRole("status", { name: "Loading PHI Records" })).toBeInTheDocument();
     rerender(<KPI icon="database" label="PHI Records" value={undefined} />);
-    expect(screen.getByText("—")).toBeInTheDocument();
+    expect(screen.getByText(EMPTY_VALUE)).toBeInTheDocument();
   });
 });
 
