@@ -162,7 +162,13 @@ const BTN_VARIANT: Record<BtnVariant, string> = {
   success: "bg-feedback-success-background text-feedback-success border border-feedback-success-stroke hover:bg-feedback-success-stroke hover:text-primary",
   warning: "bg-feedback-warning-background text-feedback-warning border border-feedback-warning-stroke hover:bg-feedback-warning-stroke hover:text-primary",
   ghost: "bg-action-tertiary text-action-tertiary hover:bg-action-tertiary-hover hover:text-primary",
-  outline: "border border-default text-secondary hover:bg-action-secondary-hover hover:text-primary",
+  /*
+   * border-muted, not border-default. default is #2E2E33 in dark, which
+   * against a near-black page reads as a hard black ring drawn around
+   * every Refresh and Cancel. muted keeps the outline legible as an
+   * outline while letting the surface, not the stroke, do the work.
+   */
+  outline: "border border-muted text-secondary hover:border-default hover:bg-action-secondary-hover hover:text-primary",
 };
 
 export const Btn = ({ variant = "default", className = "", children, ...rest }: { variant?: BtnVariant } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
