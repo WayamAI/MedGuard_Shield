@@ -14,6 +14,14 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  /*
+   * Both start empty, deliberately.
+   *
+   * Prefilling the demo account was considered and dropped: the password would
+   * have to ship inside the JS bundle to do it, where it is readable by anyone
+   * who opens the file and survives in every screenshot of the sign-in screen.
+   * The demo credentials live in DRISHTI_DEMO_OPERATIONS.md instead.
+   */
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -135,7 +143,7 @@ export default function Login() {
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="you@meridian.org"
+                placeholder="you@example.org"
                 className="w-full bg-action border border-default rounded-md px-3 py-2 text-body-md text-primary placeholder:text-tertiary focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand transition-colors"
               />
             </div>
