@@ -31,6 +31,14 @@ export interface SidebarNavItem {
 /**
  * A single sidebar destination.
  *
+ * Deliberately line art, and not the 3D set. The mark here renders at 18px in
+ * three colour states — icon.tertiary, then secondary on hover, then
+ * on-colour against the active pill — and a raster render can do neither: it
+ * cannot recolour, and below about 40px it is mud. Putting artwork on thirteen
+ * rows would also cost more bytes than the rest of the page. The 3D marks earn
+ * their place on the surfaces that are large enough to show them, which is the
+ * page header the sidebar navigates *to*.
+ *
  * The full state matrix lives here so inactive -> hover -> active reads
  * identically for every item:
  *   inactive  surface.action slot  + icon.tertiary

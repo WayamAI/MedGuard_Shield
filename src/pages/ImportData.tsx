@@ -90,7 +90,7 @@ export default function ImportData() {
     if (!picked) { setFile(null); return; }
     if (!picked.name.toLowerCase().endsWith(".csv")) {
       setFile(null);
-      setLocalError(`Only .csv files are accepted — "${picked.name}" is not one.`);
+      setLocalError(`Only .csv files are accepted. "${picked.name}" is not one.`);
       return;
     }
     if (picked.size > MAX_BYTES) {
@@ -131,7 +131,7 @@ export default function ImportData() {
       <Card className="p-4">
         <SectionHeader
           title="What are you importing?"
-          subtitle="Pick the record type first — changing it clears any file you have chosen."
+          subtitle="Pick the record type first. Changing it clears any file you have chosen."
         />
 
         <DataState query={entities} height={120} emptyTitle="No importable entities">
@@ -269,7 +269,7 @@ export default function ImportData() {
               <span>
                 {/*
                   "Imported 2 rows into Assets" rather than "Imported 2 Assets
-                  rows" — the entity labels are plural nouns ("Assets",
+                  rows". The entity labels are plural nouns ("Assets",
                   "PHI Types", "Access Grants"), so using one as an adjective
                   reads wrong for every entity, not just this one.
                 */}
@@ -278,7 +278,7 @@ export default function ImportData() {
                   {(commit.report.imported ?? commit.report.totalRows) === 1 ? "" : "s"}
                   {" into "}{contract?.label ?? entity}
                 </span>{" "}
-                — the dashboard and the other views have been refreshed.
+                The dashboard and the other views have been refreshed.
               </span>
             </div>
             <ImportPreviewTable rows={commit.report.preview} />

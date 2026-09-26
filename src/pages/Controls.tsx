@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, Badge, Btn, Input, Select, Textarea, Modal, SlideOver } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
-import { PageHeader, FilterBar, EntityAvatar, Field, FieldGroup } from "@/components/ui-patterns";
+import { PageHeader, MetricCard, FilterBar, EntityAvatar, EntityMark, Field, FieldGroup } from "@/components/ui-patterns";
 import {
   useControls, useControl, useCreateControl, useUpdateControl,
   type ControlWriteInput,
@@ -16,6 +16,7 @@ import type {
   ApiControl, ControlStatus, ControlCategory, ControlEffectiveness,
 } from "@/lib/apiTypes";
 import type { Tone } from "@/lib/tone";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * Safeguards in place across the estate.
@@ -80,6 +81,30 @@ export default function Controls() {
   const controls = useListControls<{ status?: ControlStatus }>({ status: undefined });
   const list = useControls(controls.params);
 
+  /*
+   * The summary row is a second, unfiltered query on purpose.
+   *
+   * Deriving it from `list` would be one fewer request and wrong: `list`
+   * carries whatever status filter is active, so picking "Partial" would
+   * redraw the tiles to say 3 of 3 implemented. These tiles describe the
+   * estate, and the estate does not change when you narrow the table.
+   */
+  const estate = useControls({ pageSize: 200 });
+  const posture = useMemo(() => {
+    const rows = estate.data;
+    if (!rows) return null;
+    const by = (st: ControlStatus) => rows.filter(c => c.status === st).length;
+    return {
+      total: estate.meta?.total ?? rows.length,
+      implemented: by("IMPLEMENTED"),
+      partial: by("PARTIAL"),
+      planned: by("PLANNED"),
+      missing: by("NOT_IMPLEMENTED"),
+      ineffective: rows.filter(c => c.effectiveness === "INEFFECTIVE").length,
+      unassessed: rows.filter(c => c.effectiveness === "NOT_ASSESSED").length,
+    };
+  }, [estate.data, estate.meta]);
+
   const [params, setParams] = useSearchParams();
   const openId = params.get("open") ? Number(params.get("open")) : null;
   const [createOpen, setCreateOpen] = useState(false);
@@ -138,7 +163,7 @@ export default function Controls() {
       sortValue: c => c.openRemediations,
       cell: c => c.openRemediations > 0
         ? <Badge tone="warning">{c.openRemediations}</Badge>
-        : <span className="text-tertiary">—</span>,
+        : <span className="text-tertiary">{EMPTY_VALUE}</span>,
     },
     {
       id: "ref",
@@ -148,7 +173,7 @@ export default function Controls() {
       // A citation the customer supplied, not a conformance assertion.
       cell: c => c.frameworkRef
         ? <span className="font-mono text-caption text-tertiary">{c.frameworkRef}</span>
-        : <span className="text-tertiary">—</span>,
+        : <span className="text-tertiary">{EMPTY_VALUE}</span>,
     },
   ];
 
@@ -176,6 +201,38 @@ export default function Controls() {
         }
       />
 
+      <section aria-label="Control coverage" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Controls recorded"
+          value={posture?.total}
+          icon="locked"
+          sub={posture ? `${posture.planned} planned` : undefined}
+        />
+        <MetricCard
+          label="Implemented"
+          value={posture?.implemented}
+          icon="check"
+          tone="success"
+          sub={posture ? `${posture.partial} partially in place` : undefined}
+        />
+        <MetricCard
+          label="Not implemented"
+          value={posture?.missing}
+          icon="warning"
+          tone="danger"
+          emphasis={Boolean(posture?.missing)}
+          sub="no safeguard in place yet"
+        />
+        <MetricCard
+          label="Assessed ineffective"
+          value={posture?.ineffective}
+          icon="block"
+          tone="danger"
+          emphasis={Boolean(posture?.ineffective)}
+          sub={posture ? `${posture.unassessed} never assessed` : undefined}
+        />
+      </section>
+
       <Card className="p-4">
         <DataTable
           label="Controls"
@@ -195,7 +252,7 @@ export default function Controls() {
           onRowClick={c => openControl(c.id)}
           isRowActive={c => c.id === openId}
           searchPlaceholder="Search controls…"
-          emptyIcon="locked"
+          emptyIcon="locked" emptyArt="emptyControls"
           emptyTitle="No controls recorded"
           emptyMessage={
             isAdmin
@@ -313,12 +370,15 @@ function ControlDrawer({ id, onClose, canAssess, isAdmin }: {
     >
       {c && draft && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
-            <Badge tone={EFFECTIVENESS_TONE[c.effectiveness]}>
-              {EFFECTIVENESS_LABEL[c.effectiveness]}
-            </Badge>
-            <span className="text-body-sm text-tertiary">{CATEGORY_LABEL[c.category]}</span>
+          <div className="flex items-start gap-3">
+            <EntityMark art="control" icon="control" tone={STATUS_TONE[c.status]} />
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 pt-1">
+              <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
+              <Badge tone={EFFECTIVENESS_TONE[c.effectiveness]}>
+                {EFFECTIVENESS_LABEL[c.effectiveness]}
+              </Badge>
+              <span className="text-body-sm text-tertiary">{CATEGORY_LABEL[c.category]}</span>
+            </div>
           </div>
 
           <p className="text-body-sm text-secondary">{c.description}</p>
@@ -330,7 +390,7 @@ function ControlDrawer({ id, onClose, canAssess, isAdmin }: {
               value={
                 c.frameworkRef
                   ? <span className="font-mono text-body-sm">{c.frameworkRef}</span>
-                  : "—"
+                  : EMPTY_VALUE
               }
             />
             <Field label="PHI covered" value={c.phiCovered.toLocaleString()} />

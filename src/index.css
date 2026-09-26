@@ -122,9 +122,6 @@
     0%,100% { opacity: 1; }
     50% { opacity: 0.5; }
   }
-  .dash-flow { stroke-dasharray: 6 6; animation: dash 1s linear infinite; }
-  @keyframes dash { to { stroke-dashoffset: -12; } }
-
   .fade-in { animation: fadeIn 0.4s ease-out; }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-4px); }

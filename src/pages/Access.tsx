@@ -4,7 +4,7 @@ import { Card, Badge, Btn, Select, SlideOver } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
-  PageHeader, MetricCard, Field, FieldGroup, FilterBar, EntityAvatar,
+  PageHeader, MetricCard, Field, FieldGroup, FilterBar, EntityAvatar, EntityMark,
 } from "@/components/ui-patterns";
 import { useAccess, useAccessSummary } from "@/hooks/useAccess";
 import { useListControls } from "@/hooks/useListControls";
@@ -15,6 +15,7 @@ import { describeApiError, toApiError } from "@/lib/apiErrors";
 import { notify } from "@/lib/notify";
 import type { ApiAccessGrant, AccessFlag, AccessLevel } from "@/lib/apiTypes";
 import type { Tone } from "@/lib/tone";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * Access review — who can reach which PHI system, and what is wrong with it.
@@ -133,7 +134,7 @@ export default function Access() {
       sortValue: g => g.riskFlagCount,
       cell: g =>
         g.flags.length === 0 ? (
-          <span className="text-tertiary">—</span>
+          <span className="text-tertiary">{EMPTY_VALUE}</span>
         ) : (
           <div className="flex flex-wrap gap-1">
             {g.flags.map(f => (
@@ -225,7 +226,7 @@ export default function Access() {
           onRowClick={g => openGrant(g.id)}
           isRowActive={g => g.id === openId}
           searchPlaceholder="Search identity or system…"
-          emptyIcon="identity"
+          emptyIcon="identity" emptyArt="emptyAccess"
           emptyTitle="No access grants"
           emptyMessage="No grants were returned for the current filters."
           toolbar={
@@ -343,10 +344,10 @@ function AccessDrawer({
       {grant && (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <EntityAvatar
+            <EntityMark
+              art="identity"
               icon="identity"
               tone={grant.riskFlagCount > 2 ? "danger" : grant.riskFlagCount > 0 ? "warning" : "muted"}
-              size="lg"
             />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">

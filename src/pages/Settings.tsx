@@ -5,6 +5,7 @@ import { useOrganization } from "@/hooks/useGovernance";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
 import { getApiBaseUrl } from "@/lib/apiClient";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * Settings.
@@ -30,6 +31,7 @@ export default function Settings() {
   return (
     <div className="space-y-4">
       <PageHeader
+        art="control"
         title="Settings"
         description="Your session, your organisation, and the preferences this browser remembers."
       />
@@ -61,13 +63,13 @@ export default function Settings() {
       <Card className="p-4">
         <h3 className="mb-2 font-display text-heading-md text-primary">Session</h3>
         <FieldGroup>
-          <Field label="Signed in as" value={user?.email ?? "—"} />
-          <Field label="Role" value={user?.role ?? "—"} />
+          <Field label="Signed in as" value={user?.email ?? EMPTY_VALUE} />
+          <Field label="Role" value={user?.role ?? EMPTY_VALUE} />
           <Field
             label="Memberships"
             value={memberships.length
               ? memberships.map(m => m.organizationName).join(", ")
-              : "—"}
+              : EMPTY_VALUE}
           />
           <Field label="API" value={<span className="font-mono text-body-sm">{apiBase}</span>} />
         </FieldGroup>

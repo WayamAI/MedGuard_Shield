@@ -4,7 +4,7 @@ import { Card, Badge, Btn, SlideOver, ChartSkeleton } from "@/components/ui-bits
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
-  PageHeader, MetricCard, Field, FieldGroup, FilterBar, EntityAvatar,
+  PageHeader, MetricCard, Field, FieldGroup, FilterBar, EntityAvatar, EntityMark,
 } from "@/components/ui-patterns";
 import { useThreats, useThreatSummary, useThreat } from "@/hooks/useThreats";
 import { useListControls } from "@/hooks/useListControls";
@@ -165,7 +165,7 @@ export default function Threats() {
           <AppIcon name="threats" size="md" className="text-feedback-error" />
           <span className="text-body-md text-primary">
             <span className="font-semibold">Open critical:</span> {headline.title} on{" "}
-            {headline.assetName} — detected {age(headline.hoursSinceDetection)}, still{" "}
+            {headline.assetName}, detected {age(headline.hoursSinceDetection)}, still{" "}
             {STATUS_LABEL[headline.status].toLowerCase()}.
           </span>
           <div className="flex-1" />
@@ -192,7 +192,7 @@ export default function Threats() {
           onRowClick={t => openThreat(t.id)}
           isRowActive={t => t.id === openId}
           searchPlaceholder="Search threats or systems…"
-          emptyIcon="threats"
+          emptyIcon="threats" emptyArt="emptyThreats"
           emptyTitle="No threats detected"
           emptyMessage="Nothing matches the current filters."
           toolbar={
@@ -280,12 +280,19 @@ function ThreatDrawer({ id, onClose }: { id: number | null; onClose: () => void 
         ) : undefined
       }
     >
-      {detail.isLoading && <ChartSkeleton height={300} label="Loading threat" />}
+      {/*
+        Keyed off "no record yet and no error" rather than off isLoading, so
+        the three branches below are exhaustive and the panel can never render
+        empty. isLoading alone left a hole: between a failed attempt and its
+        retry the query is neither loading nor errored, and the drawer showed
+        nothing but its own title.
+      */}
+      {!t && !detail.isError && <ChartSkeleton height={300} label="Loading threat" />}
 
       {t && (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <EntityAvatar icon="threat" tone={SEVERITY_TONE[t.severity]} size="lg" />
+            <EntityMark art="threat" icon="threat" tone={SEVERITY_TONE[t.severity]} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone={SEVERITY_TONE[t.severity]}>{t.severity}</Badge>

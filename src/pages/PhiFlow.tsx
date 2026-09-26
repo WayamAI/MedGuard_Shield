@@ -5,7 +5,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { PhiSankey, type FlowNode, type FlowLink } from "@/components/PhiSankey";
 import { DataState } from "@/components/DataState";
 import { listAsQuery } from "@/components/DataTable";
-import { PageHeader, Field, FieldGroup, EntityAvatar } from "@/components/ui-patterns";
+import { PageHeader, Field, FieldGroup, EntityAvatar, EntityMark } from "@/components/ui-patterns";
 import { useDataFlows, useRawDataFlows } from "@/hooks/useDataFlows";
 import { notify } from "@/lib/notify";
 
@@ -110,7 +110,7 @@ export default function PhiFlow() {
    */
   const onExport = useCallback(() => {
     const svg = chartRef.current?.querySelector("svg");
-    if (!svg) { notify.error("Nothing to export yet — the map is still loading."); return; }
+    if (!svg) { notify.error("Nothing to export yet. The map is still loading."); return; }
     const clone = svg.cloneNode(true) as SVGElement;
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     const blob = new Blob([new XMLSerializer().serializeToString(clone)], {
@@ -204,6 +204,7 @@ export default function PhiFlow() {
             height={496}
             emptyTitle="No PHI flows recorded"
             emptyMessage="The API returned no data flows. If the backend was just set up, run the seed script."
+            emptyArt="emptyPhiFlow"
           >
             {() => (
               <div className="relative w-full overflow-x-auto" ref={chartRef}>
@@ -257,10 +258,10 @@ export default function PhiFlow() {
         {selected && (
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <EntityAvatar
+              <EntityMark
+                art="asset"
                 icon="asset"
                 tone={selected.status === "ok" ? "success" : selected.status === "warn" ? "warning" : "danger"}
-                size="lg"
               />
               <div>
                 <Badge tone={selected.status === "ok" ? "success" : selected.status === "warn" ? "warning" : "danger"}>

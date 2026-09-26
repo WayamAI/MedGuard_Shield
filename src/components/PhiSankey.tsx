@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 
 /**
  * PHI flow, drawn as a volume-weighted Sankey.
@@ -35,12 +35,35 @@ const TONE_STROKE: Record<FlowTone, string> = {
 
 const STAGE_LABELS = ["Ingress", "Core system", "Downstream systems", "External recipients"];
 
-// Geometry. Cards are wide enough to hold a label; the gutters hold the ribbons.
-const CARD_W = 158;
-const GUTTER = 104;
+/*
+ * Geometry. Cards are wide enough to hold a label; the gutters hold the
+ * ribbons.
+ *
+ * Sized so the full four-stage map fits inside the PHI Flow card at a desktop
+ * width without scrolling: 4 cards + 3 gutters + the right margin comes to
+ * 840, against roughly 850-880 of inner card width at 1440. The wrapper still
+ * scrolls, and still must — below about 1100 the map is wider than its column
+ * — but the common case no longer opens with its last column cut in half,
+ * which read as a broken chart rather than as a scrollable one.
+ */
+const CARD_W = 150;
+const GUTTER = 76;
 const H = 470;
 const NODE_GAP = 14;
 const TOP = 26;
+const RIGHT_MARGIN = 12;
+
+/**
+ * Width the folded-in volume figure will take, in user units.
+ *
+ * Estimated from the digit count rather than measured: the figure is rendered
+ * in tabular-ish digits at 9.5px, and the estimate only has to be good enough
+ * to keep the name's clip clear of it. Over-estimating trims a character that
+ * would have fitted; under-estimating puts the two back on top of each other,
+ * so it rounds up.
+ */
+const volumeWidth = (node: FlowNode) =>
+  (Number.isFinite(node.records) ? node.records : 0).toLocaleString().length * 5.6 + 6;
 
 export function PhiSankey({
   nodes,
@@ -52,6 +75,9 @@ export function PhiSankey({
   onSelect: (id: string) => void;
 }) {
   const [hoverId, setHoverId] = useState<string | null>(null);
+  // Clip ids must be unique per mounted chart: two PhiSankeys on one page
+  // sharing an id would make the second silently reuse the first's geometry.
+  const clipBase = useId();
 
   const layout = useMemo(() => {
     /* Real data arrives over the wire, so a stage may be absent, fractional or
@@ -122,7 +148,15 @@ export function PhiSankey({
       return { ...l, d };
     }).filter(Boolean) as (FlowLink & { d: string })[];
 
-    const width = stages * CARD_W + (stages - 1) * GUTTER;
+    /*
+     * A right margin, not just the cards.
+     *
+     * Without it the final column's right edge IS the viewBox edge, so the
+     * wrapper's scroll cut "Claims Clearinghouse API" exactly at its border
+     * and the map read as broken rather than as scrollable. The margin gives
+     * the last card somewhere to end.
+     */
+    const width = stages * CARD_W + (stages - 1) * GUTTER + RIGHT_MARGIN;
     return { box, ribbons, width };
   }, [nodes, links]);
 
@@ -198,7 +232,28 @@ export function PhiSankey({
             {/* status spine: a solid edge reads at any node height */}
             <rect width="3" height={h} rx="1.5" fill={stroke} />
 
-            <text x="11" y={h >= 40 ? 16 : h / 2 + 4} fill="var(--sem-text-primary)" fontSize="11.5" fontWeight="600">
+            {/*
+              The name is clipped rather than trusted to fit. SVG text does
+              not wrap or ellipsize, so on a short node "Radiology PACS
+              Archive" ran straight under the right-aligned volume figure and
+              the two were unreadable on top of each other. The clip is sized
+              to whatever the volume leaves behind, so the label degrades to a
+              cut word instead of a collision, and the full name is always in
+              the tooltip below.
+            */}
+            <clipPath id={`${clipBase}-${node.id}`}>
+              <rect
+                x="11"
+                y="0"
+                width={Math.max(0, (h >= 40 ? w - 20 : w - 20 - volumeWidth(node)) - 11)}
+                height={h}
+              />
+            </clipPath>
+            <text
+              clipPath={`url(#${clipBase}-${node.id})`}
+              x="11" y={h >= 40 ? 16 : h / 2 + 4}
+              fill="var(--sem-text-primary)" fontSize="11.5" fontWeight="600"
+            >
               {node.name}
             </text>
             {h >= 40 ? (

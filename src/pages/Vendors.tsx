@@ -5,7 +5,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
   PageHeader, MetricCard, RiskBadge, RiskScore, formatScore, Tabs, TabPanel, Field, FieldGroup,
-  FilterBar, EntityAvatar, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
+  FilterBar, EntityAvatar, EntityMark, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
   BAA_TONE, BAA_LABEL,
 } from "@/components/ui-patterns";
 import { useVendors, useVendor } from "@/hooks/useVendors";
@@ -177,6 +177,7 @@ export default function Vendors() {
           label="Assessment overdue"
           value={stats?.overdue}
           icon="clock"
+          art="clock"
           tone="warning"
           emphasis={Boolean(stats?.overdue)}
         />
@@ -200,7 +201,7 @@ export default function Vendors() {
             {worstGap.phiVolume.toLocaleString()} PHI records across {worstGap.assetCount} system
             {worstGap.assetCount === 1 ? "" : "s"} with a{" "}
             <strong>{worstGap.baaStatus.toLowerCase()}</strong> business associate agreement
-            {worstGap.lastAssessedAt === null && " — never assessed"}.
+            {worstGap.lastAssessedAt === null && ", never assessed"}.
           </span>
           <div className="flex-1" />
           <Btn variant="outline" onClick={() => openVendor(worstGap.id)}>View details</Btn>
@@ -227,7 +228,7 @@ export default function Vendors() {
           isRowActive={v => v.id === openId}
           initialSort={{ columnId: "score", direction: "desc" }}
           searchPlaceholder="Search vendors…"
-          emptyIcon="facility"
+          emptyIcon="facility" emptyArt="emptyVendors"
           emptyTitle="No vendors recorded"
           emptyMessage="Import a vendor CSV from Data Import, or create one directly."
           toolbar={
@@ -329,9 +330,16 @@ function VendorDrawer({ id, onClose, canWrite }: { id: number | null; onClose: (
         ) : undefined
       }
     >
-      {detail.isLoading && <ChartSkeleton height={340} label="Loading vendor" />}
+      {/*
+        Keyed off "no record yet and no error" rather than off isLoading, so
+        the three branches below are exhaustive and the panel can never render
+        empty. isLoading alone left a hole: between a failed attempt and its
+        retry the query is neither loading nor errored, and the drawer showed
+        nothing but its own title.
+      */}
+      {!v && !detail.isError && <ChartSkeleton height={340} label="Loading vendor" />}
 
-      {!detail.isLoading && detail.isError && (
+      {!v && detail.isError && (
         <ErrorState
           title={describeApiError(detail.error).title}
           message={describeApiError(detail.error).message}
@@ -343,7 +351,7 @@ function VendorDrawer({ id, onClose, canWrite }: { id: number | null; onClose: (
       {v && (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <EntityAvatar icon="vendor" tone={v.risk ? BAND_TONE[v.risk.band] : "muted"} size="lg" />
+            <EntityMark art="vendor" icon="vendor" tone={v.risk ? BAND_TONE[v.risk.band] : "muted"} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone={BAA_TONE[v.baaStatus]}>BAA {BAA_LABEL[v.baaStatus]}</Badge>
@@ -359,7 +367,7 @@ function VendorDrawer({ id, onClose, canWrite }: { id: number | null; onClose: (
           {!v.baaCompliant && (
             <div className="rounded-md border border-feedback-error-stroke bg-feedback-error-background px-3 py-2 text-body-sm text-feedback-error">
               Under HIPAA, a vendor processing PHI without a signed BAA is a compliance breach in
-              itself — independent of whether any data has been exposed.
+              itself, independent of whether any data has been exposed.
             </div>
           )}
 

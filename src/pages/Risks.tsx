@@ -6,9 +6,10 @@ import { RiskMatrix } from "@/components/RiskMatrix";
 import { DataState } from "@/components/DataState";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
-  PageHeader, MetricCard, RiskBadge, RiskScore, formatScore, Field, FieldGroup, FilterBar,
-  EntityAvatar, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
+  PageHeader, MetricCard, RiskBadge, RiskScore, formatScore, Field, FieldGroup, FilterBar, RiskBandScale,
+  EntityAvatar, EntityMark, MiniBar, BAND_TONE, BAND_ORDER, bandRank,
 } from "@/components/ui-patterns";
+import { BAND_TO_3D } from "@/lib/icons3d";
 import { useRisks, useRiskMatrix } from "@/hooks/useRisks";
 import { useListControls } from "@/hooks/useListControls";
 import { useRecomputeAssetRisk } from "@/hooks/useMutations";
@@ -144,18 +145,18 @@ export default function Risks() {
           emphasis={Boolean(counts.severe)}
         />
         <MetricCard label="High" value={risks.data ? counts.high : undefined} icon="activity" tone="warning" />
-        <MetricCard label="Highest score" value={risks.data ? counts.peak : undefined} icon="chart" />
+        <MetricCard label="Highest score" value={risks.data ? counts.peak : undefined} icon="chart" art="chart" />
       </div>
 
       <Card className="p-4">
         <SectionHeader
           title="Risk Matrix"
-          subtitle="Every scored asset plotted by likelihood and impact. Colour is the band the API derived — select a chip to open its record."
+          subtitle="Every scored asset plotted by likelihood and impact. Colour is the band the API derived. Select a chip to open its record."
         />
         <DataState
           query={listAsQuery(matrix)}
           height={420}
-          emptyIcon="risks"
+          emptyIcon="risks" emptyArt="emptyRisks"
           emptyTitle="No scored assets"
           emptyMessage="No risk rows were returned. Import assets and recompute their risk to populate this."
         >
@@ -207,6 +208,9 @@ export default function Risks() {
         />
         <div className="mt-4 border-t border-muted pt-3">
           <MiniBar segments={BAND_ORDER.map(b => ({ value: bandCounts[b] ?? 0, tone: BAND_TONE[b], label: b }))} />
+          <div className="mt-3">
+            <RiskBandScale counts={bandCounts as Record<RiskBand, number>} />
+          </div>
         </div>
       </Card>
 
@@ -258,7 +262,7 @@ function RiskDrawer({
       {risk && (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <EntityAvatar icon="risk" tone={BAND_TONE[risk.band]} size="lg" />
+            <EntityMark art={BAND_TO_3D[risk.band]} icon="risk" tone={BAND_TONE[risk.band]} />
             <div>
               <div className="flex items-baseline gap-3">
                 <RiskScore score={risk.score} className="font-display text-display-metric tabular text-primary" />
@@ -285,7 +289,7 @@ function RiskDrawer({
 
           <p className="rounded-md border border-default bg-raised-2 px-3 py-2 text-caption text-tertiary">
             The grid position shows likelihood × impact only. The band also weighs exposure and
-            control gap, so a chip's colour will often differ from its cell — that is the engine
+            control gap, so a chip's colour will often differ from its cell. That is the engine
             being more precise than two axes can show, not a display error.
           </p>
         </div>

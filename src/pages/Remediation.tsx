@@ -6,7 +6,7 @@ import {
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
-  PageHeader, MetricCard, Field, FieldGroup, FilterBar, EntityAvatar,
+  PageHeader, MetricCard, Field, FieldGroup, FilterBar, EntityAvatar, EntityMark,
 } from "@/components/ui-patterns";
 import {
   useRemediations, useRemediation, useRemediationSummary, useOrgMembers,
@@ -21,6 +21,7 @@ import type {
   RemediationSource, RemediationSubject,
 } from "@/lib/apiTypes";
 import type { Tone } from "@/lib/tone";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * Remediation — findings, owners and what was done about them.
@@ -100,7 +101,7 @@ const NEXT_STATUSES: Record<RemediationStatus, RemediationStatus[]> = {
 };
 
 const fmtDate = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—";
+  iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : EMPTY_VALUE;
 
 export default function Remediation() {
   const canWrite = useCanWrite();
@@ -254,7 +255,7 @@ export default function Remediation() {
           onRowClick={r => openItem(r.id)}
           isRowActive={r => r.id === openId}
           searchPlaceholder="Search findings…"
-          emptyIcon="remediation"
+          emptyIcon="remediation" emptyArt="emptyRemediation"
           emptyTitle="No findings recorded"
           emptyMessage={
             canWrite
@@ -343,12 +344,19 @@ function RemediationDrawer({
         ) : undefined
       }
     >
-      {detail.isLoading && <ChartSkeleton height={320} label="Loading finding" />}
+      {/*
+        Keyed off "no record yet and no error" rather than off isLoading, so
+        the three branches below are exhaustive and the panel can never render
+        empty. isLoading alone left a hole: between a failed attempt and its
+        retry the query is neither loading nor errored, and the drawer showed
+        nothing but its own title.
+      */}
+      {!r && !detail.isError && <ChartSkeleton height={320} label="Loading finding" />}
 
       {r && (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <EntityAvatar icon="remediation" tone={SEVERITY_TONE[r.severity]} size="lg" />
+            <EntityMark art="remediation" icon="remediation" tone={SEVERITY_TONE[r.severity]} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge tone={SEVERITY_TONE[r.severity]}>{r.severity}</Badge>
@@ -407,13 +415,13 @@ function RemediationDrawer({
           </FieldGroup>
 
           {/*
-            The API is explicit that closing a finding records a decision — it
+            The API is explicit that closing a finding records a decision. It
             does not change the estate. Saying so here stops the drawer
             implying the underlying problem went away.
           */}
           <p className="rounded-md border border-default bg-raised-2 px-3 py-2 text-caption text-tertiary">
             Closing a finding records who decided what, and when. It does not
-            alter the asset, control or threat it points at — change those
+            alter the asset, control or threat it points at. Change those
             directly if the estate itself needs to move.
           </p>
 

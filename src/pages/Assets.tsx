@@ -5,7 +5,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
 import {
   PageHeader, MetricCard, RiskBadge, RiskScore, formatScore, Tabs, TabPanel, Field, FieldGroup,
-  FilterBar, EntityAvatar, BAND_TONE, bandRank, SENSITIVITY_TONE,
+  FilterBar, EntityAvatar, EntityMark, BAND_TONE, bandRank, SENSITIVITY_TONE,
 } from "@/components/ui-patterns";
 import { DomainIcon } from "@/components/DomainIcon";
 import { useAssets, useAsset } from "@/hooks/useAssets";
@@ -182,7 +182,7 @@ export default function Assets() {
       />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label="Assets" value={stats?.total} icon="database" />
+        <MetricCard label="Assets" value={stats?.total} icon="database" art="kpiAssets" />
         <MetricCard
           label="PHI records"
           value={stats ? stats.phiRecords.toLocaleString() : undefined}
@@ -193,6 +193,7 @@ export default function Assets() {
           label="Unencrypted"
           value={stats?.unencrypted}
           icon="unlocked"
+          art="kpiUnencrypted"
           tone="danger"
           emphasis={Boolean(stats?.unencrypted)}
           sub={stats ? `${stats.noMfa} without MFA` : undefined}
@@ -227,7 +228,7 @@ export default function Assets() {
           isRowActive={a => a.id === openId}
           initialSort={{ columnId: "score", direction: "desc" }}
           searchPlaceholder="Search assets…"
-          emptyIcon="database"
+          emptyIcon="database" emptyArt="emptyAssets"
           emptyTitle="No assets yet"
           emptyMessage="Import an asset CSV from Data Import, or create one directly."
           toolbar={
@@ -296,9 +297,16 @@ function AssetDrawer({ id, onClose, canWrite }: { id: number | null; onClose: ()
         ) : undefined
       }
     >
-      {detail.isLoading && <ChartSkeleton height={340} label="Loading asset" />}
+      {/*
+        Keyed off "no record yet and no error" rather than off isLoading, so
+        the three branches below are exhaustive and the panel can never render
+        empty. isLoading alone left a hole: between a failed attempt and its
+        retry the query is neither loading nor errored, and the drawer showed
+        nothing but its own title.
+      */}
+      {!a && !detail.isError && <ChartSkeleton height={340} label="Loading asset" />}
 
-      {!detail.isLoading && detail.isError && (
+      {!a && detail.isError && (
         <ErrorState
           title={describeApiError(detail.error).title}
           message={describeApiError(detail.error).message}
@@ -310,7 +318,7 @@ function AssetDrawer({ id, onClose, canWrite }: { id: number | null; onClose: ()
       {a && (
         <div className="space-y-4">
           <div className="flex items-start gap-3">
-            <EntityAvatar icon="asset" tone={a.risk ? BAND_TONE[a.risk.band] : "muted"} size="lg" />
+            <EntityMark art="asset" icon="asset" tone={a.risk ? BAND_TONE[a.risk.band] : "muted"} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <RiskBadge band={a.risk?.band ?? null} />

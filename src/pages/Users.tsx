@@ -5,6 +5,7 @@ import { PageHeader, MetricCard, FilterBar, EntityAvatar } from "@/components/ui
 import { useIdentities, useOrgMembers, useOrganization } from "@/hooks/useGovernance";
 import { useListControls } from "@/hooks/useListControls";
 import type { ApiIdentity } from "@/lib/apiTypes";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * People and service accounts known to the organisation.
@@ -63,7 +64,7 @@ export default function Users() {
       header: "Department",
       hideBelow: "md",
       sortValue: i => i.department ?? null,
-      cell: i => i.department ?? <span className="text-tertiary">—</span>,
+      cell: i => i.department ?? <span className="text-tertiary">{EMPTY_VALUE}</span>,
     },
     {
       id: "grants",

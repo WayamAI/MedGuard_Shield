@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, within, fireEvent } from "@testing-library/react";
 import { DataTable, withRows, type Column } from "@/components/DataTable";
 import type { ApiQueryResult } from "@/hooks/useApiQuery";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * DataTable is the one table in the product, so a defect here is a defect on
@@ -28,7 +29,7 @@ const columns: Column<Row>[] = [
   {
     id: "score", header: "Score", align: "right",
     sortValue: r => r.score,
-    cell: r => <span>{r.score ?? "—"}</span>,
+    cell: r => <span>{r.score ?? EMPTY_VALUE}</span>,
   },
 ];
 

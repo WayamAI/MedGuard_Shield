@@ -4,6 +4,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { IconButton } from "@/components/IconButton";
 import { Btn, Input, EmptyState } from "@/components/ui-bits";
 import type { IconName } from "@/lib/icons";
+import type { Icon3DName } from "@/lib/icons3d";
 import { DataState } from "@/components/DataState";
 import type { ApiQueryResult, ApiListResult } from "@/hooks/useApiQuery";
 import type { PageMeta } from "@/lib/apiClient";
@@ -118,6 +119,15 @@ export type DataTableProps<T> = {
   emptyTitle?: string;
   /** Mark for the empty state; defaults to the inventory glyph. */
   emptyIcon?: IconName;
+  /**
+   * 3D render for the empty state, where the page has one.
+   *
+   * Only the "nothing has been recorded" state gets artwork. The
+   * no-search-match state below stays a plain glyph on purpose: it is a
+   * transient consequence of what the viewer just typed, and dressing it up
+   * would read as a bigger deal than a filter that matched nothing.
+   */
+  emptyArt?: Icon3DName;
   emptyMessage?: string;
   /** Empty state shown when a filter/search excludes everything. */
   noMatchTitle?: string;
@@ -148,6 +158,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
         height={props.height ?? 420}
         emptyTitle={props.emptyTitle ?? "Nothing to show yet"}
         emptyIcon={props.emptyIcon}
+        emptyArt={props.emptyArt}
         emptyMessage={props.emptyMessage ?? "No records have been recorded for this view."}
       >
         {data => <DataTableInner {...rest} rows={data} />}
@@ -322,7 +333,7 @@ function DataTableInner<T>({
                 <div
                   role="menu"
                   aria-label="Toggle columns"
-                  className="absolute right-0 top-full z-30 mt-1 min-w-[190px] overflow-hidden rounded-md border border-default bg-raised py-1 shadow-panel"
+                  className="absolute right-0 top-full z-30 mt-1 min-w-[190px] overflow-hidden rounded-control border border-active bg-raised py-1"
                 >
                   {columns.map(c => {
                     const on = !hidden.has(c.id);
@@ -344,7 +355,7 @@ function DataTableInner<T>({
                         }
                         className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-body-sm text-secondary transition-colors hover:bg-action hover:text-primary"
                       >
-                        <span className={cn("flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border", on ? "border-transparent bg-action-primary text-on-color" : "border-default")}>
+                        <span className={cn("flex h-3.5 w-3.5 items-center justify-center rounded-sm border", on ? "border-transparent bg-action-primary text-on-color" : "border-default")}>
                           {on && <AppIcon name="check" size="xs" />}
                         </span>
                         {c.header}
@@ -431,10 +442,25 @@ function DataTableInner<T>({
                       tabIndex={clickable ? 0 : undefined}
                       role={clickable ? "button" : undefined}
                       aria-current={activeRow ? "true" : undefined}
+                      /*
+                       * The separator is a default, not a constant: it fades
+                       * out on hover and on the active row.
+                       *
+                       * The rule under a hovered row belongs to that row, and
+                       * once the row lifts to its own surface the rule reads as
+                       * a seam cutting it off from its own bottom edge. Drop it
+                       * and the hovered row becomes one continuous block, which
+                       * is what makes a dense table feel navigable rather than
+                       * ruled. `transition-colors` carries the border colour,
+                       * so it dissolves over 180ms instead of snapping.
+                       *
+                       * border-transparent, not border-0: removing the border
+                       * removes 1px of height and the row below jumps.
+                       */
                       className={cn(
                         "border-b border-muted transition-colors last:border-0",
-                        clickable && "cursor-pointer hover:bg-raised-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand",
-                        activeRow && "bg-raised-2",
+                        clickable && "cursor-pointer hover:border-transparent hover:bg-raised-2 focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand",
+                        activeRow && "border-transparent bg-raised-2",
                       )}
                     >
                       {visible.map(c => (

@@ -1,0 +1,896 @@
+{
+  "generatedFrom": "3D Icons",
+  "icons": [
+    {
+      "slug": "asset",
+      "source": "Stacked_storage_drums_product_icon_2K_20260925120510.jpg",
+      "coverage": 0.27928321678321677,
+      "written": [
+        {
+          "file": "asset-96.webp",
+          "bytes": 3798
+        },
+        {
+          "file": "asset-320.webp",
+          "bytes": 15782
+        },
+        {
+          "file": "asset-96.png",
+          "bytes": 17726
+        }
+      ]
+    },
+    {
+      "slug": "phi",
+      "source": "Ribbon_of_record_cards_throughput_2K_20260925120138.jpg",
+      "coverage": 0.3142988416883681,
+      "written": [
+        {
+          "file": "phi-96.webp",
+          "bytes": 3212
+        },
+        {
+          "file": "phi-320.webp",
+          "bytes": 12476
+        },
+        {
+          "file": "phi-96.png",
+          "bytes": 10073
+        }
+      ]
+    },
+    {
+      "slug": "dataFlow",
+      "source": "Dataflow_3D_product_icon_connect…_2K_20260925120506.jpg",
+      "coverage": 0.34912109375,
+      "written": [
+        {
+          "file": "dataFlow-96.webp",
+          "bytes": 3604
+        },
+        {
+          "file": "dataFlow-320.webp",
+          "bytes": 12314
+        },
+        {
+          "file": "dataFlow-96.png",
+          "bytes": 10048
+        }
+      ]
+    },
+    {
+      "slug": "risk",
+      "source": "3D_orange_gauge_with_needle_2K_20260925120504.jpg",
+      "coverage": 0.34912109375,
+      "written": [
+        {
+          "file": "risk-96.webp",
+          "bytes": 4048
+        },
+        {
+          "file": "risk-320.webp",
+          "bytes": 15200
+        },
+        {
+          "file": "risk-96.png",
+          "bytes": 16392
+        }
+      ]
+    },
+    {
+      "slug": "vendor",
+      "source": "3D_orange_office_block_icon_2K_20260925120450.jpg",
+      "coverage": 0.4349483913845486,
+      "written": [
+        {
+          "file": "vendor-96.webp",
+          "bytes": 4540
+        },
+        {
+          "file": "vendor-320.webp",
+          "bytes": 15684
+        },
+        {
+          "file": "vendor-96.png",
+          "bytes": 19001
+        }
+      ]
+    },
+    {
+      "slug": "identity",
+      "source": "Faceless_person_bust_3D_icon_2K_20260925120448.jpg",
+      "coverage": 0.5035807291666666,
+      "written": [
+        {
+          "file": "identity-96.webp",
+          "bytes": 3352
+        },
+        {
+          "file": "identity-320.webp",
+          "bytes": 11470
+        },
+        {
+          "file": "identity-96.png",
+          "bytes": 12380
+        }
+      ]
+    },
+    {
+      "slug": "threat",
+      "source": "Orange_radar_scope_dish_2K_20260925120326.jpg",
+      "coverage": 0.4459635416666667,
+      "written": [
+        {
+          "file": "threat-96.webp",
+          "bytes": 4542
+        },
+        {
+          "file": "threat-320.webp",
+          "bytes": 19288
+        },
+        {
+          "file": "threat-96.png",
+          "bytes": 17304
+        }
+      ]
+    },
+    {
+      "slug": "control",
+      "source": "3D_closed_padlock_product_icon_2K_20260925120451.jpg",
+      "coverage": 0.3623453776041667,
+      "written": [
+        {
+          "file": "control-96.webp",
+          "bytes": 2658
+        },
+        {
+          "file": "control-320.webp",
+          "bytes": 8028
+        },
+        {
+          "file": "control-96.png",
+          "bytes": 11646
+        }
+      ]
+    },
+    {
+      "slug": "remediation",
+      "source": "Orange_wrench_fixing_object_2K_20260925120502.jpg",
+      "coverage": 0.5022515190972222,
+      "written": [
+        {
+          "file": "remediation-96.webp",
+          "bytes": 3524
+        },
+        {
+          "file": "remediation-320.webp",
+          "bytes": 12768
+        },
+        {
+          "file": "remediation-96.png",
+          "bytes": 8024
+        }
+      ]
+    },
+    {
+      "slug": "audit",
+      "source": "3D_orange_ruled_slab_2K_20260925120224.jpg",
+      "coverage": 0.6381259494357638,
+      "written": [
+        {
+          "file": "audit-96.webp",
+          "bytes": 1568
+        },
+        {
+          "file": "audit-320.webp",
+          "bytes": 5300
+        },
+        {
+          "file": "audit-96.png",
+          "bytes": 15982
+        }
+      ]
+    },
+    {
+      "slug": "policy",
+      "source": "3D_product_icon_of_barrier_2K_20260925120105.jpg",
+      "coverage": 0.49275548696844995,
+      "written": [
+        {
+          "file": "policy-96.webp",
+          "bytes": 3394
+        },
+        {
+          "file": "policy-320.webp",
+          "bytes": 10814
+        },
+        {
+          "file": "policy-96.png",
+          "bytes": 10823
+        }
+      ]
+    },
+    {
+      "slug": "dashboard",
+      "source": "3D_dashboard_product_icon_layout_2K_20260925120444.jpg",
+      "coverage": 0.4251759847005208,
+      "written": [
+        {
+          "file": "dashboard-96.webp",
+          "bytes": 4230
+        },
+        {
+          "file": "dashboard-320.webp",
+          "bytes": 17056
+        },
+        {
+          "file": "dashboard-96.png",
+          "bytes": 15484
+        }
+      ]
+    },
+    {
+      "slug": "import",
+      "source": "Intake_tray_receiving_records_stack_2K_20260925120441.jpg",
+      "coverage": 0.5420328776041666,
+      "written": [
+        {
+          "file": "import-96.webp",
+          "bytes": 3452
+        },
+        {
+          "file": "import-320.webp",
+          "bytes": 16976
+        },
+        {
+          "file": "import-96.png",
+          "bytes": 13317
+        }
+      ]
+    },
+    {
+      "slug": "emptyAssets",
+      "source": "Open_storage_drum_2K_20260925120256.jpg",
+      "coverage": 0.2556491427951389,
+      "written": [
+        {
+          "file": "emptyAssets-96.webp",
+          "bytes": 2864
+        },
+        {
+          "file": "emptyAssets-320.webp",
+          "bytes": 9888
+        },
+        {
+          "file": "emptyAssets-96.png",
+          "bytes": 11937
+        }
+      ]
+    },
+    {
+      "slug": "emptyPhiFlow",
+      "source": "3D_product_icon_flow_channel_2K_20260925120305.jpg",
+      "coverage": 0.3984731038411458,
+      "written": [
+        {
+          "file": "emptyPhiFlow-96.webp",
+          "bytes": 4912
+        },
+        {
+          "file": "emptyPhiFlow-320.webp",
+          "bytes": 16298
+        },
+        {
+          "file": "emptyPhiFlow-96.png",
+          "bytes": 15117
+        }
+      ]
+    },
+    {
+      "slug": "emptyAccess",
+      "source": "Empty_badge_holder_on_lanyard_2K_20260925120128.jpg",
+      "coverage": 0.23795572916666666,
+      "written": [
+        {
+          "file": "emptyAccess-96.webp",
+          "bytes": 1960
+        },
+        {
+          "file": "emptyAccess-320.webp",
+          "bytes": 7058
+        },
+        {
+          "file": "emptyAccess-96.png",
+          "bytes": 8598
+        }
+      ]
+    },
+    {
+      "slug": "emptyVendors",
+      "source": "3D_orange_building_plot_icon_2K_20260925120221.jpg",
+      "coverage": 0.4848904079861111,
+      "written": [
+        {
+          "file": "emptyVendors-96.webp",
+          "bytes": 3118
+        },
+        {
+          "file": "emptyVendors-320.webp",
+          "bytes": 13268
+        },
+        {
+          "file": "emptyVendors-96.png",
+          "bytes": 9679
+        }
+      ]
+    },
+    {
+      "slug": "emptyThreats",
+      "source": "Orange_radar_scope_missing_contact_2K_20260925120011.jpg",
+      "coverage": 0.4690755208333333,
+      "written": [
+        {
+          "file": "emptyThreats-96.webp",
+          "bytes": 4706
+        },
+        {
+          "file": "emptyThreats-320.webp",
+          "bytes": 22562
+        },
+        {
+          "file": "emptyThreats-96.png",
+          "bytes": 16399
+        }
+      ]
+    },
+    {
+      "slug": "emptyRisks",
+      "source": "Orange_gauge_resting_at_zero_2K_20260925120252.jpg",
+      "coverage": 0.5576273600260416,
+      "written": [
+        {
+          "file": "emptyRisks-96.webp",
+          "bytes": 3748
+        },
+        {
+          "file": "emptyRisks-320.webp",
+          "bytes": 13204
+        },
+        {
+          "file": "emptyRisks-96.png",
+          "bytes": 13511
+        }
+      ]
+    },
+    {
+      "slug": "emptyRemediation",
+      "source": "Empty_tool_rail_with_clips_2K_20260925120118.jpg",
+      "coverage": 0.1890326605902778,
+      "written": [
+        {
+          "file": "emptyRemediation-96.webp",
+          "bytes": 2078
+        },
+        {
+          "file": "emptyRemediation-320.webp",
+          "bytes": 7412
+        },
+        {
+          "file": "emptyRemediation-96.png",
+          "bytes": 7725
+        }
+      ]
+    },
+    {
+      "slug": "emptyControls",
+      "source": "Orange_padlock_with_empty_hasp_2K_20260925120208.jpg",
+      "coverage": 0.3641764322916667,
+      "written": [
+        {
+          "file": "emptyControls-96.webp",
+          "bytes": 3170
+        },
+        {
+          "file": "emptyControls-320.webp",
+          "bytes": 10620
+        },
+        {
+          "file": "emptyControls-96.png",
+          "bytes": 8951
+        }
+      ]
+    },
+    {
+      "slug": "emptyAudit",
+      "source": "Orange_3D_page_slab_2K_20260925120456.jpg",
+      "coverage": 0.2722507052951389,
+      "written": [
+        {
+          "file": "emptyAudit-96.webp",
+          "bytes": 3662
+        },
+        {
+          "file": "emptyAudit-320.webp",
+          "bytes": 12640
+        },
+        {
+          "file": "emptyAudit-96.png",
+          "bytes": 14722
+        }
+      ]
+    },
+    {
+      "slug": "kpiAssets",
+      "source": "Orange_drum_among_graphite_drums_2K_20260925120208.jpg",
+      "coverage": 0.5399203830295138,
+      "written": [
+        {
+          "file": "kpiAssets-96.webp",
+          "bytes": 6336
+        },
+        {
+          "file": "kpiAssets-320.webp",
+          "bytes": 27972
+        },
+        {
+          "file": "kpiAssets-96.png",
+          "bytes": 12135
+        }
+      ]
+    },
+    {
+      "slug": "kpiCritical",
+      "source": "Orange_triangular_warning_icon_2K_20260925120130.jpg",
+      "coverage": 0.4996880425347222,
+      "written": [
+        {
+          "file": "kpiCritical-96.webp",
+          "bytes": 3292
+        },
+        {
+          "file": "kpiCritical-320.webp",
+          "bytes": 11808
+        },
+        {
+          "file": "kpiCritical-96.png",
+          "bytes": 12758
+        }
+      ]
+    },
+    {
+      "slug": "kpiUnencrypted",
+      "source": "Open_padlock_on_data_channel_2K_20260925120151.jpg",
+      "coverage": 0.49627685546875,
+      "written": [
+        {
+          "file": "kpiUnencrypted-96.webp",
+          "bytes": 4200
+        },
+        {
+          "file": "kpiUnencrypted-320.webp",
+          "bytes": 17096
+        },
+        {
+          "file": "kpiUnencrypted-96.png",
+          "bytes": 13486
+        }
+      ]
+    },
+    {
+      "slug": "bandExtreme",
+      "source": "Red_monolith_band_marker_2K_20260925120217.jpg",
+      "coverage": 0.24076334635416666,
+      "written": [
+        {
+          "file": "bandExtreme-96.webp",
+          "bytes": 1820
+        },
+        {
+          "file": "bandExtreme-320.webp",
+          "bytes": 5928
+        },
+        {
+          "file": "bandExtreme-96.png",
+          "bytes": 8287
+        }
+      ]
+    },
+    {
+      "slug": "bandCritical",
+      "source": "Red_band_marker_monolith_icon_2K_20260925120212.jpg",
+      "coverage": 0.31683349609375,
+      "written": [
+        {
+          "file": "bandCritical-96.webp",
+          "bytes": 1780
+        },
+        {
+          "file": "bandCritical-320.webp",
+          "bytes": 5116
+        },
+        {
+          "file": "bandCritical-96.png",
+          "bytes": 8838
+        }
+      ]
+    },
+    {
+      "slug": "bandHigh",
+      "source": "3D_band_marker_monolith_2K_20260925120148.jpg",
+      "coverage": 0.20952351888020834,
+      "written": [
+        {
+          "file": "bandHigh-96.webp",
+          "bytes": 1760
+        },
+        {
+          "file": "bandHigh-320.webp",
+          "bytes": 5596
+        },
+        {
+          "file": "bandHigh-96.png",
+          "bytes": 8030
+        }
+      ]
+    },
+    {
+      "slug": "bandModerate",
+      "source": "Orange_band_marker_monolith_2K_20260925120252.jpg",
+      "coverage": 0.3684658474392361,
+      "written": [
+        {
+          "file": "bandModerate-96.webp",
+          "bytes": 2256
+        },
+        {
+          "file": "bandModerate-320.webp",
+          "bytes": 7360
+        },
+        {
+          "file": "bandModerate-96.png",
+          "bytes": 11555
+        }
+      ]
+    },
+    {
+      "slug": "bandLow",
+      "source": "3D_band_marker_monolith_2K_20260925120226.jpg",
+      "coverage": 0.27862548828125,
+      "written": [
+        {
+          "file": "bandLow-96.webp",
+          "bytes": 2680
+        },
+        {
+          "file": "bandLow-320.webp",
+          "bytes": 8494
+        },
+        {
+          "file": "bandLow-96.png",
+          "bytes": 9998
+        }
+      ]
+    },
+    {
+      "slug": "success",
+      "source": "3D_closed_ring_with_core_2K_20260925120233.jpg",
+      "coverage": 0.63397216796875,
+      "written": [
+        {
+          "file": "success-96.webp",
+          "bytes": 3576
+        },
+        {
+          "file": "success-320.webp",
+          "bytes": 12612
+        },
+        {
+          "file": "success-96.png",
+          "bytes": 17347
+        }
+      ]
+    },
+    {
+      "slug": "warning",
+      "source": "Orange_triangular_warning_icon_2K_20260925120130.jpg",
+      "coverage": 0.4996880425347222,
+      "written": [
+        {
+          "file": "warning-96.webp",
+          "bytes": 3292
+        },
+        {
+          "file": "warning-320.webp",
+          "bytes": 11808
+        },
+        {
+          "file": "warning-96.png",
+          "bytes": 12758
+        }
+      ]
+    },
+    {
+      "slug": "info",
+      "source": "3D_marker_pin_icon_2K_20260925120156.jpg",
+      "coverage": 0.3016018337673611,
+      "written": [
+        {
+          "file": "info-96.webp",
+          "bytes": 2246
+        },
+        {
+          "file": "info-320.webp",
+          "bytes": 7918
+        },
+        {
+          "file": "info-96.png",
+          "bytes": 6549
+        }
+      ]
+    },
+    {
+      "slug": "loading",
+      "source": "Orange_arc_rotating_in_void_2K_20260925120115.jpg",
+      "coverage": 0.3711683485243056,
+      "written": [
+        {
+          "file": "loading-96.webp",
+          "bytes": 4318
+        },
+        {
+          "file": "loading-320.webp",
+          "bytes": 16428
+        },
+        {
+          "file": "loading-96.png",
+          "bytes": 16849
+        }
+      ]
+    },
+    {
+      "slug": "visible",
+      "source": "Aperture_iris_product_icon_2K_20260925120058.jpg",
+      "coverage": 0.4297383626302083,
+      "written": [
+        {
+          "file": "visible-96.webp",
+          "bytes": 4306
+        },
+        {
+          "file": "visible-320.webp",
+          "bytes": 17848
+        },
+        {
+          "file": "visible-96.png",
+          "bytes": 16118
+        }
+      ]
+    },
+    {
+      "slug": "hidden",
+      "source": "Closed_3D_aperture_iris_2K_20260925120051.jpg",
+      "coverage": 0.6606953938802084,
+      "written": [
+        {
+          "file": "hidden-96.webp",
+          "bytes": 6328
+        },
+        {
+          "file": "hidden-320.webp",
+          "bytes": 34034
+        },
+        {
+          "file": "hidden-96.png",
+          "bytes": 17065
+        }
+      ]
+    },
+    {
+      "slug": "clock",
+      "source": "Orange_clock_3D_product_icon_2K_20260925120053.jpg",
+      "coverage": 0.5585394965277778,
+      "written": [
+        {
+          "file": "clock-96.webp",
+          "bytes": 3948
+        },
+        {
+          "file": "clock-320.webp",
+          "bytes": 13996
+        },
+        {
+          "file": "clock-96.png",
+          "bytes": 14845
+        }
+      ]
+    },
+    {
+      "slug": "database",
+      "source": "Cylinder_stack_with_graphite_hoops_2K_20260925120011.jpg",
+      "coverage": 0.4474216037326389,
+      "written": [
+        {
+          "file": "database-96.webp",
+          "bytes": 3776
+        },
+        {
+          "file": "database-320.webp",
+          "bytes": 13814
+        },
+        {
+          "file": "database-96.png",
+          "bytes": 17383
+        }
+      ]
+    },
+    {
+      "slug": "server",
+      "source": "3D_server_rack_block_icon_2K_20260925120055.jpg",
+      "coverage": 0.4961344401041667,
+      "written": [
+        {
+          "file": "server-96.webp",
+          "bytes": 3308
+        },
+        {
+          "file": "server-320.webp",
+          "bytes": 16636
+        },
+        {
+          "file": "server-96.png",
+          "bytes": 19364
+        }
+      ]
+    },
+    {
+      "slug": "network",
+      "source": "3D_network_node_icon_2K_20260925120016.jpg",
+      "coverage": 0.4094712999131944,
+      "written": [
+        {
+          "file": "network-96.webp",
+          "bytes": 3956
+        },
+        {
+          "file": "network-320.webp",
+          "bytes": 15868
+        },
+        {
+          "file": "network-96.png",
+          "bytes": 17065
+        }
+      ]
+    },
+    {
+      "slug": "chart",
+      "source": "3D_orange_stair_product_icon_2K_20260925120009.jpg",
+      "coverage": 0.3493448893229167,
+      "written": [
+        {
+          "file": "chart-96.webp",
+          "bytes": 3322
+        },
+        {
+          "file": "chart-320.webp",
+          "bytes": 10268
+        },
+        {
+          "file": "chart-96.png",
+          "bytes": 8595
+        }
+      ]
+    },
+    {
+      "slug": "intelligence",
+      "source": "3D_faceted_orange_ember_crystal_2K_20260925120047.jpg",
+      "coverage": 0.5297987196180556,
+      "written": [
+        {
+          "file": "intelligence-96.webp",
+          "bytes": 5608
+        },
+        {
+          "file": "intelligence-320.webp",
+          "bytes": 27640
+        },
+        {
+          "file": "intelligence-96.png",
+          "bytes": 16396
+        }
+      ]
+    },
+    {
+      "slug": "model",
+      "source": "Graphite_head_with_orange_visor_2K_20260925120017.jpg",
+      "coverage": 0.3525933159722222,
+      "written": [
+        {
+          "file": "model-96.webp",
+          "bytes": 4002
+        },
+        {
+          "file": "model-320.webp",
+          "bytes": 14774
+        },
+        {
+          "file": "model-96.png",
+          "bytes": 12585
+        }
+      ]
+    },
+    {
+      "slug": "notFound",
+      "source": "3D_orange_radar_scope_rendering_2K_20260925120245.jpg",
+      "coverage": 0.460205078125,
+      "written": [
+        {
+          "file": "notFound-96.webp",
+          "bytes": 4840
+        },
+        {
+          "file": "notFound-320.webp",
+          "bytes": 21756
+        },
+        {
+          "file": "notFound-96.png",
+          "bytes": 18630
+        }
+      ]
+    },
+    {
+      "slug": "sessionExpired",
+      "source": "Padlock_closing_on_door_plate_2K_20260925120036.jpg",
+      "coverage": 0.3912506103515625,
+      "written": [
+        {
+          "file": "sessionExpired-96.webp",
+          "bytes": 2632
+        },
+        {
+          "file": "sessionExpired-320.webp",
+          "bytes": 9410
+        },
+        {
+          "file": "sessionExpired-96.png",
+          "bytes": 12487
+        }
+      ]
+    },
+    {
+      "slug": "commandMark",
+      "source": "3D_orange_ribbon_eye_icon_2K_20260925120002.jpg",
+      "coverage": 0.4222479926215278,
+      "written": [
+        {
+          "file": "commandMark-96.webp",
+          "bytes": 3602
+        },
+        {
+          "file": "commandMark-320.webp",
+          "bytes": 13118
+        },
+        {
+          "file": "commandMark-96.png",
+          "bytes": 14403
+        }
+      ]
+    },
+    {
+      "slug": "loginBg",
+      "source": "Orange_aperture_in_machine_room_2K_20260925120043.jpg",
+      "written": [
+        {
+          "file": "loginBg.webp",
+          "bytes": 71752
+        }
+      ]
+    }
+  ],
+  "unusedSources": [
+    "3D_closed_ring_with_core_2K_20260925120236.jpg",
+    "3D_marker_pin_icon_2K_20260925120200.jpg",
+    "3D_network_node_icon_2K_20260925120024.jpg",
+    "3D_product_icon_of_barrier_2K_20260925120110.jpg",
+    "Stacked_storage_drums_product_icon_2K_20260925120512.jpg"
+  ]
+}

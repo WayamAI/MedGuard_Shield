@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { describeApiError } from "@/lib/apiErrors";
 import type { ApiQueryResult } from "@/hooks/useApiQuery";
 import type { IconName } from "@/lib/icons";
+import type { Icon3DName } from "@/lib/icons3d";
 import { AppIcon } from "@/components/AppIcon";
 import { ChartSkeleton, ErrorState, EmptyState } from "@/components/ui-bits";
 
@@ -47,6 +48,14 @@ export type DataStateProps<T> = {
    * the page's own icon.
    */
   emptyIcon?: IconName;
+  /**
+   * The 3D render to show instead of the glyph, where one fits the page.
+   *
+   * Empty states are the surface with the most room and the least competing
+   * content, so they carry the artwork. `emptyIcon` stays the fallback: if the
+   * asset 404s the state still renders, just in line art.
+   */
+  emptyArt?: Icon3DName;
   /** Match the skeleton to the real content's height so nothing jumps. */
   height?: number;
   skeleton?: ReactNode;
@@ -66,6 +75,7 @@ export function DataState<T>({
   emptyTitle = "No data yet",
   emptyMessage = "Nothing has been recorded for this view. If the backend was just set up, run the seed script.",
   emptyIcon = "database",
+  emptyArt,
   height = 470,
   skeleton,
 }: DataStateProps<T>) {
@@ -85,7 +95,7 @@ export function DataState<T>({
    */
   if (error?.isAuthError) {
     const { title, message } = describeApiError(error);
-    return <ErrorState title={title} message={message} height={height} />;
+    return <ErrorState title={title} message={message} height={height} art="sessionExpired" />;
   }
 
   // Failed with nothing cached to fall back on.
@@ -99,7 +109,15 @@ export function DataState<T>({
   }
 
   if (isEmpty(data)) {
-    return <EmptyState icon={emptyIcon} title={emptyTitle} message={emptyMessage} height={height} />;
+    return (
+      <EmptyState
+        icon={emptyIcon}
+        art={emptyArt}
+        title={emptyTitle}
+        message={emptyMessage}
+        height={height}
+      />
+    );
   }
 
   // Success — possibly stale, if the backend vanished after we loaded.

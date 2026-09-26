@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Card, Badge, Btn, Input, Select, Textarea, Modal, SlideOver } from "@/components/ui-bits";
 import { AppIcon } from "@/components/AppIcon";
 import { DataTable, listAsQuery, type Column } from "@/components/DataTable";
-import { PageHeader, FilterBar, EntityAvatar, Field, FieldGroup } from "@/components/ui-patterns";
+import { PageHeader, MetricCard, FilterBar, EntityAvatar, EntityMark, Field, FieldGroup } from "@/components/ui-patterns";
 import {
   usePolicies, usePolicy, useCreatePolicy, useUpdatePolicy,
   type PolicyWriteInput,
@@ -14,6 +14,7 @@ import { describeApiError, toApiError } from "@/lib/apiErrors";
 import { notify } from "@/lib/notify";
 import type { ApiPolicy, PolicyStatus } from "@/lib/apiTypes";
 import type { Tone } from "@/lib/tone";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /** Written policy, its owner, and when it is next due for review. */
 
@@ -34,7 +35,7 @@ const STATUS_LABEL: Record<PolicyStatus, string> = {
 const STATUSES: PolicyStatus[] = ["ACTIVE", "DRAFT", "UNDER_REVIEW", "ARCHIVED"];
 
 const fmtDate = (iso: string | null) =>
-  iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "—";
+  iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : EMPTY_VALUE;
 
 /** An ISO instant as the yyyy-mm-dd a date input wants. */
 const toDateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : "");
@@ -43,6 +44,26 @@ export default function Policies() {
   const isAdmin = useIsAdmin();
   const controls = useListControls<{ status?: PolicyStatus }>({ status: undefined });
   const list = usePolicies(controls.params);
+
+  /*
+   * Unfiltered, for the same reason Controls is: these tiles describe the
+   * policy set, and narrowing the table below must not redraw them.
+   */
+  const estate = usePolicies({ pageSize: 200 });
+  const posture = useMemo(() => {
+    const rows = estate.data;
+    if (!rows) return null;
+    const by = (st: PolicyStatus) => rows.filter(p => p.status === st).length;
+    return {
+      total: estate.meta?.total ?? rows.length,
+      active: by("ACTIVE"),
+      draft: by("DRAFT"),
+      underReview: by("UNDER_REVIEW"),
+      archived: by("ARCHIVED"),
+      overdue: rows.filter(p => p.reviewOverdue).length,
+      unowned: rows.filter(p => !p.owner).length,
+    };
+  }, [estate.data, estate.meta]);
 
   const [params, setParams] = useSearchParams();
   const openId = params.get("open") ? Number(params.get("open")) : null;
@@ -101,7 +122,8 @@ export default function Policies() {
   return (
     <div className="space-y-4">
       <PageHeader
-        icon="audit"
+        art="policy"
+        fallbackIcon="audit"
         title="Policies"
         description="Written policy, who owns it, and when it is next due for review."
         actions={
@@ -122,6 +144,37 @@ export default function Policies() {
         }
       />
 
+      <section aria-label="Policy posture" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          label="Policies recorded"
+          value={posture?.total}
+          icon="document"
+          sub={posture ? `${posture.archived} archived` : undefined}
+        />
+        <MetricCard
+          label="Active"
+          value={posture?.active}
+          icon="check"
+          tone="success"
+          sub={posture ? `${posture.draft} still in draft` : undefined}
+        />
+        <MetricCard
+          label="Under review"
+          value={posture?.underReview}
+          icon="history"
+          tone="info"
+          sub="being revised now"
+        />
+        <MetricCard
+          label="Review overdue"
+          value={posture?.overdue}
+          icon="warning"
+          tone="danger"
+          emphasis={Boolean(posture?.overdue)}
+          sub={posture ? `${posture.unowned} with no owner` : undefined}
+        />
+      </section>
+
       <Card className="p-4">
         <DataTable
           label="Policies"
@@ -141,7 +194,7 @@ export default function Policies() {
           onRowClick={p => openPolicy(p.id)}
           isRowActive={p => p.id === openId}
           searchPlaceholder="Search policies…"
-          emptyIcon="document"
+          emptyIcon="document" emptyArt="policy"
           emptyTitle="No policies recorded"
           emptyMessage={
             isAdmin
@@ -226,9 +279,12 @@ function PolicyDrawer({ id, onClose, isAdmin }: {
     >
       {p && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Badge>
-            {p.reviewOverdue && <Badge tone="warning">Review overdue</Badge>}
+          <div className="flex items-start gap-3">
+            <EntityMark art="policy" icon="audit" tone={STATUS_TONE[p.status]} />
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 pt-1">
+              <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Badge>
+              {p.reviewOverdue && <Badge tone="warning">Review overdue</Badge>}
+            </div>
           </div>
 
           <p className="text-body-sm text-secondary">{p.description}</p>
@@ -240,7 +296,7 @@ function PolicyDrawer({ id, onClose, isAdmin }: {
               value={
                 p.evidenceRef
                   ? <span className="break-all font-mono text-body-sm">{p.evidenceRef}</span>
-                  : "—"
+                  : EMPTY_VALUE
               }
             />
             <Field

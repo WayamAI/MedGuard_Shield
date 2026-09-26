@@ -348,7 +348,7 @@ export default function Layout({ children }: { children: ReactNode }) {
                 id="global-search-results"
                 role="listbox"
                 aria-label="Search results"
-                className="fade-in absolute top-full z-30 mt-1 max-h-[420px] w-full overflow-y-auto rounded-md border border-default bg-raised shadow-panel"
+                className="fade-in absolute top-full z-30 mt-1 max-h-[420px] w-full overflow-y-auto rounded-control border border-active bg-raised"
               >
                 {!search.active ? (
                   <p className="px-3 py-3 text-body-sm text-tertiary">

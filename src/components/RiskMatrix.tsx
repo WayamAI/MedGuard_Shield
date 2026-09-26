@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 export type Band = "low" | "moderate" | "high" | "critical" | "extreme";
 
@@ -124,7 +125,7 @@ export function RiskMatrix({
             <span className="text-label-sm text-secondary">{BAND_LABEL[b]}</span>
             {!serverScored && (
               <span className="tabular text-caption text-quaternary">
-                {b === "extreme" ? "—" : b === "critical" ? "15-25" : b === "high" ? "10-14" : b === "moderate" ? "5-9" : "1-4"}
+                {b === "extreme" ? EMPTY_VALUE : b === "critical" ? "15-25" : b === "high" ? "10-14" : b === "moderate" ? "5-9" : "1-4"}
               </span>
             )}
             <span className="tabular rounded-full bg-action px-1.5 text-caption text-secondary">{bandCounts[b]}</span>
@@ -176,9 +177,26 @@ export function RiskMatrix({
                       onMouseEnter={() => setHover({ l, i })}
                       onMouseLeave={() => setHover(null)}
                       className={cn(
-                        "relative min-h-[68px] flex-1 rounded-md border border-matrix-stroke p-1.5 transition-all duration-150",
+                        "relative min-h-[68px] flex-1 rounded-md border border-matrix-stroke p-1.5 transition-shadow duration-150",
                         BAND_CELL[band],
-                        (hover?.l === l || hover?.i === i) && "brightness-125",
+                        /*
+                         * The cross-highlight is a ring, not a brightness
+                         * filter, and that is a correctness fix rather than a
+                         * preference. `brightness-125` multiplies each channel
+                         * and clamps, and the light-mode fills are pale by
+                         * design: #E6F6ED, #FDF2D9, #FCE6D5, #FBDDDD all
+                         * clamp to pure white at 125%. So hovering any cell
+                         * turned its whole row and column white against a
+                         * white card and the matrix appeared to vanish under
+                         * the cursor. It read as a lift only in dark mode,
+                         * where the fills start dark enough to survive it.
+                         *
+                         * A ring sits above the fill instead of recomputing
+                         * it, so it cannot wash the band colour out, and it is
+                         * legible against both themes' surfaces.
+                         */
+                        (hover?.l === l || hover?.i === i) && "ring-1 ring-inset ring-brand/40",
+                        hover?.l === l && hover?.i === i && "ring-2 ring-inset ring-brand",
                       )}
                     >
                       <span className="tabular absolute right-1.5 top-1 text-caption text-quaternary/70">{score}</span>

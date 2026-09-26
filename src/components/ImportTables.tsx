@@ -1,9 +1,10 @@
 import { Badge } from "@/components/ui-bits";
 import type { ImportRowError } from "@/lib/apiTypes";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /** Renders a parsed cell without inventing anything the server did not send. */
 function cell(value: unknown): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return EMPTY_VALUE;
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") return value.toLocaleString();
   if (typeof value === "string") {

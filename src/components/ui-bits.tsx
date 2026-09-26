@@ -1,9 +1,12 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useId, useRef } from "react";
 import { AppIcon } from "@/components/AppIcon";
+import { Drishti3DIcon } from "@/components/Drishti3DIcon";
 import { IconButton } from "@/components/IconButton";
 import type { IconName } from "@/lib/icons";
+import type { Icon3DName } from "@/lib/icons3d";
 import { cn } from "@/lib/utils";
 import { type Tone, toneVar } from "@/lib/tone";
+import { EMPTY_VALUE } from "@/lib/empty";
 
 /**
  * Shared primitives for the application surface.
@@ -50,7 +53,7 @@ const TONE_ICON: Record<Tone, string> = {
 };
 
 export const Card = ({ className = "", children }: { className?: string; children: ReactNode }) => (
-  <div className={cn("bg-raised border border-default rounded-card shadow-raised", className)}>{children}</div>
+  <div className={cn("bg-raised border border-default rounded-card", className)}>{children}</div>
 );
 
 export const Badge = ({ tone = "muted", children, className = "" }: { tone?: Tone; children: ReactNode; className?: string }) => (
@@ -96,22 +99,101 @@ export const FilterChip = ({
   </button>
 );
 
-export function Modal({ open, onClose, title, children, size = "md", dismissOnBackdrop = true }: { open: boolean; onClose: () => void; title?: ReactNode; children: ReactNode; size?: "sm" | "md" | "lg" | "xl"; dismissOnBackdrop?: boolean }) {
+/**
+ * Everything a dialog owes a keyboard.
+ *
+ * Both overlays in this file — the centred Modal and the edge-anchored
+ * SlideOver — were `<div>`s. Visually complete, and to a screen reader not
+ * dialogs at all: no role, no name, and no boundary, so Tab walked straight
+ * out of the panel and off into the page behind it while the backdrop implied
+ * it was unreachable. Focus never came back to whatever opened them either,
+ * which on a table of rows means losing your place entirely.
+ *
+ * One hook rather than two implementations, and returned props rather than a
+ * wrapper component, so each overlay keeps its own markup and layout and only
+ * borrows the behaviour.
+ *
+ * `onClose` is held in a ref on purpose. Callers pass an inline arrow, so its
+ * identity changes on every render; in the effect's dependency list that would
+ * tear down and re-run the whole thing constantly — stealing focus back to the
+ * first field mid-typing, and restoring focus to the trigger on every
+ * keystroke. The effect depends on `open` alone.
+ */
+function useDialog(open: boolean, onClose: () => void) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const restoreRef = useRef<HTMLElement | null>(null);
+  const closeRef = useRef(onClose);
+  const titleId = useId();
+
+  useEffect(() => { closeRef.current = onClose; });
+
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+    const panel = panelRef.current;
+    restoreRef.current = document.activeElement as HTMLElement | null;
+
+    /*
+     * Recomputed per keystroke rather than cached: a drawer's contents change
+     * as its data lands, and a trap built from the elements present on open
+     * would still be guarding a skeleton.
+     */
+    const focusables = () =>
+      Array.from(
+        panel?.querySelectorAll<HTMLElement>(
+          'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter(el => el.getClientRects().length > 0);
+
+    (focusables()[0] ?? panel)?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { closeRef.current(); return; }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) { e.preventDefault(); panel?.focus(); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      const outside = !panel?.contains(active);
+      if (e.shiftKey && (active === first || outside)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (active === last || outside)) { e.preventDefault(); first.focus(); }
+    };
+
+    // Capture phase, so the trap sees Tab before anything inside can stop it.
+    document.addEventListener("keydown", onKey, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      // Back to the row, button or link that opened this.
+      restoreRef.current?.focus?.();
+    };
+  }, [open]);
+
+  return { panelRef, titleId };
+}
+
+export function Modal({ open, onClose, title, children, size = "md", dismissOnBackdrop = true }: { open: boolean; onClose: () => void; title?: ReactNode; children: ReactNode; size?: "sm" | "md" | "lg" | "xl"; dismissOnBackdrop?: boolean }) {
+  const { panelRef, titleId } = useDialog(open, onClose);
   if (!open) return null;
   const w = { sm: "max-w-md", md: "max-w-2xl", lg: "max-w-4xl", xl: "max-w-6xl" }[size];
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70" onClick={() => dismissOnBackdrop && onClose()} />
-      <div className={cn("relative flex max-h-[88vh] w-full flex-col rounded-card border border-default bg-raised shadow-panel fade-in", w)}>
+      <div aria-hidden className="absolute inset-0 bg-black/70" onClick={() => dismissOnBackdrop && onClose()} />
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        /*
+         * Named by its heading when it has one. An untitled Modal falls back
+         * to a literal label rather than going unnamed: a dialog a screen
+         * reader announces as just "dialog" gives no reason to be there.
+         */
+        {...(title ? { "aria-labelledby": titleId } : { "aria-label": "Dialog" })}
+        tabIndex={-1}
+        className={cn("relative flex max-h-[88vh] w-full flex-col rounded-card border border-active bg-raised fade-in focus:outline-none", w)}
+      >
         {title && (
           <div className="flex items-center justify-between border-b border-muted px-5 py-4">
-            <h3 className="text-heading-md text-primary">{title}</h3>
+            <h3 id={titleId} className="text-heading-md text-primary">{title}</h3>
             <IconButton icon="close" aria-label="Close dialog" size="sm" onClick={onClose} />
           </div>
         )}
@@ -126,22 +208,22 @@ export function Modal({ open, onClose, title, children, size = "md", dismissOnBa
  * flush to the viewport edge, single hairline stroke, no backdrop blur.
  */
 export function SlideOver({ open, onClose, title, children, footer, width = 440 }: { open: boolean; onClose: () => void; title?: ReactNode; children: ReactNode; footer?: ReactNode; width?: number }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const { panelRef, titleId } = useDialog(open, onClose);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div aria-hidden className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div
-        className="absolute right-0 top-0 flex h-full max-w-full flex-col border-l border-default bg-container slide-in-right"
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        {...(title ? { "aria-labelledby": titleId } : { "aria-label": "Details panel" })}
+        tabIndex={-1}
+        className="absolute right-0 top-0 flex h-full max-w-full flex-col border-l border-default bg-container slide-in-right focus:outline-none"
         style={{ width }}
       >
         <div className="flex items-center justify-between border-b border-muted px-5 py-4">
-          <h3 className="text-heading-md text-primary">{title}</h3>
+          <h3 id={titleId} className="text-heading-md text-primary">{title}</h3>
           <IconButton icon="close" aria-label="Close panel" size="sm" onClick={onClose} />
         </div>
         <div className="flex-1 overflow-y-auto p-5">{children}</div>
@@ -154,7 +236,7 @@ export function SlideOver({ open, onClose, title, children, footer, width = 440 
 type BtnVariant = "default" | "primary" | "danger" | "success" | "ghost" | "outline" | "warning" | "inverse";
 
 const BTN_VARIANT: Record<BtnVariant, string> = {
-  default: "bg-action-secondary text-action-secondary border border-default hover:bg-action-secondary-hover",
+  default: "bg-action-secondary text-action-secondary hover:bg-action-secondary-hover",
   primary: "bg-brand text-primary-foreground hover:bg-brand-hover",
   // `inverse` is the light-on-dark CTA used for a panel's primary action.
   inverse: "bg-action-primary text-on-color hover:bg-action-primary-hover",
@@ -162,7 +244,13 @@ const BTN_VARIANT: Record<BtnVariant, string> = {
   success: "bg-feedback-success-background text-feedback-success border border-feedback-success-stroke hover:bg-feedback-success-stroke hover:text-primary",
   warning: "bg-feedback-warning-background text-feedback-warning border border-feedback-warning-stroke hover:bg-feedback-warning-stroke hover:text-primary",
   ghost: "bg-action-tertiary text-action-tertiary hover:bg-action-tertiary-hover hover:text-primary",
-  outline: "border border-default text-secondary hover:bg-action-secondary-hover hover:text-primary",
+  /*
+   * border-muted, not border-default. default is #2E2E33 in dark, which
+   * against a near-black page reads as a hard black ring drawn around
+   * every Refresh and Cancel. muted keeps the outline legible as an
+   * outline while letting the surface, not the stroke, do the work.
+   */
+  outline: "border border-muted text-secondary hover:border-default hover:bg-action-secondary-hover hover:text-primary",
 };
 
 export const Btn = ({ variant = "default", className = "", children, ...rest }: { variant?: BtnVariant } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
@@ -262,9 +350,9 @@ export const KPI = ({ icon, label, value, trend, accent = "info", onClick, loadi
       ) : (
         <div
           className={cn("font-display text-display-metric-sm tabular text-primary", stale && "opacity-60")}
-          title={stale ? "Last known value — backend unreachable" : undefined}
+          title={stale ? "Last known value. Backend unreachable." : undefined}
         >
-          {value ?? "—"}
+          {value ?? EMPTY_VALUE}
         </div>
       )}
       {/*
@@ -287,12 +375,21 @@ export const KPI = ({ icon, label, value, trend, accent = "info", onClick, loadi
 );
 
 export const SectionHeader = ({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) => (
-  <div className="mb-3 flex items-end justify-between gap-3">
+  /*
+   * Stacks below `sm`, for the same reason PageHeader does.
+   *
+   * Sharing one row at 390px put the action at its content width and left the
+   * subtitle to wrap underneath it: on the dashboard "Every scored asset by
+   * likelihood and impact…" ran straight under the Open register button and
+   * the two were unreadable on top of each other. There is no horizontal
+   * budget to share at that width, so they stop trying to share it.
+   */
+  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-3">
     <div className="min-w-0">
       <h3 className="text-heading-sm text-primary">{title}</h3>
       {subtitle && <p className="mt-0.5 text-body-sm text-tertiary">{subtitle}</p>}
     </div>
-    {action}
+    {action && <div className="sm:shrink-0">{action}</div>}
   </div>
 );
 
@@ -330,19 +427,36 @@ export const ErrorState = ({
   onRetry,
   isRetrying,
   height,
+  art,
 }: {
   title?: string;
   message?: string;
   onRetry?: () => void;
   isRetrying?: boolean;
   height?: number;
+  /**
+   * A 3D mark for an error that is a *state* rather than a fault.
+   *
+   * An expired session is the only one so far: it is an ordinary thing that
+   * happens to everyone, and the red warning triangle overstates it. A real
+   * failure keeps the triangle, because there the alarm is the point.
+   */
+  art?: Icon3DName;
 }) => (
   <div
     role="alert"
     className="flex w-full flex-col items-center justify-center gap-3 rounded-lg border border-default bg-raised-2 p-8 text-center"
     style={height ? { minHeight: height } : undefined}
   >
-    <AppIcon name="warning" size="2xl" className="text-feedback-error" />
+    {art ? (
+      <Drishti3DIcon
+        name={art}
+        size="xl"
+        fallback={<AppIcon name="warning" size="2xl" className="text-feedback-error" />}
+      />
+    ) : (
+      <AppIcon name="warning" size="2xl" className="text-feedback-error" />
+    )}
     <div>
       <div className="text-heading-sm text-primary">{title ?? "Could not load this data"}</div>
       {message && <p className="mt-1 max-w-md text-body-sm text-tertiary">{message}</p>}
@@ -355,25 +469,47 @@ export const ErrorState = ({
   </div>
 );
 
-/** Request succeeded, there is simply nothing to draw. Not an error. */
+/**
+ * Request succeeded, there is simply nothing to draw. Not an error.
+ *
+ * The one surface in the app with room for the 3D artwork and no competition
+ * for attention: a dashed container, eight units of padding, and previously a
+ * single 24px glyph adrift in it. `art` names the render to show instead —
+ * always the page's own subject in its empty condition, an open drum on
+ * Assets, a radar with a clean sweep on Threats, so the picture states the
+ * situation before the sentence does.
+ *
+ * `icon` stays required in practice: it is what renders if the artwork fails,
+ * and what renders on every empty state that has not been given art.
+ */
 export const EmptyState = ({
   icon = "info",
+  art,
   title,
   message,
   action,
   height,
 }: {
   icon?: IconName;
+  art?: Icon3DName;
   title: string;
   message?: string;
   action?: ReactNode;
   height?: number;
 }) => (
   <div
-    className="flex w-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-default bg-raised-2 p-8 text-center"
+    className="flex w-full flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-default bg-raised-2 p-8 text-center"
     style={height ? { minHeight: height } : undefined}
   >
-    <AppIcon name={icon} size="2xl" className="text-icon-tertiary" />
+    {art ? (
+      <Drishti3DIcon
+        name={art}
+        size="xl"
+        fallback={<AppIcon name={icon} size="2xl" className="text-icon-tertiary" />}
+      />
+    ) : (
+      <AppIcon name={icon} size="2xl" className="text-icon-tertiary" />
+    )}
     <div>
       <div className="text-heading-sm text-primary">{title}</div>
       {message && <p className="mt-1 max-w-md text-body-sm text-tertiary">{message}</p>}
